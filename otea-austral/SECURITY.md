@@ -1,14 +1,28 @@
 # Seguridad · Otea Austral
 
-Estado de los controles de seguridad y lo que queda pendiente. Base para la auditoría
-**OWASP Top 10:2025**, prevista al cerrar el tercio 3 (ver `docs/plan.md`).
+Estado de los controles de seguridad y lo que queda pendiente. El programa sigue el **NIST
+Cybersecurity Framework (CSF) 2.0** y se prepara para una auditoría **OWASP Top 10:2025** al cerrar
+el tercio 3 (ver `docs/plan.md`).
 
 ## Reportar una vulnerabilidad
 
-Mientras no exista una dirección dedicada, abre un aviso privado de seguridad en GitHub
-(_Security → Report a vulnerability_). No publiques detalles en issues abiertos.
+Usa el canal publicado en [`/.well-known/security.txt`](https://oteaustral.com/.well-known/security.txt)
+o en la página `/seguridad`. Mientras no exista una dirección dedicada, es el formulario privado de
+GitHub (_Security → Report a vulnerability_), que la persona responsable debe tener **activado**. No
+publiques detalles en issues abiertos.
 
-## Controles implementados (tercio 1)
+## Marco NIST CSF 2.0
+
+- **Perfil** (fuente única, con estado y evidencia de cada control): `src/lib/security/nist-csf.ts`,
+  publicado en `/seguridad`. Una prueba verifica que toda evidencia citada exista.
+- **Gobernar e Identificar** (política, apetito de riesgo, roles, proveedores, datos, riesgos):
+  [`docs/seguridad/programa.md`](docs/seguridad/programa.md).
+- **Responder y Recuperar** (criterios, gravedad, contención, comunicación, recuperación):
+  [`docs/seguridad/respuesta-incidentes.md`](docs/seguridad/respuesta-incidentes.md).
+- Nivel de implementación: 1 (Parcial) estimado hoy; **objetivo** 2 (Informado por el riesgo).
+- Autoevaluación: el NIST no certifica organizaciones. Nunca presentarlo como certificación.
+
+## Controles implementados
 
 | Área | Control | Dónde |
 |---|---|---|
@@ -22,6 +36,10 @@ Mientras no exista una dirección dedicada, abre un aviso privado de seguridad e
 | Integridad de datos | Esquemas Zod estrictos: campos desconocidos rechazados; la confianza no se puede escribir a mano | `src/lib/domain/schemas.ts` |
 | Auditoría | Registro de solo agregar, filas congeladas, ids únicos; el actor es un alias interno (no admite correos) | `src/lib/domain/audit-log.ts` |
 | Salidas | Sin peticiones salientes: `connect-src 'self'` y ningún `fetch` a terceros | CSP |
+| Detección | Reportes de violación de la CSP (`report-uri` y `report-to`) a `/api/csp-report`: tipo de contenido, tamaño (16 KB) y volumen (60/min por instancia) limitados; se registra solo directiva, origen y ruta | `src/lib/security/csp-report.ts` |
+| Registros | Eventos de seguridad en JSON con saneamiento: sin correos, IP, tokens, parámetros de URL ni saltos de línea | `src/lib/security/log.ts` |
+| Divulgación | `/.well-known/security.txt` (RFC 9116) con `Expires`; una prueba falla si vence | `src/lib/security/security-txt.ts` |
+| Cadena de suministro | Verificación de firmas del registro npm (`npm audit signatures`) y SBOM CycloneDX como artefacto de cada CI | `.github/workflows/otea-austral.yml` |
 | Dependencias | Versiones exactas (`save-exact`), `npm ci` en CI, `npm audit` de producción bloqueante, Dependabot semanal | `package.json`, `.github/` |
 | CI | Permisos mínimos (`contents: read`), acciones fijadas por SHA, sin credenciales persistidas | `.github/workflows/otea-austral.yml` |
 | Secretos | Ninguno en el repositorio; `.env*` ignorado salvo `.env.example` | `.gitignore` |
@@ -48,6 +66,14 @@ Mientras no exista una dirección dedicada, abre un aviso privado de seguridad e
 - [ ] Registros (logs) sin datos personales; revisar qué registra la plataforma de despliegue.
 - [ ] SSRF (si algún día se hace `fetch` de URLs): lista de dominios permitidos tomada del registro
       de fuentes, tiempo límite, tamaño máximo y sin redirecciones a otros dominios.
+
+### Acciones de la persona responsable (no se resuelven con código)
+
+- [ ] Activar **Private vulnerability reporting** en GitHub (Settings → Security), o definir
+      `SECURITY_CONTACT` con un correo propio cuando exista el dominio.
+- [ ] Verificación en dos pasos en GitHub, alojamiento, registrador del dominio y correo, con códigos
+      de respaldo fuera de línea.
+- [ ] Renovar `Expires` de `security.txt` antes del 2027-04-01.
 
 ### Decisiones y riesgos conocidos
 
@@ -76,5 +102,5 @@ Mientras no exista una dirección dedicada, abre un aviso privado de seguridad e
 | A06 Diseño inseguro | Reglas de verificación como funciones puras con pruebas; auditoría inmutable. |
 | A07 Fallas de autenticación | Pendiente (tercio 3). |
 | A08 Fallas de integridad de software o datos | Esquemas estrictos; confianza calculada, no editable. |
-| A09 Fallas de registro y alertas | Pendiente: política de logs sin datos personales (tercio 3). |
+| A09 Fallas de registro y alertas | Registro de eventos de seguridad sin datos personales y reportes de CSP; falta revisión periódica y alertas de la plataforma. |
 | A10 Mal manejo de condiciones excepcionales | Página 404 propia; revisar errores 500 y mensajes en el tercio 2. |

@@ -38,6 +38,11 @@ describe("buildCsp en producción", () => {
   it("fuerza https en subrecursos", () => {
     expect(csp).toContain("upgrade-insecure-requests");
   });
+
+  it("reporta las violaciones al receptor propio", () => {
+    expect(directiva(csp, "report-uri")).toEqual(["/api/csp-report"]);
+    expect(directiva(csp, "report-to")).toEqual(["csp-endpoint"]);
+  });
 });
 
 describe("buildCsp en desarrollo", () => {
@@ -64,5 +69,9 @@ describe("securityHeaders", () => {
     expect(mapa["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
     expect(mapa["Permissions-Policy"]).toContain("camera=()");
     expect(mapa["X-Frame-Options"]).toBe("DENY");
+  });
+
+  it("declara el destino de reportes que usa la CSP", () => {
+    expect(mapa["Reporting-Endpoints"]).toBe('csp-endpoint="/api/csp-report"');
   });
 });

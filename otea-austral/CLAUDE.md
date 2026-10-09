@@ -128,7 +128,9 @@ Transiciones: `crearAlerta` → `enviarARevision` → `aprobar` → `publicar` �
 
 ## Seguridad
 
-Detalle y pendientes en [`SECURITY.md`](SECURITY.md). Lo esencial:
+Detalle y pendientes en [`SECURITY.md`](SECURITY.md). El programa sigue el **NIST CSF 2.0**: perfil
+en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgos en
+`docs/seguridad/programa.md`, incidentes en `docs/seguridad/respuesta-incidentes.md`. Lo esencial:
 
 - CSP estricta con nonce por solicitud en `src/proxy.ts` (por eso `cacheComponents` está
   desactivado y el layout llama a `connection()`).
@@ -137,7 +139,13 @@ Detalle y pendientes en [`SECURITY.md`](SECURITY.md). Lo esencial:
   (`safeHref`); `target="_blank"` siempre con `rel="noopener noreferrer"`.
 - **No hacer peticiones salientes automáticas.** Si algún día se hace `fetch` de URLs: solo a
   dominios del registro de fuentes, con tiempo límite y tamaño máximo.
-- Registros sin datos personales. Auditoría de solo agregar.
+- Registros sin datos personales: usar siempre `logSecurityEvent` (`src/lib/security/log.ts`),
+  nunca `console.log` con datos de entrada. Auditoría de solo agregar.
+- Puntos que reciben datos: tipo de contenido, tamaño y volumen limitados
+  (`createFixedWindowLimiter`).
+- Al agregar o cambiar un control, actualizar `nist-csf.ts` con su evidencia; la prueba falla si un
+  archivo citado no existe. Nunca presentarlo como certificación.
+- `security.txt` vence el 2027-04-01 (`SECURITY_TXT_EXPIRES`): renovarlo antes.
 
 ## Comandos
 
@@ -171,6 +179,7 @@ src/
   app/                 rutas (layout, página, 404, icono)
   components/
     alert-card/        AlertCard y sus insignias
+    security/          perfil NIST, estado de controles, íconos de funciones
     brand/             Emblem y Logo
     home/              Hero, abanico de tarjetas, atmósfera
     layout/            cabecera y pie
@@ -179,9 +188,12 @@ src/
   lib/
     domain/            esquemas, reglas, vista, auditoría, URLs
     design/            cálculo de contraste
-    security/          CSP y cabeceras
+    security/          CSP, cabeceras, reportes CSP, registro, límites, security.txt, perfil NIST
+  app/api/csp-report/  receptor de reportes de la CSP
+  app/.well-known/     security.txt
+  app/seguridad/       página pública de seguridad (NIST CSF 2.0)
   proxy.ts             nonce + CSP por solicitud
-docs/                  plan, referencia de estilo
+docs/                  plan, referencia de estilo, seguridad/ (programa e incidentes)
 ```
 
 ## Notas de Next.js

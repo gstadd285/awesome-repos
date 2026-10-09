@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Emblem } from "@/components/brand/Emblem";
 
 export function SiteFooter() {
@@ -8,7 +9,17 @@ export function SiteFooter() {
           <Emblem className="h-5 w-auto" />
           Información y análisis. No constituye asesoría financiera.
         </p>
-        <p className="text-mist">© {new Date().getFullYear()} Otea Austral</p>
+        <div className="flex items-center gap-6">
+          <nav aria-label="Pie de página">
+            <Link
+              href="/seguridad"
+              className="text-ivory-soft underline decoration-glass-edge-strong underline-offset-4 hover:text-ivory hover:decoration-ivory"
+            >
+              Seguridad
+            </Link>
+          </nav>
+          <p className="text-mist">© {new Date().getFullYear()} Otea Austral</p>
+        </div>
       </div>
     </footer>
   );

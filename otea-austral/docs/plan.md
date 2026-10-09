@@ -26,6 +26,17 @@ las reglas se hicieron antes para no rehacer la `AlertCard` después.
 Pendiente visible del tercio 1: el botón "Recibir alertas" apunta a `#lista-de-espera`, que llega en
 el tercio 2.
 
+## Incremento · Ciberseguridad según NIST CSF 2.0 ✅
+
+- [x] Perfil de seguridad con las seis funciones (Gobernar, Identificar, Proteger, Detectar,
+      Responder, Recuperar), estado y evidencia de cada control: `src/lib/security/nist-csf.ts`.
+- [x] Página pública `/seguridad` y enlace en el pie.
+- [x] `/.well-known/security.txt` (RFC 9116).
+- [x] Reportes de violación de la CSP con receptor propio, límites y registro sin datos personales.
+- [x] CI: verificación de firmas npm y SBOM CycloneDX.
+- [x] Programa (política, apetito de riesgo, roles, proveedores, datos, riesgos) y plan de respuesta
+      a incidentes en `docs/seguridad/`.
+
 ## Tercio 2 · Sitio público completo
 
 - [ ] Fila de seis temas con íconos de línea (Energía, Chips, Cobre, Comercio EE.UU.–China, Divisas,
@@ -73,3 +84,8 @@ Tomé valores por defecto razonables para no bloquear el avance; confírmalos o 
    además aprobar una persona distinta de quien creó la alerta (cuatro ojos)?
 8. **Temas de las fuentes.** El registro usa los mismos seis temas de la portada. Algunas fuentes
    (por ejemplo, BLS) quizá necesiten un tema "Macro" adicional.
+9. **Canal de reporte de vulnerabilidades.** El repositorio es público y el reporte privado de
+   GitHub está desactivado. Actívalo (Settings → Security → Private vulnerability reporting) o
+   define `SECURITY_CONTACT` con un correo cuando exista el dominio.
+10. **Verificación en dos pasos** en GitHub, alojamiento, dominio y correo: es la medida más
+    efectiva del perfil y solo tú puedes activarla.

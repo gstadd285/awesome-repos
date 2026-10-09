@@ -41,6 +41,10 @@ jobs:
       - name: Instalar dependencias (versiones fijas del lockfile)
         run: npm ci
 
+      # NIST CSF ID.RA-09: autenticidad e integridad del software antes de usarlo.
+      - name: Verificar firmas del registro npm
+        run: npm audit signatures
+
       - name: Lint
         run: npm run lint
 
@@ -61,3 +65,15 @@ jobs:
       - name: Auditoría completa (informativa)
         run: npm audit --audit-level=high
         continue-on-error: true
+
+      # NIST CSF ID.AM-02: inventario del software que se despliega.
+      - name: Inventario de software (SBOM CycloneDX)
+        run: npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json
+
+      - name: Publicar el SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom-otea-austral
+          path: otea-austral/sbom.cdx.json
+          retention-days: 90
+          if-no-files-found: error

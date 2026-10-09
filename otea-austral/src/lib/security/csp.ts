@@ -1,3 +1,7 @@
+export const CSP_REPORT_PATH = "/api/csp-report";
+/** Nombre del destino declarado en la cabecera `Reporting-Endpoints`. */
+export const CSP_REPORT_GROUP = "csp-endpoint";
+
 /**
  * Política de seguridad de contenido estricta, con nonce por solicitud.
  * Sin `unsafe-inline` para scripts; en desarrollo se permite `unsafe-eval`
@@ -17,6 +21,9 @@ export function buildCsp(nonce: string, { dev }: { dev: boolean }): string {
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
     "frame-ancestors": ["'none'"],
+    // Las violaciones se reportan a /api/csp-report (NIST CSF DE.CM-09).
+    "report-uri": [CSP_REPORT_PATH],
+    "report-to": [CSP_REPORT_GROUP],
     ...(dev ? {} : { "upgrade-insecure-requests": [] }),
   };
   return Object.entries(directivas)

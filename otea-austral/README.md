@@ -37,7 +37,8 @@ npm run dev                  # http://localhost:3000
 - `AlertCard`: filas gana/condicionado/pierde, confianza calculada desde las fuentes, fuentes
   desplegables, estados corregida y retractada.
 - Modelo de datos y reglas de verificación con pruebas (`src/lib/domain/`).
-- CSP estricta con nonce y cabeceras de seguridad.
+- Página `/seguridad` con el perfil según el NIST CSF 2.0 y `/.well-known/security.txt`.
+- CSP estricta con nonce, reportes de violación y cabeceras de seguridad.
 
 Todo el contenido visible es **de ejemplo** y está marcado así.
 

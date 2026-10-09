@@ -1,3 +1,5 @@
+import { CSP_REPORT_GROUP, CSP_REPORT_PATH } from "./csp";
+
 /** Cabeceras de seguridad estáticas para todas las respuestas. La CSP va en `src/proxy.ts`. */
 export const securityHeaders: { key: string; value: string }[] = [
   // Sin `preload` hasta tener el dominio definitivo (ver SECURITY.md).
@@ -12,4 +14,6 @@ export const securityHeaders: { key: string; value: string }[] = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+  // Destino de la Reporting API para `report-to` de la CSP.
+  { key: "Reporting-Endpoints", value: `${CSP_REPORT_GROUP}="${CSP_REPORT_PATH}"` },
 ];
