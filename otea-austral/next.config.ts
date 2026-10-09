@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
+import { securityHeaders } from "./src/lib/security/headers";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // La CSP con nonce exige renderizado dinámico, incompatible con el
+  // prerenderizado parcial de Cache Components. Ver SECURITY.md.
+  cacheComponents: false,
+  poweredByHeader: false,
+  reactStrictMode: true,
   turbopack: {
     rules: {
       "*.css": {
@@ -11,6 +14,9 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 
