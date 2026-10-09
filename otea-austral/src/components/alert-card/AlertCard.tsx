@@ -34,11 +34,11 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
       id={base}
       aria-labelledby={`${base}-titulo`}
       data-estado={alerta.estado}
-      className={`glass glass-interactive rounded-card p-6 text-left ${className}`}
+      className={`superficie superficie-interactiva rounded-card p-6 text-left ${className}`}
     >
       {retractada ? (
-        <div role="note" className="mb-5 rounded-badge bg-glass-fill-strong p-3 hairline">
-          <p className="text-sm font-semibold text-ivory">
+        <div role="note" className="mb-5 rounded-badge bg-fondo p-3 linea-fina">
+          <p className="text-sm font-semibold text-texto">
             Alerta retractada
             {retractacion ? (
               <>
@@ -48,25 +48,25 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
             ) : null}
           </p>
           {retractacion ? (
-            <p className="mt-1 text-sm text-ivory-soft">{retractacion.texto_publico}</p>
+            <p className="mt-1 text-sm text-texto-suave">{retractacion.texto_publico}</p>
           ) : null}
-          <p className="mt-1 text-xs text-mist">
+          <p className="mt-1 text-xs text-apoyo">
             Se mantiene publicada, tachada, para que quede registro.
           </p>
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="eyebrow mr-auto">{TEMA_ETIQUETA[alerta.tema]}</span>
+        <span className="micro mr-auto text-apoyo">{TEMA_ETIQUETA[alerta.tema]}</span>
         {alerta.es_ejemplo ? (
-          <span className="rounded-badge bg-glass-fill-strong px-2 py-1 text-xs font-medium text-ivory-soft hairline">
+          <span className="rounded-badge bg-fondo px-2 py-1 text-xs font-medium text-texto-suave linea-fina">
             Datos de ejemplo
           </span>
         ) : null}
         {alerta.estado === "corregida" && ultimaCorreccion ? (
           <a
             href={`#${base}-correcciones`}
-            className="rounded-badge px-2 py-1 text-xs font-medium text-ivory underline decoration-glass-edge-strong underline-offset-4 hover:decoration-ivory"
+            className="rounded-badge px-2 py-1 text-xs font-medium text-texto underline decoration-linea-fuerte underline-offset-4 hover:decoration-texto"
           >
             Corregida el{" "}
             <time dateTime={ultimaCorreccion.fecha}>{formatearDia(ultimaCorreccion.fecha)}</time>
@@ -76,25 +76,25 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
 
       <Titulo
         id={`${base}-titulo`}
-        className="mt-3 font-serif text-2xl leading-tight font-medium text-ivory"
+        className="mt-3 font-serif text-2xl leading-tight font-medium text-texto"
       >
         {retractada ? <s>{alerta.evento}</s> : alerta.evento}
       </Titulo>
 
-      <div className={retractada ? "line-through decoration-mist" : undefined}>
-        <p className="mt-3 text-sm leading-relaxed text-ivory-soft">{alerta.resumen}</p>
+      <div className={retractada ? "line-through decoration-apoyo" : undefined}>
+        <p className="mt-3 text-sm leading-relaxed text-texto-suave">{alerta.resumen}</p>
 
         <ul aria-label="Quién gana y quién pierde" className="mt-4">
           {alerta.filas.map((fila, i) => (
             <li
               key={`${fila.sector}-${i}`}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 border-t border-glass-edge py-3"
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 border-t border-linea py-3"
             >
-              <p className="text-sm font-medium text-ivory">{fila.sector}</p>
+              <p className="text-sm font-medium text-texto">{fila.sector}</p>
               <DirectionBadge direccion={fila.direccion} />
-              <p className="col-span-2 text-sm text-ivory-soft">
+              <p className="col-span-2 text-sm text-texto-suave">
                 {fila.condicion}
-                <span className="text-mist">
+                <span className="text-apoyo">
                   {" · "}Confianza {CONFIANZA_ETIQUETA[fila.confianza_mostrada]}
                 </span>
               </p>
@@ -103,24 +103,24 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
         </ul>
       </div>
 
-      <footer className="border-t border-glass-edge pt-4">
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ivory-soft">
+      <footer className="border-t border-linea pt-4">
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-texto-suave">
           <span className="sr-only">Respaldo: </span>
           <ConfidenceBadge nivel={alerta.confianza} />
-          <span aria-hidden="true" className="text-mist">
+          <span aria-hidden="true" className="text-apoyo">
             ·
           </span>
           <span>
             {nFuentes} {nFuentes === 1 ? "fuente" : "fuentes"}
           </span>
-          <span aria-hidden="true" className="text-mist">
+          <span aria-hidden="true" className="text-apoyo">
             ·
           </span>
           <span>{VERIFICACION_ETIQUETA[alerta.nivel_verificacion]}</span>
         </p>
 
         <details className="group mt-3">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-badge py-1 text-sm font-medium text-ivory [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-badge py-1 text-sm font-medium text-texto [&::-webkit-details-marker]:hidden">
             <svg
               viewBox="0 0 12 12"
               aria-hidden="true"
@@ -132,14 +132,14 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
             Fuentes ({nFuentes})
           </summary>
           {nFuentes === 0 ? (
-            <p className="mt-2 text-sm text-mist">Esta alerta aún no tiene fuentes enlazadas.</p>
+            <p className="mt-2 text-sm text-apoyo">Esta alerta aún no tiene fuentes enlazadas.</p>
           ) : (
             <ul className="mt-2 space-y-3 pb-1">
               {alerta.fuentes.map((fuente, i) => {
                 const href = safeHref(fuente.url);
                 return (
                   <li key={`${fuente.url}-${i}`} className="text-sm">
-                    <p className="text-xs text-mist">
+                    <p className="text-xs text-apoyo">
                       {fuente.organismo} · {TIPO_FUENTE_ETIQUETA[fuente.tipo]}
                     </p>
                     {href ? (
@@ -147,15 +147,15 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-ivory underline decoration-glass-edge-strong underline-offset-4 hover:decoration-ivory"
+                        className="text-texto underline decoration-linea-fuerte underline-offset-4 hover:decoration-texto"
                       >
                         {fuente.titulo}
                         <span className="sr-only"> (se abre en una pestaña nueva)</span>
                       </a>
                     ) : (
-                      <span className="text-ivory">{fuente.titulo}</span>
+                      <span className="text-texto">{fuente.titulo}</span>
                     )}
-                    <p className="text-xs text-mist">
+                    <p className="text-xs text-apoyo">
                       Publicado el{" "}
                       <time dateTime={fuente.fecha_publicacion}>
                         {formatearFecha(fuente.fecha_publicacion)}
@@ -175,13 +175,13 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
             aria-labelledby={`${base}-correcciones-titulo`}
             className="mt-3 scroll-mt-24"
           >
-            <Subtitulo id={`${base}-correcciones-titulo`} className="text-sm font-medium text-ivory">
+            <Subtitulo id={`${base}-correcciones-titulo`} className="text-sm font-medium text-texto">
               {retractada ? "Correcciones y retractación" : "Correcciones"}
             </Subtitulo>
             <ol className="mt-1 space-y-2">
               {alerta.correcciones.map((c) => (
-                <li key={c.id} className="text-sm text-ivory-soft">
-                  <span className="text-xs text-mist">
+                <li key={c.id} className="text-sm text-texto-suave">
+                  <span className="text-xs text-apoyo">
                     {c.tipo === "retractacion" ? "Retractación" : "Corrección"} ·{" "}
                     <time dateTime={c.fecha}>{formatearDia(c.fecha)}</time>
                   </span>
@@ -193,7 +193,7 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
           </section>
         ) : null}
 
-        <p className="mt-3 text-xs text-mist">
+        <p className="mt-3 text-xs text-apoyo">
           Revisado por {alerta.revisor} ·{" "}
           <time dateTime={alerta.fecha}>{formatearFechaHora(alerta.fecha)}</time>
         </p>

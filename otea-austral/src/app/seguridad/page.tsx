@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { Atmosphere } from "@/components/home/Atmosphere";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { PageTransition } from "@/components/layout/PageTransition";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SecurityProfile } from "@/components/security/SecurityProfile";
 import { env } from "@/lib/env";
@@ -15,15 +14,12 @@ export const metadata: Metadata = {
 export default function SeguridadPage() {
   return (
     <>
-      <div className="relative isolate">
-        <Atmosphere />
-        <SiteHeader />
-        <main id="contenido" className="pb-[120px]">
-          <PageTransition>
-            <SecurityProfile contacto={env.SECURITY_CONTACT} />
-          </PageTransition>
-        </main>
-      </div>
+      <SiteHeader />
+      <main id="contenido" className="fondo-luz pb-[120px]">
+        <PageTransition>
+          <SecurityProfile contacto={env.SECURITY_CONTACT} />
+        </PageTransition>
+      </main>
       <SiteFooter />
     </>
   );

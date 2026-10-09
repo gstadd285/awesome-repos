@@ -43,3 +43,7 @@ next-env.d.ts
 
 # inventario de software generado en CI
 /sbom.cdx.json
+
+# pruebas e2e
+/test-results/
+/playwright-report/

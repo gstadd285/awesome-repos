@@ -1,27 +1,37 @@
 @import "tailwindcss";
 
 /*
- * Tokens de Otea Austral. Fuente única de verdad: `src/lib/design/contrast.test.ts`
- * lee este archivo y verifica el contraste AA de los pares texto/fondo.
- * Se reinicia la paleta de Tailwind para que no se cuele ningún color ajeno.
+ * Sistema visual de Otea Austral: editorial claro, inspirado en la referencia
+ * "TIDY" (fondo perla, luz de ventana, tipografía grotesca en mayúsculas,
+ * piezas 3D y una historia ligada al scroll), con la paleta y el logo de Otea.
+ * Fuente única de los tokens: `src/lib/design/contrast.test.ts` lee este
+ * archivo y verifica el contraste AA de los pares de texto.
  */
 @theme {
   --color-*: initial;
 
-  --color-canvas: #070E1A;
+  /* Marca */
   --color-ink: #0F1B2D;
   --color-ivory: #F3EEE3;
-  --color-ivory-soft: #C9CCD1;
-  --color-mist: #8C97A6;
   --color-brass: #B08D57;
-  /* Contraste 3,2:1 sobre el lienzo: solo decorativo, nunca para texto. */
+  /* Solo decorativo o logotipo sobre fondo claro (no alcanza AA en texto chico). */
   --color-brass-deep: #7A5E33;
-  --color-glass-edge: rgb(243 238 227 / 0.12);
-  --color-glass-edge-strong: rgb(243 238 227 / 0.24);
-  --color-glass-fill: rgb(243 238 227 / 0.04);
-  --color-glass-fill-strong: rgb(243 238 227 / 0.08);
+  --color-mist: #8C97A6;
 
-  /* Colores de estado: solo dentro de AlertCard. */
+  /* Tema claro */
+  --color-fondo: #E7E5E0;
+  --color-fondo-sombra: #D9D7D2;
+  --color-papel: #F6F3ED;
+  --color-papel-alto: #FCFAF6;
+  --color-texto: #0F1B2D;
+  --color-texto-suave: #3D4859;
+  --color-apoyo: #4C5665;
+  --color-linea: rgb(15 27 45 / 0.14);
+  --color-linea-fuerte: rgb(15 27 45 / 0.32);
+  /* Único acento de interfaz: relleno de la acción principal (con texto tinta). */
+  --color-acento: #B08D57;
+
+  /* Estado: en alertas y en las piezas que las representan, siempre con texto tinta. */
   --color-gana: #7FBF9E;
   --color-condicionado: #B08D57;
   --color-pierde: #E08A72;
@@ -30,35 +40,37 @@
   --radius-card: 16px;
   --radius-pill: 999px;
 
-  --text-display: 48px;
-  --text-display--line-height: 1.17;
-  --text-heading-lg: 44px;
-  --text-heading-lg--line-height: 1.16;
-  --text-eyebrow: 13px;
-  --text-eyebrow--line-height: 1.2;
+  --text-micro: 11px;
+  --text-micro--line-height: 1.35;
+  --text-display: clamp(2.4rem, 4.6vw, 4.25rem);
+  --text-display--line-height: 1;
+  --text-titulo: clamp(1.9rem, 3vw, 2.75rem);
+  --text-titulo--line-height: 1.04;
 }
 
 @theme inline {
   --font-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 @layer base {
   html {
-    color-scheme: dark;
-    background-color: var(--color-canvas);
+    color-scheme: light;
+    background-color: var(--color-fondo);
+    scroll-padding-top: 88px;
   }
 
   body {
-    background-color: var(--color-canvas);
-    color: var(--color-ivory-soft);
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-ivory);
+    outline: 2px solid var(--color-ink);
     outline-offset: 3px;
   }
 
@@ -68,104 +80,433 @@
   }
 }
 
-/* ── Vidrio ──────────────────────────────────────────────────────────────── */
+/* ── Superficies ───────────────────────────────────────────────────────────── */
 
-@utility glass {
-  background-color: var(--color-glass-fill);
+/* Tarjeta de porcelana: papel cálido, borde fino y sombra suave. */
+@utility superficie {
+  background-color: var(--color-papel-alto);
   box-shadow:
-    inset 0 0 0 1px var(--color-glass-edge),
-    inset 0 1px 1px rgb(243 238 227 / 0.14),
-    inset 0 24px 48px rgb(243 238 227 / 0.03),
-    0 24px 32px rgb(3 6 12 / 0.7);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+    inset 0 0 0 1px var(--color-linea),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 2px 6px -2px rgb(15 27 45 / 0.08),
+    0 24px 48px -24px rgb(15 27 45 / 0.3);
+}
 
-  /* Sin backdrop-filter, un fondo casi opaco mantiene la legibilidad. */
+/* Vidrio esmerilado claro (cabecera, paneles flotantes). */
+@utility vidrio {
+  background-color: rgb(252 250 246 / 0.72);
+  box-shadow: inset 0 -1px 0 var(--color-linea);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    background-color: rgb(15 27 45 / 0.94);
+    background-color: rgb(252 250 246 / 0.97);
   }
 }
 
-@utility hairline {
-  box-shadow: inset 0 0 0 1px var(--color-glass-edge);
+@utility linea-fina {
+  box-shadow: inset 0 0 0 1px var(--color-linea);
 }
 
-/* ── Tipografía ──────────────────────────────────────────────────────────── */
+/* ── Tipografía ────────────────────────────────────────────────────────────── */
 
-@utility text-headline-gradient {
-  color: var(--color-ivory);
-  background-image: linear-gradient(0deg, #C9CCD1 0%, #F3EEE3 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-@utility eyebrow {
-  font-family: var(--font-mono);
-  font-size: var(--text-eyebrow);
-  line-height: var(--text-eyebrow--line-height);
-  letter-spacing: 0.1em;
+/* Titulares grotescos en mayúsculas, como en la referencia. */
+@utility titular {
+  font-family: var(--font-display);
+  font-weight: 500;
   text-transform: uppercase;
+  letter-spacing: -0.025em;
+}
+
+/* Rótulos pequeños de navegación y etiquetas. */
+@utility micro {
+  font-size: var(--text-micro);
+  line-height: var(--text-micro--line-height);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Contadores técnicos: 001 — 004. */
+@utility contador {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.04em;
   font-feature-settings: "tnum" on;
-  color: var(--color-ivory-soft);
 }
 
-/* ── Atmósfera: retícula y foco de luz ───────────────────────────────────── */
+/* `[ RECIBIR ALERTAS ]`: enlace entre corchetes. */
+@utility corchetes {
+  &::before {
+    content: "[\00a0";
+  }
+  &::after {
+    content: "\00a0]";
+  }
+}
 
-@utility bg-grid {
+/* ── Atmósfera ─────────────────────────────────────────────────────────────── */
+
+/* Luz de día sobre el lienzo perla. */
+@utility fondo-luz {
   background-image:
-    linear-gradient(to right, rgb(243 238 227 / 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(243 238 227 / 0.05) 1px, transparent 1px);
-  background-size: 88px 88px;
-  background-position: center top;
-  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+    radial-gradient(1100px 620px at 72% -12%, rgb(255 255 255 / 0.75), transparent 70%),
+    radial-gradient(900px 520px at 0% 110%, rgb(15 27 45 / 0.05), transparent 70%);
 }
 
-@utility bg-spotlight {
-  /* Haz que baja desde arriba al centro (50 % = 180°), en tonos marfil y latón. */
-  background-image: conic-gradient(
-    at 50% -5%,
-    transparent 44%,
-    rgb(176 141 87 / 0.22) 48%,
-    rgb(243 238 227 / 0.32) 50%,
-    rgb(176 141 87 / 0.22) 52%,
-    transparent 56%
+/* Sombras de persiana: franjas diagonales difusas de luz y sombra. */
+@utility luz-ventana {
+  background-image: repeating-linear-gradient(
+    118deg,
+    rgb(255 255 255 / 0.62) 0 70px,
+    rgb(255 255 255 / 0) 70px 105px,
+    rgb(15 27 45 / 0.07) 105px 150px,
+    rgb(255 255 255 / 0) 150px 190px
   );
-  -webkit-mask-image: linear-gradient(to bottom, #000 20%, transparent 85%);
-  mask-image: linear-gradient(to bottom, #000 20%, transparent 85%);
+  filter: blur(22px);
+  -webkit-mask-image: radial-gradient(ellipse 80% 75% at 55% 45%, #000 35%, transparent 80%);
+  mask-image: radial-gradient(ellipse 80% 75% at 55% 45%, #000 35%, transparent 80%);
 }
 
-@utility fade-line-left {
-  background-image: linear-gradient(to right, transparent, var(--color-glass-edge));
+/* Retícula de puntos de los planos técnicos. */
+@utility reticula-puntos {
+  background-image: radial-gradient(circle, rgb(15 27 45 / 0.38) 1.1px, transparent 1.6px);
+  background-size: 26px 26px;
+  background-position: 13px 13px;
 }
 
-@utility fade-line-right {
-  background-image: linear-gradient(to left, transparent, var(--color-glass-edge));
-}
+/* ── Interacción ───────────────────────────────────────────────────────────── */
 
-/* ── Interacción ─────────────────────────────────────────────────────────── */
-
-/* Al pasar el cursor, el borde de vidrio se ilumina y el halo crece (sin mover la tarjeta). */
-@utility glass-interactive {
+@utility superficie-interactiva {
   transition: box-shadow 500ms cubic-bezier(0.16, 1, 0.3, 1);
 
   &:hover {
     box-shadow:
-      inset 0 0 0 1px var(--color-glass-edge-strong),
-      inset 0 1px 1px rgb(243 238 227 / 0.22),
-      inset 0 24px 48px rgb(243 238 227 / 0.05),
-      0 32px 48px rgb(3 6 12 / 0.8);
+      inset 0 0 0 1px var(--color-linea-fuerte),
+      inset 0 1px 0 rgb(255 255 255 / 0.95),
+      0 4px 10px -4px rgb(15 27 45 / 0.12),
+      0 32px 60px -28px rgb(15 27 45 / 0.38);
   }
 }
 
-/* ── Movimiento ──────────────────────────────────────────────────────────────
- * Inspirado en apple.com: entrada suave del titular, tarjetas que se reparten
- * en abanico, contenido que aparece al hacer scroll y una atmósfera con
- * profundidad. Todo es CSS (sin JavaScript) y solo existe con
- * `prefers-reduced-motion: no-preference`. Lo ligado al scroll se aplica
- * donde el navegador lo soporta; sin soporte, el contenido se ve completo y
- * quieto. `src/lib/design/motion.test.ts` vigila estas reglas.
+/* ── Cinta 3D (hero) ───────────────────────────────────────────────────────── */
+
+.cinta {
+  position: relative;
+  margin-inline: -24px;
+  height: clamp(220px, 34vw, 340px);
+  perspective: 1500px;
+  perspective-origin: 50% 35%;
+}
+
+.cinta-pista {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  transform: rotateY(-16deg) rotateX(9deg);
+}
+
+.cinta-lamina {
+  flex: none;
+  width: clamp(34px, 4.2vw, 62px);
+  height: clamp(104px, 12vw, 176px);
+  margin-left: clamp(-26px, -1.8vw, -14px);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.28),
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    0 10px 24px -12px rgb(15 27 45 / 0.45);
+  /* Como fichas de dominó: giran sobre el eje vertical y nunca se atraviesan. */
+  transform: rotateY(38deg);
+}
+
+.cinta-lamina-pierde {
+  background-image: linear-gradient(150deg, #EFA48D, #E08A72 45%, #A8573F);
+}
+.cinta-lamina-condicionado {
+  background-image: linear-gradient(150deg, #D3B27D, #B08D57 45%, #7A5E33);
+}
+.cinta-lamina-tinta {
+  background-image: linear-gradient(150deg, #3C5574, #22354F 45%, #0F1B2D);
+}
+.cinta-lamina-gana {
+  background-image: linear-gradient(150deg, #A4D6BC, #7FBF9E 45%, #4E8B6C);
+}
+.cinta-lamina-bruma {
+  background-image: linear-gradient(150deg, #B5BECA, #8C97A6 45%, #5D6878);
+}
+
+.cinta-chip {
+  position: absolute;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background-color: rgb(252 250 246 / 0.85);
+  box-shadow: inset 0 0 0 1px var(--color-linea);
+  color: var(--color-apoyo);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .cinta-lamina:nth-child(n + 23) {
+    display: none;
+  }
+  .cinta-chip:nth-child(n + 7) {
+    display: none;
+  }
+}
+
+/* ── Plano técnico ─────────────────────────────────────────────────────────── */
+
+.plano {
+  position: relative;
+  aspect-ratio: 1;
+  width: min(560px, 82vw);
+  margin-inline: auto;
+  transform-style: preserve-3d;
+  transform: rotateX(56deg) rotateZ(-36deg);
+}
+
+.plano-superficie {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--color-linea-fuerte);
+}
+
+.plano-cota {
+  position: absolute;
+  background-color: var(--color-linea-fuerte);
+}
+
+.plano-etiqueta {
+  position: absolute;
+  color: var(--color-apoyo);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* Gota de metal líquido: gradiente cromado y bordes que se deforman. */
+.gota {
+  position: absolute;
+  left: 22%;
+  top: 28%;
+  width: 56%;
+  height: 44%;
+  border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  background-image:
+    radial-gradient(60% 40% at 35% 30%, rgb(255 255 255 / 0.95), transparent 60%),
+    conic-gradient(
+      from 210deg at 50% 50%,
+      #F7F4EE,
+      #9AA3AD,
+      #FDFBF7,
+      #6F7884,
+      #EFE9DD,
+      #B8BFC7,
+      #F7F4EE
+    );
+  box-shadow:
+    inset 0 -18px 40px rgb(15 27 45 / 0.25),
+    inset 0 10px 24px rgb(255 255 255 / 0.7),
+    0 30px 50px -20px rgb(15 27 45 / 0.45);
+  transform: translateZ(26px);
+}
+
+/* ── Tablero (tableta con el panel de ejemplo) ─────────────────────────────── */
+
+.tablero {
+  position: relative;
+  width: min(820px, 100%);
+  aspect-ratio: 820 / 520;
+  margin-inline: auto;
+  container-type: inline-size;
+  transform-style: preserve-3d;
+}
+
+.tablero-marco {
+  position: absolute;
+  inset: 0;
+  border-radius: 4.4cqw;
+  background-image: linear-gradient(150deg, #FBFAF7, #E6E3DD 60%, #D8D5CF);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.9),
+    inset 0 -2px 0 rgb(15 27 45 / 0.08),
+    0 3cqw 6cqw -2cqw rgb(15 27 45 / 0.35),
+    0 0.4cqw 1cqw rgb(15 27 45 / 0.12);
+  transform-style: preserve-3d;
+}
+
+.tablero-pantalla {
+  position: absolute;
+  inset: 1.7cqw;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 1.6cqw;
+  padding: 2.2cqw;
+  border-radius: 3.2cqw;
+  background-color: var(--color-papel-alto);
+  box-shadow: inset 0 0 0 1px var(--color-linea);
+  transform-style: preserve-3d;
+}
+
+.tablero-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.9cqw;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.tablero-chip {
+  padding: 0.35cqw 0.9cqw;
+  border-radius: 0.8cqw;
+  background-color: var(--color-fondo);
+  font-size: 1.1cqw;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.tablero-cuerpo {
+  display: grid;
+  grid-template-columns: 22% 1fr;
+  gap: 2cqw;
+  min-height: 0;
+  transform-style: preserve-3d;
+}
+
+.tablero-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15cqw;
+  padding-right: 1.6cqw;
+  border-right: 1px solid var(--color-linea);
+  font-size: 1.25cqw;
+  color: var(--color-texto-suave);
+}
+
+.tablero-menu li {
+  display: flex;
+  align-items: center;
+  gap: 0.9cqw;
+}
+
+.tablero-menu svg {
+  width: 1.9cqw;
+  height: 1.9cqw;
+  flex: none;
+}
+
+.tablero-columnas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.6cqw;
+  transform-style: preserve-3d;
+}
+
+.tablero-columna {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1cqw;
+  transform-style: preserve-3d;
+}
+
+.tablero-columna-titulo {
+  font-size: 1.1cqw;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.tablero-tarjeta {
+  display: grid;
+  gap: 0.5cqw;
+  padding: 1.2cqw 1.3cqw;
+  border-radius: 1.6cqw;
+  color: var(--color-ink);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.35),
+    0 1.2cqw 2.4cqw -1cqw rgb(15 27 45 / 0.45);
+}
+
+.tablero-tarjeta-gana {
+  background-image: linear-gradient(150deg, #B2DDC6, #7FBF9E);
+}
+.tablero-tarjeta-condicionado {
+  background-image: linear-gradient(150deg, #DCC08F, #B08D57);
+}
+.tablero-tarjeta-pierde {
+  background-image: linear-gradient(150deg, #F2B39F, #E08A72);
+}
+
+.tablero-tarjeta-sector {
+  font-size: 1.3cqw;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tablero-tarjeta-evento {
+  font-size: 1.05cqw;
+  line-height: 1.3;
+}
+
+.tablero-tarjeta-chip {
+  justify-self: start;
+  padding: 0.25cqw 0.7cqw;
+  border-radius: 0.7cqw;
+  background-color: rgb(252 250 246 / 0.6);
+  font-size: 0.95cqw;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ── Historia (portada): disposición base, sin animación ──────────────────
+ * Sin soporte de animaciones ligadas al scroll, en pantallas chicas o con
+ * movimiento reducido, las piezas se apilan en orden de lectura.
+ */
+
+/* Las piezas 3D sobresalen: se recortan sin crear barra horizontal. */
+.historia {
+  overflow-x: clip;
+}
+
+.historia-escenario {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(40px, 6vw, 72px);
+  padding-block: 40px 96px;
+  perspective: 1600px;
+}
+
+.h-contador,
+.h-luz {
+  display: none;
+}
+
+.h-plano {
+  margin-block: -6%;
+}
+
+.h-tablero {
+  margin-block: 2% 7%;
+  transform: rotateX(30deg) rotateZ(-12deg) scale(0.86);
+}
+
+/* ── Movimiento ────────────────────────────────────────────────────────────
+ * Todo es CSS (sin JavaScript), solo con `prefers-reduced-motion:
+ * no-preference`; lo ligado al scroll, además, donde el navegador lo
+ * soporta. `src/lib/design/motion.test.ts` vigila estas reglas.
  */
 
 @keyframes otea-aparecer {
@@ -192,10 +533,145 @@
   }
 }
 
-@keyframes otea-abanico-centro {
+/* La ola que recorre la cinta: cada lámina sube, baja y gira sobre su eje
+   vertical entre 28° y 152° (nunca de frente, para no cruzarse con las
+   vecinas). */
+@keyframes otea-ola {
+  0%,
+  100% {
+    transform: translateY(-44px) rotateY(28deg) rotateZ(-5deg);
+  }
+  50% {
+    transform: translateY(44px) rotateY(152deg) rotateZ(5deg);
+  }
+}
+
+@keyframes otea-flotar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes otea-metal {
+  0% {
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    background-position: 0% 0%;
+  }
+  50% {
+    border-radius: 58% 42% 38% 62% / 55% 38% 62% 45%;
+  }
+  100% {
+    border-radius: 36% 64% 52% 48% / 46% 58% 42% 54%;
+    background-position: 100% 100%;
+  }
+}
+
+/* Historia: cada pieza recorre la línea de tiempo del scroll (0–100 %). */
+@keyframes h-hero {
+  0%,
+  14% {
+    opacity: 1;
+    transform: none;
+  }
+  24%,
+  100% {
+    opacity: 0;
+    transform: translateY(-56px);
+  }
+}
+
+@keyframes h-hero-cta {
+  0%,
+  12% {
+    opacity: 1;
+    transform: none;
+  }
+  21%,
+  100% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+}
+
+@keyframes h-cinta {
+  0%,
+  13% {
+    opacity: 1;
+    transform: none;
+  }
+  25% {
+    opacity: 0.45;
+    transform: translateY(16%) rotateX(66deg) scale(0.74);
+  }
+  31%,
+  100% {
+    opacity: 0;
+    transform: translateY(22%) rotateX(82deg) scale(0.6);
+  }
+}
+
+@keyframes h-plano {
+  0%,
+  17% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(8deg) rotateZ(-6deg) scale(0.55);
+  }
+  31%,
+  56% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) scale(1);
+  }
+  78%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) scale(1.08);
+  }
+}
+
+@keyframes h-gota {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translateZ(0) scale(0.3);
+  }
+  32%,
+  44% {
+    opacity: 1;
+    transform: translateZ(26px) scale(1);
+  }
+  52%,
+  100% {
+    opacity: 0;
+    transform: translateZ(4px) scale(0.45);
+  }
+}
+
+@keyframes h-tablero {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) translateZ(-160px) scale(0.86);
+  }
+  50%,
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) translateZ(0) scale(0.9);
+  }
+  88%,
+  100% {
+    opacity: 1;
+    transform: translate(-20%, -48%) rotateX(20deg) rotateY(-28deg) rotateZ(5deg) scale(1.22);
+  }
+}
+
+@keyframes h-tarjeta {
   from {
     opacity: 0;
-    transform: translateY(72px) scale(0.94);
+    transform: translate3d(0, -40px, 240px) rotateX(-22deg) rotateZ(7deg);
   }
   to {
     opacity: 1;
@@ -203,12 +679,26 @@
   }
 }
 
-/* Las laterales salen desde detrás de la central: se compone con su
-   `translate`, `rotate` y `scale` de reposo, que no se tocan. */
-@keyframes otea-abanico-izquierda {
+@keyframes h-paso {
+  0% {
+    opacity: 0;
+    transform: translateY(36px);
+  }
+  22%,
+  78% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-36px);
+  }
+}
+
+@keyframes h-paso-final {
   from {
     opacity: 0;
-    transform: translateX(45%) rotate(5deg) scale(0.9);
+    transform: translateY(36px);
   }
   to {
     opacity: 1;
@@ -216,27 +706,25 @@
   }
 }
 
-@keyframes otea-abanico-derecha {
+@keyframes h-visible {
+  0% {
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes h-encender {
   from {
     opacity: 0;
-    transform: translateX(-45%) rotate(-5deg) scale(0.9);
   }
   to {
     opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes otea-paralaje {
-  to {
-    transform: translateY(160px);
-  }
-}
-
-@keyframes otea-atenuar-foco {
-  to {
-    opacity: 0.25;
-    transform: translateY(-80px) scaleX(1.15);
   }
 }
 
@@ -259,22 +747,10 @@
     scroll-behavior: smooth;
   }
 
-  /* Entrada al cargar, escalonada. `backwards`: al terminar, el elemento
-     vuelve a su estilo natural (sin filtro ni transformación residual). */
+  /* Entrada al cargar, escalonada. `backwards`: al terminar no queda
+     filtro ni transformación residual. */
   .anim-aparecer {
     animation: otea-aparecer 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  }
-
-  .anim-abanico-centro {
-    animation: otea-abanico-centro 1200ms cubic-bezier(0.16, 1, 0.3, 1) 450ms backwards;
-  }
-
-  .anim-abanico-izquierda {
-    animation: otea-abanico-izquierda 1400ms cubic-bezier(0.16, 1, 0.3, 1) 700ms backwards;
-  }
-
-  .anim-abanico-derecha {
-    animation: otea-abanico-derecha 1400ms cubic-bezier(0.16, 1, 0.3, 1) 760ms backwards;
   }
 
   .anim-retraso-1 {
@@ -290,8 +766,7 @@
     animation-delay: 400ms;
   }
 
-  /* Hijos que entran uno tras otro (por ejemplo, los íconos de una fila).
-     `--retraso-base` en el contenedor desplaza toda la secuencia. */
+  /* Hijos que entran uno tras otro; `--retraso-base` desplaza la secuencia. */
   .anim-escalonado > * {
     animation: otea-aparecer 900ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
     animation-delay: var(--retraso-base, 0ms);
@@ -315,6 +790,185 @@
     animation-delay: calc(var(--retraso-base, 0ms) + 420ms);
   }
 
+  /* La cinta ondea sin pausa; los rótulos flotan. */
+  .cinta-lamina {
+    animation: otea-ola 8s ease-in-out infinite;
+  }
+  .cinta-lamina:nth-child(1) {
+    animation-delay: -0.000s;
+  }
+  .cinta-lamina:nth-child(2) {
+    animation-delay: -0.267s;
+  }
+  .cinta-lamina:nth-child(3) {
+    animation-delay: -0.533s;
+  }
+  .cinta-lamina:nth-child(4) {
+    animation-delay: -0.800s;
+  }
+  .cinta-lamina:nth-child(5) {
+    animation-delay: -1.067s;
+  }
+  .cinta-lamina:nth-child(6) {
+    animation-delay: -1.333s;
+  }
+  .cinta-lamina:nth-child(7) {
+    animation-delay: -1.600s;
+  }
+  .cinta-lamina:nth-child(8) {
+    animation-delay: -1.867s;
+  }
+  .cinta-lamina:nth-child(9) {
+    animation-delay: -2.133s;
+  }
+  .cinta-lamina:nth-child(10) {
+    animation-delay: -2.400s;
+  }
+  .cinta-lamina:nth-child(11) {
+    animation-delay: -2.667s;
+  }
+  .cinta-lamina:nth-child(12) {
+    animation-delay: -2.933s;
+  }
+  .cinta-lamina:nth-child(13) {
+    animation-delay: -3.200s;
+  }
+  .cinta-lamina:nth-child(14) {
+    animation-delay: -3.467s;
+  }
+  .cinta-lamina:nth-child(15) {
+    animation-delay: -3.733s;
+  }
+  .cinta-lamina:nth-child(16) {
+    animation-delay: -4.000s;
+  }
+  .cinta-lamina:nth-child(17) {
+    animation-delay: -4.267s;
+  }
+  .cinta-lamina:nth-child(18) {
+    animation-delay: -4.533s;
+  }
+  .cinta-lamina:nth-child(19) {
+    animation-delay: -4.800s;
+  }
+  .cinta-lamina:nth-child(20) {
+    animation-delay: -5.067s;
+  }
+  .cinta-lamina:nth-child(21) {
+    animation-delay: -5.333s;
+  }
+  .cinta-lamina:nth-child(22) {
+    animation-delay: -5.600s;
+  }
+  .cinta-lamina:nth-child(23) {
+    animation-delay: -5.867s;
+  }
+  .cinta-lamina:nth-child(24) {
+    animation-delay: -6.133s;
+  }
+  .cinta-lamina:nth-child(25) {
+    animation-delay: -6.400s;
+  }
+  .cinta-lamina:nth-child(26) {
+    animation-delay: -6.667s;
+  }
+  .cinta-lamina:nth-child(27) {
+    animation-delay: -6.933s;
+  }
+  .cinta-lamina:nth-child(28) {
+    animation-delay: -7.200s;
+  }
+  .cinta-lamina:nth-child(29) {
+    animation-delay: -7.467s;
+  }
+  .cinta-lamina:nth-child(30) {
+    animation-delay: -7.733s;
+  }
+  .cinta-lamina:nth-child(31) {
+    animation-delay: -8.000s;
+  }
+  .cinta-lamina:nth-child(32) {
+    animation-delay: -8.267s;
+  }
+  .cinta-lamina:nth-child(33) {
+    animation-delay: -8.533s;
+  }
+  .cinta-lamina:nth-child(34) {
+    animation-delay: -8.800s;
+  }
+  .cinta-lamina:nth-child(35) {
+    animation-delay: -9.067s;
+  }
+  .cinta-lamina:nth-child(36) {
+    animation-delay: -9.333s;
+  }
+
+  .cinta-chip {
+    animation: otea-flotar 8s ease-in-out infinite;
+  }
+  .cinta-chip:nth-child(1) {
+    animation-delay: 0.00s;
+    animation-duration: 7.0s;
+  }
+  .cinta-chip:nth-child(2) {
+    animation-delay: 7.63s;
+    animation-duration: 8.5s;
+  }
+  .cinta-chip:nth-child(3) {
+    animation-delay: 6.26s;
+    animation-duration: 10.0s;
+  }
+  .cinta-chip:nth-child(4) {
+    animation-delay: 4.89s;
+    animation-duration: 11.5s;
+  }
+  .cinta-chip:nth-child(5) {
+    animation-delay: 3.52s;
+    animation-duration: 7.0s;
+  }
+  .cinta-chip:nth-child(6) {
+    animation-delay: 2.15s;
+    animation-duration: 8.5s;
+  }
+  .cinta-chip:nth-child(7) {
+    animation-delay: 0.78s;
+    animation-duration: 10.0s;
+  }
+  .cinta-chip:nth-child(8) {
+    animation-delay: 8.41s;
+    animation-duration: 11.5s;
+  }
+  .cinta-chip:nth-child(9) {
+    animation-delay: 7.04s;
+    animation-duration: 7.0s;
+  }
+  .cinta-chip:nth-child(10) {
+    animation-delay: 5.67s;
+    animation-duration: 8.5s;
+  }
+  .cinta-chip:nth-child(11) {
+    animation-delay: 4.30s;
+    animation-duration: 10.0s;
+  }
+  .cinta-chip:nth-child(12) {
+    animation-delay: 2.93s;
+    animation-duration: 11.5s;
+  }
+
+  .gota {
+    background-size: 160% 160%;
+    animation: otea-metal 9s ease-in-out infinite alternate;
+  }
+
+  /* Al imprimir no hay scroll: todo se muestra completo y quieto. */
+  @media print {
+    .anim-revelar,
+    .anim-aparecer,
+    .anim-escalonado > * {
+      animation: none !important;
+    }
+  }
+
   /* Revelado ligado al scroll: termina cuando el borde superior del bloque
      subió 280 px dentro de la ventana, aunque el bloque sea muy alto. */
   @supports (animation-timeline: view()) {
@@ -322,22 +976,6 @@
       animation: otea-revelar linear both;
       animation-timeline: view();
       animation-range: entry 0px entry 280px;
-    }
-  }
-
-  /* Profundidad: la retícula baja más lento que el contenido y el foco de
-     luz se atenúa al alejarse de la parte alta. */
-  @supports (animation-timeline: scroll()) {
-    .anim-paralaje {
-      animation: otea-paralaje linear both;
-      animation-timeline: scroll(root block);
-      animation-range: 0px 1000px;
-    }
-
-    .anim-atenuar-foco {
-      animation: otea-atenuar-foco linear both;
-      animation-timeline: scroll(root block);
-      animation-range: 0px 700px;
     }
   }
 
@@ -358,8 +996,7 @@
     block-size: auto;
   }
 
-  /* Transición entre páginas (React <ViewTransition>): sale hacia arriba
-     y entra desde abajo; la cabecera queda fija como ancla. */
+  /* Transición entre páginas (React <ViewTransition>); la cabecera queda fija. */
   ::view-transition-old(.otea-pagina) {
     animation: otea-vt-salir 200ms cubic-bezier(0.4, 0, 1, 1) both;
   }
@@ -370,6 +1007,184 @@
 
   ::view-transition-group(site-header) {
     animation: none;
+  }
+}
+
+/* Historia fija en pantalla (escritorio): la cinta se pliega sobre un plano
+   técnico, del plano surge un tablero y las alertas caen sobre él. */
+@media (prefers-reduced-motion: no-preference) and (min-width: 1024px) {
+  @supports (animation-timeline: view()) {
+    .historia {
+      height: 470vh;
+      view-timeline-name: --historia;
+    }
+
+    .historia-escenario {
+      position: sticky;
+      top: 72px;
+      display: block;
+      height: calc(100svh - 72px);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .h-contador {
+      display: flex;
+      gap: 0.6ch;
+      position: absolute;
+      left: 24px;
+      top: 22px;
+    }
+
+    .h-contador-paso {
+      position: absolute;
+      left: 0;
+      top: 0;
+      animation: h-visible linear both;
+      animation-timeline: --historia;
+    }
+    .h-contador-paso:nth-child(1) {
+      animation-range: contain -10% contain 24%;
+    }
+    .h-contador-paso:nth-child(2) {
+      animation-range: contain 22% contain 50%;
+    }
+    .h-contador-paso:nth-child(3) {
+      animation-range: contain 48% contain 76%;
+    }
+    .h-contador-paso:nth-child(4) {
+      animation-name: h-encender;
+      animation-range: contain 74% contain 78%;
+    }
+
+    .h-luz {
+      display: block;
+      position: absolute;
+      inset: -10%;
+      pointer-events: none;
+      animation: h-encender linear both;
+      animation-timeline: --historia;
+      animation-range: contain 42% contain 62%;
+    }
+
+    .h-hero {
+      position: absolute;
+      inset: 56px 24px auto;
+      animation: h-hero linear both;
+      animation-timeline: --historia;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .h-cinta {
+      position: absolute;
+      inset: 31% 0 auto;
+      animation: h-cinta linear both;
+      animation-timeline: --historia;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .h-hero-cta {
+      position: absolute;
+      inset: auto 24px 56px;
+      animation: h-hero-cta linear both;
+      animation-timeline: --historia;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .h-descubre {
+      position: absolute;
+      left: 24px;
+      bottom: 22px;
+    }
+
+    .h-plano {
+      position: absolute;
+      left: 63%;
+      top: 54%;
+      width: min(560px, 40vw);
+      margin: 0;
+      animation: h-plano linear both;
+      animation-timeline: --historia;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .h-plano .gota {
+      animation:
+        otea-metal 9s ease-in-out infinite alternate,
+        h-gota linear both;
+      animation-timeline: auto, --historia;
+      animation-range: normal, contain 0% contain 100%;
+    }
+
+    .h-tablero {
+      position: absolute;
+      left: 66%;
+      top: 52%;
+      width: min(820px, 56vw);
+      animation: h-tablero linear both;
+      animation-timeline: --historia;
+      animation-range: contain 0% contain 100%;
+    }
+
+    .h-tablero .tablero-tarjeta {
+      animation: h-tarjeta linear both;
+      animation-timeline: --historia;
+    }
+    .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
+      animation-range: contain 50.0% contain 57.0%;
+    }
+    .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
+      animation-range: contain 51.4% contain 58.4%;
+    }
+    .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
+      animation-range: contain 52.8% contain 59.8%;
+    }
+    .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
+      animation-range: contain 54.2% contain 61.2%;
+    }
+    .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
+      animation-range: contain 55.6% contain 62.6%;
+    }
+    .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
+      animation-range: contain 57.0% contain 64.0%;
+    }
+    .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
+      animation-range: contain 58.4% contain 65.4%;
+    }
+    .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
+      animation-range: contain 59.8% contain 66.8%;
+    }
+    .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
+      animation-range: contain 61.2% contain 68.2%;
+    }
+
+    .h-paso {
+      position: absolute;
+      left: 24px;
+      top: 50%;
+      width: min(440px, 31vw);
+      translate: 0 -50%;
+      animation: h-paso linear both;
+      animation-timeline: --historia;
+    }
+    .h-paso-2 {
+      animation-range: contain 24% contain 50%;
+    }
+    .h-paso-3 {
+      animation-range: contain 50% contain 76%;
+    }
+    .h-paso-4 {
+      animation-name: h-paso-final;
+      animation-range: contain 76% contain 86%;
+    }
+
+    /* Lo que recibe foco siempre se ve, aunque su paso no esté en pantalla. */
+    .h-paso:focus-within,
+    .h-hero:focus-within,
+    .h-hero-cta:focus-within {
+      opacity: 1 !important;
+      transform: none !important;
+    }
   }
 }
 
@@ -391,9 +1206,5 @@
   ::view-transition-old(*),
   ::view-transition-new(*) {
     animation: none !important;
-  }
-
-  .bg-spotlight {
-    opacity: 0.6;
   }
 }

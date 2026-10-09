@@ -11,7 +11,7 @@ export function ControlStatus({ estado, tercio }: { estado: EstadoControl; terci
   return (
     <span
       data-estado={estado}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-badge bg-glass-fill-strong px-2 py-1 text-xs font-medium text-ivory hairline"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-badge bg-fondo px-2 py-1 text-xs font-medium text-texto linea-fina"
     >
       <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false" className="h-3 w-3">
         <circle cx="6" cy="6" r="4.75" fill="none" stroke="currentColor" strokeWidth="1.5" />

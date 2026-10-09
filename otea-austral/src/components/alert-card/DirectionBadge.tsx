@@ -1,11 +1,11 @@
 import type { Direccion } from "@/lib/domain/schemas";
 import { DIRECCION_ETIQUETA } from "./labels";
 
-// Colores de estado: solo existen dentro de AlertCard.
+// Colores de estado como relleno, siempre con texto tinta (≥ 5,6:1).
 const ESTILO: Record<Direccion, string> = {
-  gana: "text-gana bg-gana/10",
-  condicionado: "text-condicionado bg-condicionado/10",
-  pierde: "text-pierde bg-pierde/10",
+  gana: "bg-gana",
+  condicionado: "bg-condicionado",
+  pierde: "bg-pierde",
 };
 
 /** Dirección con ícono y texto; el color refuerza, no informa por sí solo. */
@@ -13,7 +13,7 @@ export function DirectionBadge({ direccion }: { direccion: Direccion }) {
   return (
     <span
       data-direccion={direccion}
-      className={`inline-flex items-center gap-1.5 rounded-badge px-2 py-1 text-xs font-semibold ${ESTILO[direccion]}`}
+      className={`inline-flex items-center gap-1.5 rounded-badge px-2 py-1 text-xs font-semibold text-ink ${ESTILO[direccion]}`}
     >
       <DirectionIcon direccion={direccion} />
       {DIRECCION_ETIQUETA[direccion]}

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import { connection } from "next/server";
 import { env } from "@/lib/env";
+import { SITIO } from "@/lib/site";
 import "./globals.css";
 
 const serif = Source_Serif_4({
@@ -11,6 +12,7 @@ const serif = Source_Serif_4({
   display: "swap",
 });
 
+// Inter variable: texto, interfaz y titulares en mayúsculas.
 const sans = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -30,14 +32,22 @@ export const metadata: Metadata = {
     default: "Otea Austral · Inteligencia de eventos para mercados",
     template: "%s · Otea Austral",
   },
-  description:
-    "Avisos de eventos globales y de los sectores y activos que podrían verse afectados, con nivel de confianza y fuentes. Información y análisis; no constituye asesoría financiera.",
-  applicationName: "Otea Austral",
+  description: SITIO.descripcion,
+  applicationName: SITIO.nombre,
+  openGraph: {
+    type: "website",
+    locale: "es_CL",
+    siteName: SITIO.nombre,
+    title: "Otea Austral · Inteligencia de eventos para mercados",
+    description: SITIO.descripcion,
+    url: "/",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070E1A",
-  colorScheme: "dark",
+  themeColor: "#E7E5E0",
+  colorScheme: "light",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -54,7 +64,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-dvh flex-col">
         <a
           href="#contenido"
-          className="sr-only rounded-pill bg-brass px-4 py-2 text-sm font-medium text-ink focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50"
+          className="sr-only rounded-pill bg-acento px-4 py-2 text-sm font-medium text-ink focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[60]"
         >
           Saltar al contenido
         </a>

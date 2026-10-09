@@ -12,7 +12,7 @@ export function ConfidenceBadge({ nivel }: { nivel: Confianza }) {
   return (
     <span
       data-confianza={nivel}
-      className="inline-flex items-center gap-1.5 rounded-badge bg-glass-fill-strong px-2 py-1 text-xs font-medium text-ivory hairline"
+      className="inline-flex items-center gap-1.5 rounded-badge bg-fondo px-2 py-1 text-xs font-medium text-texto linea-fina"
     >
       <svg
         viewBox="0 0 15 12"
