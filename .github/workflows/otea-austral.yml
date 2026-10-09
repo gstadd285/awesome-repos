@@ -1,0 +1,63 @@
+name: Otea Austral · CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "otea-austral/**"
+      - ".github/workflows/otea-austral.yml"
+  pull_request:
+    paths:
+      - "otea-austral/**"
+      - ".github/workflows/otea-austral.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: otea-austral-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: otea-austral
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: otea-austral/.nvmrc
+          cache: npm
+          cache-dependency-path: otea-austral/package-lock.json
+
+      - name: Instalar dependencias (versiones fijas del lockfile)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Auditoría de dependencias de producción
+        run: npm audit --omit=dev --audit-level=high
+
+      # Las de desarrollo tienen hallazgos sin corrección publicada (ver SECURITY.md):
+      # se muestran, pero no bloquean.
+      - name: Auditoría completa (informativa)
+        run: npm audit --audit-level=high
+        continue-on-error: true
