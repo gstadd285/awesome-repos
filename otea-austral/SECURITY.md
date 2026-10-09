@@ -27,7 +27,7 @@ publiques detalles en issues abiertos.
 | Área | Control | Dónde |
 |---|---|---|
 | Inyección / XSS | CSP estricta con nonce por solicitud, `strict-dynamic`, sin `unsafe-inline` para scripts ni estilos en producción | `src/proxy.ts`, `src/lib/security/csp.ts` |
-| Inyección / XSS | React escapa todo el texto; no se usa `dangerouslySetInnerHTML` | componentes |
+| Inyección / XSS | React escapa todo el texto. `dangerouslySetInnerHTML` solo para los datos estructurados JSON-LD de la portada: contenido fijo, con `<` escapado y nonce | componentes, `src/app/page.tsx` |
 | Enlaces | Solo `https` (se rechazan `http:`, `javascript:`, `data:`, `file:`, credenciales embebidas); doble validación: Zod al entrar y `safeHref` al renderizar | `src/lib/domain/url.ts` |
 | Enlaces | `target="_blank"` siempre con `rel="noopener noreferrer"` | `AlertCard` |
 | Clickjacking | `frame-ancestors 'none'` + `X-Frame-Options: DENY` | CSP, `headers.ts` |
@@ -36,6 +36,9 @@ publiques detalles en issues abiertos.
 | Integridad de datos | Esquemas Zod estrictos: campos desconocidos rechazados; la confianza no se puede escribir a mano | `src/lib/domain/schemas.ts` |
 | Auditoría | Registro de solo agregar, filas congeladas, ids únicos; el actor es un alias interno (no admite correos) | `src/lib/domain/audit-log.ts` |
 | Salidas | Sin peticiones salientes: `connect-src 'self'` y ningún `fetch` a terceros | CSP |
+| Lista de espera | Server Action con protección CSRF de Next.js (`Origin` vs `Host`), validación Zod en el servidor, campo trampa, límite de 5 intentos por IP cada 10 min (IP cifrada con SHA-256, solo en memoria) y tope global; respuestas que no revelan si un correo ya estaba; doble opt-in con token aleatorio de 256 bits del que solo se guarda el hash; datos mínimos (correo, fecha, versión del consentimiento) | `src/lib/waitlist/`, `src/app/acciones/` |
+| Configuración | `WAITLIST_MODE=cerrada` por defecto; el esquema de entorno rechaza la lista en memoria en producción | `src/lib/env.ts` |
+| Pruebas | 42 pruebas de navegador en CI: sin errores de consola ni violaciones de CSP, cabeceras, teclado, movimiento reducido, lista de espera, enlaces seguros | `e2e/` |
 | Detección | Reportes de violación de la CSP (`report-uri` y `report-to`) a `/api/csp-report`: tipo de contenido, tamaño (16 KB) y volumen (60/min por instancia) limitados; se registra solo directiva, origen y ruta | `src/lib/security/csp-report.ts` |
 | Registros | Eventos de seguridad en JSON con saneamiento: sin correos, IP, tokens, parámetros de URL ni saltos de línea | `src/lib/security/log.ts` |
 | Divulgación | `/.well-known/security.txt` (RFC 9116) con `Expires`; una prueba falla si vence | `src/lib/security/security-txt.ts` |
@@ -46,13 +49,16 @@ publiques detalles en issues abiertos.
 
 ## Pendientes
 
-### Tercio 2 (portada completa, lista de espera, páginas públicas)
+### Tercio 2 (sitio público)
 
-- [ ] Lista de espera: validación en servidor, honeypot, límite de solicitudes, protección CSRF de
-      la Server Action (verificar `Origin`), almacenamiento mínimo y doble opt-in.
-- [ ] Cookies (si se usan): `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`.
-- [ ] Pruebas e2e con Playwright que fallen ante cualquier violación de CSP en consola.
-- [ ] Revisar textos legales provisionales ("pendiente de revisión legal").
+- [x] Lista de espera: validación en servidor, campo trampa, límite de solicitudes, CSRF de la
+      Server Action, datos mínimos y doble opt-in (lógica lista; abre con base de datos y correo).
+- [x] Pruebas e2e con Playwright que fallan ante errores de consola, incluidas violaciones de CSP.
+- [ ] Revisar con asesoría legal los textos provisionales (privacidad, términos, aviso legal,
+      metodología).
+- [ ] Cookies (si algún día se usan): `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`.
+- [ ] El límite por IP depende de que la plataforma de alojamiento fije `X-Forwarded-For`;
+      confirmarlo al elegirla.
 
 ### Tercio 3 (persistencia y panel interno)
 

@@ -23,8 +23,7 @@ las reglas se hicieron antes para no rehacer la `AlertCard` después.
 - [x] CSP estricta con nonce y cabeceras de seguridad; página 404 propia.
 - [x] CI en GitHub Actions y Dependabot.
 
-Pendiente visible del tercio 1: el botón "Recibir alertas" apunta a `#lista-de-espera`, que llega en
-el tercio 2.
+El botón "Recibir alertas" ya lleva a la lista de espera (tercio 2).
 
 ## Incremento · Ciberseguridad según NIST CSF 2.0 ✅
 
@@ -45,24 +44,36 @@ el tercio 2.
 - [x] Transición entre páginas con la cabecera fija.
 - [x] Todo en CSS, desactivado con "reducir movimiento" y con respaldo estático sin soporte.
 
-## Tercio 2 · Sitio público completo
+## Rediseño · Estilo editorial claro (referencia "TIDY") ✅
 
-- [ ] Fila de seis temas con íconos de línea (Energía, Chips, Cobre, Comercio EE.UU.–China, Divisas,
-      Geopolítica).
-- [ ] Sección "Tus temas" (maqueta de panel con insignias, datos de ejemplo).
-- [ ] Sección "Pre-apertura" (resumen diario de ejemplo).
-- [ ] Lista de espera: Server Action con validación Zod, honeypot, límite de solicitudes, verificación
-      de origen, almacenamiento mínimo, texto de privacidad y doble opt-in (según decisión de correo).
-- [ ] Páginas Aviso legal, Privacidad y Términos ("pendiente de revisión legal") y enlaces en el pie.
-- [ ] Páginas `/fuentes` (registro público) y `/metodologia` (niveles de confianza y reglas).
-- [ ] Semilla `data/sources.seed.json` y `docs/fuentes-pendientes.md` (sin inventar URLs de feeds).
-- [ ] SEO: imagen Open Graph, `sitemap`, `robots`, datos estructurados `Organization`, manifiesto e
+- [x] Tema claro perla con luz de ventana, titulares grotescos en mayúsculas, cabecera
+      `[ RECIBIR ALERTAS ]` y rótulos técnicos `001 — 004`, con el logo y la paleta de Otea.
+- [x] Portada como historia 3D ligada al scroll: cinta de láminas → plano técnico con metal líquido
+      → tablero con alertas que caen → panel en perspectiva. Sin JavaScript; apilada en móviles,
+      sin soporte o con movimiento reducido.
+- [x] Todas las páginas y la `AlertCard` adaptadas al tema claro.
+
+## Tercio 2 · Sitio público completo ✅
+
+- [x] Seis temas con íconos de línea y su descripción.
+- [x] "Tus temas": vista previa interactiva (no guarda preferencias todavía).
+- [x] "Pre-apertura": resumen diario de ejemplo.
+- [x] "Así se ve una alerta": las tres `AlertCard` de ejemplo.
+- [x] Lista de espera: Server Action con validación Zod, campo trampa, límite de solicitudes,
+      datos mínimos y doble opt-in. **Cerrada** hasta tener base de datos y correo (tercio 3).
+- [x] Páginas Aviso legal, Privacidad y Términos ("pendiente de revisión legal") y pie con enlaces.
+- [x] `/fuentes` (registro público) y `/metodologia` (niveles de confianza y reglas).
+- [x] Semilla `data/sources.seed.json` (17 fuentes primarias) y `docs/fuentes-pendientes.md`.
+- [x] SEO: imagen Open Graph, `sitemap`, `robots`, datos estructurados `Organization`, manifiesto e
       íconos PWA en PNG.
-- [ ] Pruebas e2e con Playwright (teclado, CSP sin violaciones, accesibilidad básica).
+- [x] Pruebas e2e con Playwright (teclado, CSP sin violaciones, movimiento reducido, lista de
+      espera, páginas) y job en la CI.
 
 ## Tercio 3 · Persistencia y panel interno
 
-- [ ] Postgres gratuito (Neon o Supabase) con migraciones y usuario de mínimos privilegios.
+- [ ] Postgres gratuito (Neon o Supabase) con migraciones y usuario de mínimos privilegios;
+      implementar `WaitlistStore` sobre la base y abrir la lista de espera.
+- [ ] Proveedor de correo para el doble opt-in (enviar el enlace de confirmación).
 - [ ] Repositorios: alertas, fuentes, enlaces, correcciones y auditoría (solo `INSERT`/`SELECT`,
       disparador que bloquea `UPDATE`/`DELETE`).
 - [ ] Panel `/admin/alertas`: crear alerta, adjuntar fuentes, ver confianza calculada, enviar a

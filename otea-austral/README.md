@@ -5,7 +5,7 @@ y bajo qué condición, con nivel de confianza y fuentes.
 
 > Información y análisis. No constituye asesoría financiera.
 
-Estado: MVP en construcción, **tercio 1 de 3** terminado. Ver [`docs/plan.md`](docs/plan.md).
+Estado: MVP en construcción, **tercios 1 y 2 de 3** terminados. Ver [`docs/plan.md`](docs/plan.md).
 
 ## Requisitos
 
@@ -30,17 +30,20 @@ npm run dev                  # http://localhost:3000
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Genera tipos de rutas y ejecuta `tsc` |
 | `npm test` | Pruebas con Vitest |
+| `npm run test:e2e` | Pruebas de navegador con Playwright (después de `npm run build`) |
 
 ## Qué hay hoy
 
-- Portada con el hero y tres tarjetas de alerta de ejemplo en abanico.
+- Portada en estilo editorial claro con una historia 3D ligada al scroll (cinta, plano técnico,
+  tablero con alertas y panel), temas, "Tus temas", Pre-apertura, ejemplos y lista de espera.
+- Páginas `/metodologia`, `/fuentes` (17 fuentes primarias), `/seguridad` y textos legales
+  provisionales; SEO con imagen para redes, sitemap, robots y manifiesto.
 - `AlertCard`: filas gana/condicionado/pierde, confianza calculada desde las fuentes, fuentes
   desplegables, estados corregida y retractada.
 - Modelo de datos y reglas de verificación con pruebas (`src/lib/domain/`).
 - Página `/seguridad` con el perfil según el NIST CSF 2.0 y `/.well-known/security.txt`.
 - CSP estricta con nonce, reportes de violación y cabeceras de seguridad.
-- Animaciones al estilo de apple.com (entrada, scroll, paralaje, transición entre páginas), solo en
-  CSS y desactivadas si el sistema pide reducir el movimiento.
+- Animaciones solo en CSS, desactivadas si el sistema pide reducir el movimiento.
 
 Todo el contenido visible es **de ejemplo** y está marcado así.
 
