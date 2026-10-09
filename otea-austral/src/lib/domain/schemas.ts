@@ -1,26 +1,13 @@
 import { z } from "zod";
+import { TEMAS } from "./temas";
 import { httpsUrl } from "./url";
+
+export { TEMA_ETIQUETA } from "./temas";
 
 // ── Enumeraciones ──────────────────────────────────────────────────────────
 
-export const Tema = z.enum([
-  "energia",
-  "chips",
-  "cobre",
-  "comercio_eeuu_china",
-  "divisas",
-  "geopolitica",
-]);
+export const Tema = z.enum(TEMAS);
 export type Tema = z.infer<typeof Tema>;
-
-export const TEMA_ETIQUETA: Record<Tema, string> = {
-  energia: "Energía",
-  chips: "Chips",
-  cobre: "Cobre",
-  comercio_eeuu_china: "Comercio EE.UU.–China",
-  divisas: "Divisas",
-  geopolitica: "Geopolítica",
-};
 
 export const Direccion = z.enum(["gana", "condicionado", "pierde"]);
 export type Direccion = z.infer<typeof Direccion>;
