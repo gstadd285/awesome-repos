@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Otea Austral
 
-## Getting Started
+**Inteligencia de eventos para mercados.** Avisos de eventos globales con quién gana, quién pierde
+y bajo qué condición, con nivel de confianza y fuentes.
 
-First, run the development server:
+> Información y análisis. No constituye asesoría financiera.
+
+Estado: MVP en construcción, **tercio 1 de 3** terminado. Ver [`docs/plan.md`](docs/plan.md).
+
+## Requisitos
+
+- Node.js ≥ 22.12 (ver `.nvmrc`)
+- npm
+
+## Puesta en marcha
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd otea-austral
+cp .env.example .env.local   # ajusta NEXT_PUBLIC_SITE_URL si hace falta
+npm ci
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo |
+| `npm run build` / `npm start` | Build de producción y servidor |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | Genera tipos de rutas y ejecuta `tsc` |
+| `npm test` | Pruebas con Vitest |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Qué hay hoy
 
-## Learn More
+- Portada con el hero y tres tarjetas de alerta de ejemplo en abanico.
+- `AlertCard`: filas gana/condicionado/pierde, confianza calculada desde las fuentes, fuentes
+  desplegables, estados corregida y retractada.
+- Modelo de datos y reglas de verificación con pruebas (`src/lib/domain/`).
+- CSP estricta con nonce y cabeceras de seguridad.
 
-To learn more about Next.js, take a look at the following resources:
+Todo el contenido visible es **de ejemplo** y está marcado así.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Documentación
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`CLAUDE.md`](CLAUDE.md): reglas del proyecto, marca, sistema de diseño, modelo de datos y reglas
+  de negocio.
+- [`SECURITY.md`](SECURITY.md): controles y pendientes de seguridad.
+- [`docs/plan.md`](docs/plan.md): plan por tercios y decisiones abiertas.
+- [`docs/referencia-estilo.md`](docs/referencia-estilo.md): referencia visual (solo principios; no
+  se usa su marca).
