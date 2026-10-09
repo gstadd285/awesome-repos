@@ -39,6 +39,8 @@ npm run dev                  # http://localhost:3000
 - Modelo de datos y reglas de verificación con pruebas (`src/lib/domain/`).
 - Página `/seguridad` con el perfil según el NIST CSF 2.0 y `/.well-known/security.txt`.
 - CSP estricta con nonce, reportes de violación y cabeceras de seguridad.
+- Animaciones al estilo de apple.com (entrada, scroll, paralaje, transición entre páginas), solo en
+  CSS y desactivadas si el sistema pide reducir el movimiento.
 
 Todo el contenido visible es **de ejemplo** y está marcado así.
 

@@ -23,17 +23,17 @@ export function AlertFan({ izquierda, centro, derecha }: AlertFanProps) {
         <AlertCard
           alerta={centro}
           nivelTitulo={2}
-          className="relative z-10 mx-auto max-w-[480px] lg:order-2 lg:max-w-none"
+          className="anim-abanico-centro relative z-10 mx-auto max-w-[480px] lg:order-2 lg:max-w-none"
         />
         <AlertCard
           alerta={izquierda}
           nivelTitulo={2}
-          className="hidden lg:order-1 lg:block lg:translate-x-12 lg:translate-y-16 lg:-rotate-5 lg:scale-90"
+          className="anim-abanico-izquierda hidden lg:order-1 lg:block lg:translate-x-12 lg:translate-y-16 lg:-rotate-5 lg:scale-90"
         />
         <AlertCard
           alerta={derecha}
           nivelTitulo={2}
-          className="hidden lg:order-3 lg:block lg:-translate-x-12 lg:translate-y-16 lg:rotate-5 lg:scale-90"
+          className="anim-abanico-derecha hidden lg:order-3 lg:block lg:-translate-x-12 lg:translate-y-16 lg:rotate-5 lg:scale-90"
         />
       </div>
     </div>

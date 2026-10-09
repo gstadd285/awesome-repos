@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Atmosphere } from "@/components/home/Atmosphere";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { PageTransition } from "@/components/layout/PageTransition";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SecurityProfile } from "@/components/security/SecurityProfile";
 import { env } from "@/lib/env";
@@ -18,7 +19,9 @@ export default function SeguridadPage() {
         <Atmosphere />
         <SiteHeader />
         <main id="contenido" className="pb-[120px]">
-          <SecurityProfile contacto={env.SECURITY_CONTACT} />
+          <PageTransition>
+            <SecurityProfile contacto={env.SECURITY_CONTACT} />
+          </PageTransition>
         </main>
       </div>
       <SiteFooter />

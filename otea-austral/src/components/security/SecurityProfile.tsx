@@ -27,26 +27,26 @@ export function SecurityProfile({ contacto }: { contacto: string }) {
         aria-labelledby="seguridad-titulo"
         className="mx-auto max-w-[760px] px-6 pt-16 text-center sm:pt-24"
       >
-        <SectionEyebrow>Seguridad · NIST CSF 2.0</SectionEyebrow>
+        <SectionEyebrow className="anim-aparecer">Seguridad · NIST CSF 2.0</SectionEyebrow>
         <h1
           id="seguridad-titulo"
-          className="text-headline-gradient mt-6 font-serif text-[36px] leading-[1.15] font-normal sm:text-heading-lg"
+          className="text-headline-gradient anim-aparecer anim-retraso-1 mt-6 font-serif text-[36px] leading-[1.15] font-normal sm:text-heading-lg"
         >
           Cómo protegemos Otea Austral
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-ivory-soft">
+        <p className="anim-aparecer anim-retraso-2 mt-6 text-lg leading-relaxed text-ivory-soft">
           Organizamos la seguridad con el Marco de Ciberseguridad (CSF) 2.0 del NIST, el instituto de
           estándares de Estados Unidos. Aquí mostramos qué está hecho, qué está a medias y qué es
           todavía un objetivo.
         </p>
-        <p className="mt-4 text-sm text-mist">
+        <p className="anim-aparecer anim-retraso-3 mt-4 text-sm text-mist">
           Autoevaluación: el NIST no certifica organizaciones, así que esto no es una
           certificación. Texto provisional, pendiente de revisión.
         </p>
       </section>
 
       <nav aria-label="Funciones del marco" className="mx-auto mt-16 max-w-[1000px] px-6">
-        <ul className="relative grid grid-cols-3 gap-y-8 sm:grid-cols-6">
+        <ul className="anim-escalonado relative grid grid-cols-3 gap-y-8 [--retraso-base:350ms] sm:grid-cols-6">
           <li
             aria-hidden="true"
             className="pointer-events-none absolute top-7 right-[8%] left-[8%] hidden h-px bg-glass-edge sm:block"
@@ -68,7 +68,7 @@ export function SecurityProfile({ contacto }: { contacto: string }) {
         </ul>
       </nav>
 
-      <dl className="mx-auto mt-16 grid max-w-[1000px] grid-cols-2 gap-4 px-6 sm:grid-cols-4">
+      <dl className="anim-escalonado mx-auto mt-16 grid max-w-[1000px] grid-cols-2 gap-4 px-6 [--retraso-base:600ms] sm:grid-cols-4">
         <Dato termino="Implementados" valor={String(total.implementado)} />
         <Dato termino="Parciales" valor={String(total.parcial)} />
         <Dato termino="Objetivos" valor={String(total.objetivo)} />
@@ -88,7 +88,7 @@ export function SecurityProfile({ contacto }: { contacto: string }) {
               key={f.codigo}
               id={id}
               aria-labelledby={`${id}-titulo`}
-              className="glass mb-6 scroll-mt-24 break-inside-avoid rounded-card p-6"
+              className="glass glass-interactive anim-revelar mb-6 scroll-mt-24 break-inside-avoid rounded-card p-6"
             >
               <div className="flex items-start gap-4">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-glass-fill-strong text-ivory hairline">
@@ -124,7 +124,7 @@ export function SecurityProfile({ contacto }: { contacto: string }) {
       <section
         id="reportar"
         aria-labelledby="reportar-titulo"
-        className="mx-auto mt-[120px] max-w-[760px] scroll-mt-24 px-6 text-center"
+        className="anim-revelar mx-auto mt-[120px] max-w-[760px] scroll-mt-24 px-6 text-center"
       >
         <SectionEyebrow>Divulgación responsable</SectionEyebrow>
         <h2 id="reportar-titulo" className="mt-6 font-serif text-[32px] leading-tight font-normal text-ivory">

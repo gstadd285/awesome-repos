@@ -34,7 +34,7 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
       id={base}
       aria-labelledby={`${base}-titulo`}
       data-estado={alerta.estado}
-      className={`glass rounded-card p-6 text-left ${className}`}
+      className={`glass glass-interactive rounded-card p-6 text-left ${className}`}
     >
       {retractada ? (
         <div role="note" className="mb-5 rounded-badge bg-glass-fill-strong p-3 hairline">
@@ -134,7 +134,7 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
           {nFuentes === 0 ? (
             <p className="mt-2 text-sm text-mist">Esta alerta aún no tiene fuentes enlazadas.</p>
           ) : (
-            <ul className="mt-2 space-y-3">
+            <ul className="mt-2 space-y-3 pb-1">
               {alerta.fuentes.map((fuente, i) => {
                 const href = safeHref(fuente.url);
                 return (

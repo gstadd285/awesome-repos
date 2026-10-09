@@ -84,9 +84,33 @@ Reglas:
   `buttonClasses("ghost")`.
 - Etiqueta de sección: `<SectionEyebrow>` al abrir cada sección.
 - Contraste mínimo AA: lo verifica `src/lib/design/contrast.test.ts` leyendo `globals.css`.
-- `prefers-reduced-motion` respetado; página inicial objetivo < 1 MB (hoy ~280 kB transferidos).
+- Página inicial objetivo < 1 MB (hoy ~280 kB transferidos).
 - **Sin atributos `style` en el HTML**: la CSP los bloquea. Todo con clases.
 - Modo oscuro primero. El modo claro llegará más adelante con los mismos tokens.
+
+### Movimiento (estilo apple.com)
+
+Todo en CSS dentro de `globals.css`, sin librerías ni JavaScript de animación:
+
+| Clase / componente | Efecto |
+|---|---|
+| `anim-aparecer` + `anim-retraso-1…4` | Entrada al cargar: sube, se enfoca (desenfoque → nítido) y aparece |
+| `anim-escalonado` + `[--retraso-base:Xms]` | Los hijos entran uno tras otro |
+| `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
+| `anim-abanico-centro/izquierda/derecha` | Las tarjetas del hero se reparten desde detrás de la central |
+| `anim-paralaje`, `anim-atenuar-foco` | Profundidad: la retícula baja más lento y el foco se atenúa |
+| `glass-interactive` | El borde de vidrio se ilumina al pasar el cursor |
+| `<PageTransition>` | Transición entre páginas (React `ViewTransition`); la cabecera queda fija |
+
+Reglas (las vigila `src/lib/design/motion.test.ts`):
+
+- Toda animación va dentro de `@media (prefers-reduced-motion: no-preference)`; con movimiento
+  reducido el contenido se ve completo y quieto.
+- Lo ligado al scroll va además dentro de `@supports (animation-timeline: …)`.
+- Las entradas usan `backwards`: al terminar no queda filtro ni transformación residual.
+- Las animaciones mueven `transform`, `opacity` y `filter`; no aplicarlas a elementos que ya usan
+  clases de filtro (`blur-*`). Para el hover de tarjetas posicionadas con `translate`/`rotate`
+  (abanico), usar `glass-interactive`, nunca utilidades de `translate`.
 
 ## Modelo de datos (`src/lib/domain/schemas.ts`, Zod)
 
@@ -182,7 +206,7 @@ src/
     security/          perfil NIST, estado de controles, íconos de funciones
     brand/             Emblem y Logo
     home/              Hero, abanico de tarjetas, atmósfera
-    layout/            cabecera y pie
+    layout/            cabecera, pie y transición entre páginas
     ui/                botones, etiqueta de sección
   data/ejemplo.ts      DATOS DE EJEMPLO validados con los esquemas
   lib/

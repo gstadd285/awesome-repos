@@ -1,6 +1,7 @@
 import { Atmosphere } from "@/components/home/Atmosphere";
 import { Hero } from "@/components/home/Hero";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { PageTransition } from "@/components/layout/PageTransition";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export default function Home() {
@@ -10,7 +11,9 @@ export default function Home() {
         <Atmosphere />
         <SiteHeader />
         <main id="contenido">
-          <Hero />
+          <PageTransition>
+            <Hero />
+          </PageTransition>
         </main>
       </div>
       <SiteFooter />

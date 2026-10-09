@@ -37,6 +37,14 @@ el tercio 2.
 - [x] Programa (política, apetito de riesgo, roles, proveedores, datos, riesgos) y plan de respuesta
       a incidentes en `docs/seguridad/`.
 
+## Incremento · Animaciones estilo Apple ✅
+
+- [x] Entrada escalonada del hero (sube, se enfoca y aparece) y abanico de tarjetas que se reparte.
+- [x] Revelado al hacer scroll, retícula con paralaje y foco de luz que se atenúa.
+- [x] Brillo de vidrio al pasar el cursor, botones que responden al presionar, desplegables suaves.
+- [x] Transición entre páginas con la cabecera fija.
+- [x] Todo en CSS, desactivado con "reducir movimiento" y con respaldo estático sin soporte.
+
 ## Tercio 2 · Sitio público completo
 
 - [ ] Fila de seis temas con íconos de línea (Energía, Chips, Cobre, Comercio EE.UU.–China, Divisas,

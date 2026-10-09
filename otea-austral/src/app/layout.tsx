@@ -44,7 +44,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // La CSP lleva un nonce por solicitud: todas las páginas se renderizan al pedirse.
   await connection();
   return (
-    <html lang="es-CL" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
+    // data-scroll-behavior: al navegar entre páginas el salto es inmediato; el scroll suave
+    // (globals.css) queda para los enlaces dentro de la misma página.
+    <html
+      lang="es-CL"
+      data-scroll-behavior="smooth"
+      className={`${serif.variable} ${sans.variable} ${mono.variable}`}
+    >
       <body className="flex min-h-dvh flex-col">
         <a
           href="#contenido"

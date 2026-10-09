@@ -144,7 +144,238 @@
   background-image: linear-gradient(to left, transparent, var(--color-glass-edge));
 }
 
-/* ── Movimiento ──────────────────────────────────────────────────────────── */
+/* ── Interacción ─────────────────────────────────────────────────────────── */
+
+/* Al pasar el cursor, el borde de vidrio se ilumina y el halo crece (sin mover la tarjeta). */
+@utility glass-interactive {
+  transition: box-shadow 500ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  &:hover {
+    box-shadow:
+      inset 0 0 0 1px var(--color-glass-edge-strong),
+      inset 0 1px 1px rgb(243 238 227 / 0.22),
+      inset 0 24px 48px rgb(243 238 227 / 0.05),
+      0 32px 48px rgb(3 6 12 / 0.8);
+  }
+}
+
+/* ── Movimiento ──────────────────────────────────────────────────────────────
+ * Inspirado en apple.com: entrada suave del titular, tarjetas que se reparten
+ * en abanico, contenido que aparece al hacer scroll y una atmósfera con
+ * profundidad. Todo es CSS (sin JavaScript) y solo existe con
+ * `prefers-reduced-motion: no-preference`. Lo ligado al scroll se aplica
+ * donde el navegador lo soporta; sin soporte, el contenido se ve completo y
+ * quieto. `src/lib/design/motion.test.ts` vigila estas reglas.
+ */
+
+@keyframes otea-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes otea-revelar {
+  from {
+    opacity: 0;
+    transform: translateY(56px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes otea-abanico-centro {
+  from {
+    opacity: 0;
+    transform: translateY(72px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Las laterales salen desde detrás de la central: se compone con su
+   `translate`, `rotate` y `scale` de reposo, que no se tocan. */
+@keyframes otea-abanico-izquierda {
+  from {
+    opacity: 0;
+    transform: translateX(45%) rotate(5deg) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes otea-abanico-derecha {
+  from {
+    opacity: 0;
+    transform: translateX(-45%) rotate(-5deg) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes otea-paralaje {
+  to {
+    transform: translateY(160px);
+  }
+}
+
+@keyframes otea-atenuar-foco {
+  to {
+    opacity: 0.25;
+    transform: translateY(-80px) scaleX(1.15);
+  }
+}
+
+@keyframes otea-vt-salir {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes otea-vt-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Entrada al cargar, escalonada. `backwards`: al terminar, el elemento
+     vuelve a su estilo natural (sin filtro ni transformación residual). */
+  .anim-aparecer {
+    animation: otea-aparecer 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  .anim-abanico-centro {
+    animation: otea-abanico-centro 1200ms cubic-bezier(0.16, 1, 0.3, 1) 450ms backwards;
+  }
+
+  .anim-abanico-izquierda {
+    animation: otea-abanico-izquierda 1400ms cubic-bezier(0.16, 1, 0.3, 1) 700ms backwards;
+  }
+
+  .anim-abanico-derecha {
+    animation: otea-abanico-derecha 1400ms cubic-bezier(0.16, 1, 0.3, 1) 760ms backwards;
+  }
+
+  .anim-retraso-1 {
+    animation-delay: 100ms;
+  }
+  .anim-retraso-2 {
+    animation-delay: 200ms;
+  }
+  .anim-retraso-3 {
+    animation-delay: 300ms;
+  }
+  .anim-retraso-4 {
+    animation-delay: 400ms;
+  }
+
+  /* Hijos que entran uno tras otro (por ejemplo, los íconos de una fila).
+     `--retraso-base` en el contenedor desplaza toda la secuencia. */
+  .anim-escalonado > * {
+    animation: otea-aparecer 900ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: var(--retraso-base, 0ms);
+  }
+  .anim-escalonado > :nth-child(2) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 70ms);
+  }
+  .anim-escalonado > :nth-child(3) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 140ms);
+  }
+  .anim-escalonado > :nth-child(4) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 210ms);
+  }
+  .anim-escalonado > :nth-child(5) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 280ms);
+  }
+  .anim-escalonado > :nth-child(6) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 350ms);
+  }
+  .anim-escalonado > :nth-child(7) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 420ms);
+  }
+
+  /* Revelado ligado al scroll: termina cuando el borde superior del bloque
+     subió 280 px dentro de la ventana, aunque el bloque sea muy alto. */
+  @supports (animation-timeline: view()) {
+    .anim-revelar {
+      animation: otea-revelar linear both;
+      animation-timeline: view();
+      animation-range: entry 0px entry 280px;
+    }
+  }
+
+  /* Profundidad: la retícula baja más lento que el contenido y el foco de
+     luz se atenúa al alejarse de la parte alta. */
+  @supports (animation-timeline: scroll()) {
+    .anim-paralaje {
+      animation: otea-paralaje linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 1000px;
+    }
+
+    .anim-atenuar-foco {
+      animation: otea-atenuar-foco linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 700px;
+    }
+  }
+
+  /* Desplegables que se abren con suavidad (donde hay soporte). */
+  :root {
+    interpolate-size: allow-keywords;
+  }
+
+  details::details-content {
+    block-size: 0;
+    overflow-y: clip;
+    transition:
+      content-visibility 450ms allow-discrete,
+      block-size 450ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  details[open]::details-content {
+    block-size: auto;
+  }
+
+  /* Transición entre páginas (React <ViewTransition>): sale hacia arriba
+     y entra desde abajo; la cabecera queda fija como ancla. */
+  ::view-transition-old(.otea-pagina) {
+    animation: otea-vt-salir 200ms cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
+  ::view-transition-new(.otea-pagina) {
+    animation: otea-vt-entrar 500ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  }
+
+  ::view-transition-group(site-header) {
+    animation: none;
+  }
+}
+
+.vt-site-header {
+  view-transition-name: site-header;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -154,6 +385,12 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 
   .bg-spotlight {
