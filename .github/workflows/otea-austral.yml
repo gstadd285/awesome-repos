@@ -77,3 +77,43 @@ jobs:
           path: otea-austral/sbom.cdx.json
           retention-days: 90
           if-no-files-found: error
+
+  # Pruebas de navegador (Playwright) sobre el build de producción.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: otea-austral
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: otea-austral/.nvmrc
+          cache: npm
+          cache-dependency-path: otea-austral/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Chromium para Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Pruebas de navegador
+        run: npm run test:e2e
+
+      - name: Publicar el informe si fallan
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: informe-playwright
+          path: otea-austral/playwright-report
+          retention-days: 14

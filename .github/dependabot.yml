@@ -9,7 +9,7 @@ updates:
       next-react:
         patterns: ["next", "react", "react-dom", "eslint-config-next", "@types/react", "@types/react-dom"]
       pruebas:
-        patterns: ["vitest", "@vitejs/*", "@testing-library/*", "jsdom"]
+        patterns: ["vitest", "@vitejs/*", "@testing-library/*", "jsdom", "@playwright/*"]
 
   - package-ecosystem: github-actions
     directory: /
