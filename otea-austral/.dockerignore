@@ -1,0 +1,25 @@
+# Contexto mínimo para construir la imagen: nada de secretos, dependencias locales ni resultados.
+.git
+.github
+node_modules
+.next
+out
+build
+coverage
+test-results
+playwright-report
+sbom.cdx.json
+*.tsbuildinfo
+next-env.d.ts
+
+# Nunca entran variables de entorno ni claves a la imagen (solo se aceptan los ejemplos).
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+Dockerfile
+.dockerignore
+npm-debug.log*
+.DS_Store

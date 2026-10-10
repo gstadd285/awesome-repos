@@ -166,3 +166,59 @@ jobs:
           name: informe-playwright
           path: otea-austral/playwright-report
           retention-days: 14
+
+  # Imagen de contenedor para Cloud Run: se construye y se prueba como correría en producción.
+  contenedor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: otea-austral
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Construir la imagen
+        run: docker build --tag otea-austral:ci .
+
+      - name: Corre sin privilegios y sin secretos ni código fuente
+        run: |
+          test "$(docker run --rm --entrypoint id otea-austral:ci -u)" = "10001"
+          docker run --rm --entrypoint sh otea-austral:ci -c '
+            test ! -e /app/src && test ! -e /app/.env && test ! -e /app/node_modules/sharp'
+
+      - name: Arranca con configuración válida y responde con las cabeceras de seguridad
+        run: |
+          docker run -d --name otea-ok -p 8080:8080 \
+            -e NEXT_PUBLIC_SITE_URL=https://oteaustral.example.org otea-austral:ci
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:8080/api/salud >/dev/null && break
+            sleep 1
+          done
+          test "$(curl -s http://localhost:8080/api/salud)" = '{"estado":"ok"}'
+          cabeceras="$(curl -sI http://localhost:8080/)"
+          echo "$cabeceras"
+          echo "$cabeceras" | grep -i '^content-security-policy:.*nonce-'
+          echo "$cabeceras" | grep -i '^strict-transport-security:'
+          echo "$cabeceras" | grep -i -q '^x-powered-by:' && exit 1
+          # La URL del sitio se lee al ejecutar, no al construir la imagen.
+          curl -s http://localhost:8080/sitemap.xml | grep -q 'https://oteaustral.example.org/'
+          # Sin optimizador de imágenes ni panel sin configurar.
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://localhost:8080/_next/image?url=%2Ficon.svg&w=64&q=75')" = "404"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/admin)" = "404"
+
+      - name: Una configuración insegura hace fallar la sonda (Cloud Run no le da tráfico)
+        run: |
+          docker run -d --name otea-mala -p 8081:8080 -e WAITLIST_MODE=memoria otea-austral:ci
+          for i in $(seq 1 30); do
+            curl -s -o /dev/null http://localhost:8081/ && break
+            sleep 1
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/salud)" != "200"
+
+      - name: Registros del contenedor si algo falla
+        if: failure()
+        run: |
+          docker logs otea-ok || true
+          docker logs otea-mala || true

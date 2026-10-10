@@ -15,3 +15,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+
+  # Imagen base del contenedor (fijada por digest en otea-austral/Dockerfile).
+  - package-ecosystem: docker
+    directory: /otea-austral
+    schedule:
+      interval: weekly

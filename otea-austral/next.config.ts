@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   // prerenderizado parcial de Cache Components. Ver SECURITY.md.
   cacheComponents: false,
   poweredByHeader: false,
+  // Carpeta autocontenida (.next/standalone) para la imagen de contenedor de Cloud Run.
+  output: "standalone",
+  // El sitio no usa `next/image`: sin optimizador no existe el endpoint público `/_next/image`.
+  images: { unoptimized: true },
   reactStrictMode: true,
   turbopack: {
     rules: {

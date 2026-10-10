@@ -1,0 +1,72 @@
+# Plantilla del servicio de Cloud Run. Reemplaza los valores entre «‹ ›» y aplícala con:
+#
+#   gcloud run services replace despliegue/cloud-run.yaml --region ‹REGION›
+#
+# Guía completa y orden de los pasos: docs/despliegue.md.
+# No hay secretos aquí: los valores sensibles se leen de Secret Manager.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: otea-austral
+  annotations:
+    # Público: el sitio es abierto. El panel /admin se protege dentro de la aplicación.
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        # Escala a cero cuando no hay tráfico y limita el gasto máximo.
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+        # CPU solo mientras se atiende una solicitud (más barato).
+        run.googleapis.com/cpu-throttling: "true"
+    spec:
+      serviceAccountName: ‹CUENTA_DE_EJECUCION›@‹PROYECTO›.iam.gserviceaccount.com
+      containerConcurrency: 40
+      timeoutSeconds: 30
+      containers:
+        - image: ‹REGION›-docker.pkg.dev/‹PROYECTO›/otea/otea-austral:‹ETIQUETA›
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            - name: NEXT_PUBLIC_SITE_URL
+              value: https://‹DOMINIO›
+            - name: EMAIL_REMITENTE
+              value: Otea Austral <alertas@‹DOMINIO›>
+            # «cerrada» hasta verificar el correo y la base; luego «abierta».
+            - name: WAITLIST_MODE
+              value: cerrada
+            # Cloud Run directo: 1. Detrás de un balanceador de carga HTTP(S) externo: 2.
+            - name: IP_PROXIES_CONFIABLES
+              value: "1"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: otea-database-url, key: latest }
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef: { name: otea-resend-api-key, key: latest }
+            - name: ADMIN_CLAVE_HASH
+              valueFrom:
+                secretKeyRef: { name: otea-admin-clave-hash, key: latest }
+            - name: ADMIN_TOTP_SECRETO
+              valueFrom:
+                secretKeyRef: { name: otea-admin-totp-secreto, key: latest }
+            - name: ADMIN_SESION_SECRETO
+              valueFrom:
+                secretKeyRef: { name: otea-admin-sesion-secreto, key: latest }
+          # La sonda valida el proceso y la configuración (no toca la base de datos):
+          # una revisión mal configurada no recibe tráfico.
+          startupProbe:
+            httpGet: { path: /api/salud, port: 8080 }
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 10
+          livenessProbe:
+            httpGet: { path: /api/salud, port: 8080 }
+            periodSeconds: 30
+            timeoutSeconds: 2
+            failureThreshold: 3
