@@ -1,0 +1,168 @@
+name: Otea Austral · CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "otea-austral/**"
+      - ".github/workflows/otea-austral.yml"
+  pull_request:
+    paths:
+      - "otea-austral/**"
+      - ".github/workflows/otea-austral.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: otea-austral-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: otea-austral
+    # Postgres desechable para las pruebas de base de datos (migraciones,
+    # permisos mínimos, disparadores y repositorios).
+    services:
+      postgres:
+        image: postgres:17.8@sha256:69dddb030ab69d669d8d7c6abf67aeb448178e5270d5f123a21f4f7ac8b46a24
+        env:
+          # Base efímera de la CI, sin datos: no es un secreto.
+          POSTGRES_PASSWORD: postgres-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      PRUEBAS_DATABASE_URL: postgres://postgres:postgres-ci@localhost:5432/postgres
+      # Si falta la base, las pruebas fallan en vez de omitirse.
+      PRUEBAS_DB_OBLIGATORIAS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: otea-austral/.nvmrc
+          cache: npm
+          cache-dependency-path: otea-austral/package-lock.json
+
+      - name: Instalar dependencias (versiones fijas del lockfile)
+        run: npm ci
+
+      # NIST CSF ID.RA-09: autenticidad e integridad del software antes de usarlo.
+      - name: Verificar firmas del registro npm
+        run: npm audit signatures
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Pruebas (incluye Postgres con el usuario de mínimos privilegios)
+        run: npm test
+
+      - name: Migraciones idempotentes y usuario de la aplicación
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:postgres-ci@localhost:5432/postgres
+          CLAVE_ROL_APP: ci-otea-web-solo-pruebas
+        run: |
+          npm run db:migrar
+          npm run db:migrar
+          npm run db:rol-app -- otea_web
+
+      - name: Build
+        run: npm run build
+
+      - name: Auditoría de dependencias de producción
+        run: npm audit --omit=dev --audit-level=high
+
+      # Las de desarrollo tienen hallazgos sin corrección publicada (ver SECURITY.md):
+      # se muestran, pero no bloquean.
+      - name: Auditoría completa (informativa)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      # NIST CSF ID.AM-02: inventario del software que se despliega.
+      - name: Inventario de software (SBOM CycloneDX)
+        run: npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json
+
+      - name: Publicar el SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom-otea-austral
+          path: otea-austral/sbom.cdx.json
+          retention-days: 90
+          if-no-files-found: error
+
+  # Pruebas de navegador (Playwright) sobre el build de producción.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: otea-austral
+    services:
+      postgres:
+        image: postgres:17.8@sha256:69dddb030ab69d669d8d7c6abf67aeb448178e5270d5f123a21f4f7ac8b46a24
+        env:
+          POSTGRES_PASSWORD: postgres-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # La aplicación entra con el usuario de mínimos privilegios, como en producción.
+      DATABASE_URL: postgres://otea_web:ci-otea-web-solo-pruebas@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: otea-austral/.nvmrc
+          cache: npm
+          cache-dependency-path: otea-austral/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Chromium para Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Base de datos de prueba (migraciones y usuario de la aplicación)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:postgres-ci@localhost:5432/postgres
+          CLAVE_ROL_APP: ci-otea-web-solo-pruebas
+        run: |
+          npm run db:migrar
+          npm run db:rol-app -- otea_web
+
+      - name: Build
+        run: npm run build
+
+      - name: Pruebas de navegador
+        run: npm run test:e2e
+
+      - name: Publicar el informe si fallan
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: informe-playwright
+          path: otea-austral/playwright-report
+          retention-days: 14

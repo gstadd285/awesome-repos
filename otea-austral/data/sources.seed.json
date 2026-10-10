@@ -1,0 +1,236 @@
+[
+  {
+    "id": "bcch",
+    "nombre": "Sitio oficial",
+    "organismo": "Banco Central de Chile",
+    "url_base": "https://www.bcentral.cl/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "cmf",
+    "nombre": "Sitio oficial",
+    "organismo": "Comisión para el Mercado Financiero (CMF)",
+    "url_base": "https://www.cmfchile.cl/",
+    "tipo": "primaria",
+    "temas": [],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "ine",
+    "nombre": "Sitio oficial",
+    "organismo": "Instituto Nacional de Estadísticas (INE)",
+    "url_base": "https://www.ine.gob.cl/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "cochilco",
+    "nombre": "Sitio oficial",
+    "organismo": "Comisión Chilena del Cobre (Cochilco)",
+    "url_base": "https://www.cochilco.cl/",
+    "tipo": "primaria",
+    "temas": [
+      "cobre"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "hacienda",
+    "nombre": "Sitio oficial",
+    "organismo": "Ministerio de Hacienda de Chile",
+    "url_base": "https://www.hacienda.cl/",
+    "tipo": "primaria",
+    "temas": [],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "fed",
+    "nombre": "Sitio oficial",
+    "organismo": "Reserva Federal de EE.UU. (Federal Reserve)",
+    "url_base": "https://www.federalreserve.gov/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "bls",
+    "nombre": "Sitio oficial",
+    "organismo": "Oficina de Estadísticas Laborales de EE.UU. (BLS)",
+    "url_base": "https://www.bls.gov/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "sec-edgar",
+    "nombre": "EDGAR",
+    "organismo": "Comisión de Bolsa y Valores de EE.UU. (SEC)",
+    "url_base": "https://www.sec.gov/edgar",
+    "tipo": "primaria",
+    "temas": [],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "tesoro-eeuu",
+    "nombre": "Sitio oficial",
+    "organismo": "Departamento del Tesoro de EE.UU.",
+    "url_base": "https://home.treasury.gov/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas",
+      "comercio_eeuu_china"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "bce",
+    "nombre": "Sitio oficial",
+    "organismo": "Banco Central Europeo (BCE)",
+    "url_base": "https://www.ecb.europa.eu/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "fmi",
+    "nombre": "Sitio oficial",
+    "organismo": "Fondo Monetario Internacional (FMI)",
+    "url_base": "https://www.imf.org/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "banco-mundial",
+    "nombre": "Sitio oficial",
+    "organismo": "Banco Mundial",
+    "url_base": "https://www.worldbank.org/",
+    "tipo": "primaria",
+    "temas": [
+      "cobre",
+      "energia"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "C",
+    "activa": true
+  },
+  {
+    "id": "bis",
+    "nombre": "Sitio oficial",
+    "organismo": "Banco de Pagos Internacionales (BIS)",
+    "url_base": "https://www.bis.org/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "C",
+    "activa": true
+  },
+  {
+    "id": "omc",
+    "nombre": "Sitio oficial",
+    "organismo": "Organización Mundial del Comercio (OMC)",
+    "url_base": "https://www.wto.org/",
+    "tipo": "primaria",
+    "temas": [
+      "comercio_eeuu_china"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "C",
+    "activa": true
+  },
+  {
+    "id": "opep",
+    "nombre": "Sitio oficial",
+    "organismo": "Organización de Países Exportadores de Petróleo (OPEP)",
+    "url_base": "https://www.opec.org/",
+    "tipo": "primaria",
+    "temas": [
+      "energia"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "aie",
+    "nombre": "Sitio oficial",
+    "organismo": "Agencia Internacional de Energía (AIE)",
+    "url_base": "https://www.iea.org/",
+    "tipo": "primaria",
+    "temas": [
+      "energia"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "eia",
+    "nombre": "Sitio oficial",
+    "organismo": "Administración de Información Energética de EE.UU. (EIA)",
+    "url_base": "https://www.eia.gov/",
+    "tipo": "primaria",
+    "temas": [
+      "energia"
+    ],
+    "acceso": "manual",
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "B",
+    "activa": true
+  }
+]
