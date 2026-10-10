@@ -21,6 +21,12 @@ describe("EnvSchema", () => {
     expect(EnvSchema.safeParse({ NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" }).success).toBe(true);
   });
 
+  it("HTTPS_FORZADO está activo por omisión y solo admite 0 o 1", () => {
+    expect(EnvSchema.parse({}).HTTPS_FORZADO).toBe("1");
+    expect(EnvSchema.parse({ HTTPS_FORZADO: "0" }).HTTPS_FORZADO).toBe("0");
+    for (const malo of ["true", "2", "no", " 1"]) expect(EnvSchema.safeParse({ HTTPS_FORZADO: malo }).success, malo).toBe(false);
+  });
+
   it("valida el contacto de seguridad", () => {
     expect(EnvSchema.safeParse({ SECURITY_CONTACT: "javascript:alert(1)" }).success).toBe(false);
     expect(EnvSchema.safeParse({ SECURITY_CONTACT: "mailto:seguridad@oteaustral.com" }).success).toBe(true);
@@ -32,16 +38,34 @@ describe("EnvSchema · tercio 3", () => {
   const TOTP = "A".repeat(32);
   const SESION = "x".repeat(43);
   const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const LISTA = "l".repeat(43);
 
-  it("la lista abierta exige base de datos y clave de correo", () => {
+  it("la lista abierta exige base de datos, clave de correo y secreto de la lista", () => {
+    const completa = { WAITLIST_MODE: "abierta", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab", WAITLIST_SECRETO: LISTA };
     expect(EnvSchema.safeParse({ WAITLIST_MODE: "abierta" }).success).toBe(false);
-    expect(EnvSchema.safeParse({ WAITLIST_MODE: "abierta", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab" }).success).toBe(
-      true,
-    );
+    expect(EnvSchema.safeParse(completa).success).toBe(true);
+    for (const falta of ["DATABASE_URL", "RESEND_API_KEY", "WAITLIST_SECRETO"] as const) {
+      const { [falta]: _omitida, ...incompleta } = completa;
+      void _omitida;
+      expect(EnvSchema.safeParse(incompleta).success, falta).toBe(false);
+    }
+  });
+
+  it("el secreto de la lista debe tener 256 bits en base64url", () => {
+    expect(EnvSchema.safeParse({ WAITLIST_SECRETO: LISTA }).success).toBe(true);
+    for (const malo of ["corto", "l".repeat(42), `${"l".repeat(43)} `, `${"l".repeat(42)}+`]) {
+      expect(EnvSchema.safeParse({ WAITLIST_SECRETO: malo }).success, malo).toBe(false);
+    }
   });
 
   it("en producción exige la URL https del sitio, pero no mientras se construye la imagen", () => {
-    const base = { NODE_ENV: "production", WAITLIST_MODE: "abierta", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab" };
+    const base = {
+      NODE_ENV: "production",
+      WAITLIST_MODE: "abierta",
+      DATABASE_URL: DB,
+      RESEND_API_KEY: "re_1234567890ab",
+      WAITLIST_SECRETO: LISTA,
+    };
     expect(EnvSchema.safeParse(base).success).toBe(false);
     expect(EnvSchema.safeParse({ ...base, NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" }).success).toBe(true);
     // Sin configuración alguna (la URL por omisión es localhost): tampoco se arranca.

@@ -43,12 +43,20 @@ spec:
             # Cloud Run directo: 1. Detrás de un balanceador de carga HTTP(S) externo: 2.
             - name: IP_PROXIES_CONFIABLES
               value: "1"
+            # La aplicación redirige a https lo que llegue por http (Cloud Run envía X-Forwarded-Proto). Interruptor
+            # de emergencia si una revisión entrara en un bucle de redirecciones: "0". Ver docs/despliegue.md.
+            - name: HTTPS_FORZADO
+              value: "1"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef: { name: otea-database-url, key: latest }
             - name: RESEND_API_KEY
               valueFrom:
                 secretKeyRef: { name: otea-resend-api-key, key: latest }
+            # Secreto maestro de la lista de espera: marca de tiempo del formulario y cifrado de correos.
+            - name: WAITLIST_SECRETO
+              valueFrom:
+                secretKeyRef: { name: otea-waitlist-secreto, key: latest }
             - name: ADMIN_CLAVE_HASH
               valueFrom:
                 secretKeyRef: { name: otea-admin-clave-hash, key: latest }

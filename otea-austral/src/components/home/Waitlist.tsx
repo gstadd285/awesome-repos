@@ -1,4 +1,5 @@
 import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
+import { marcaFormulario } from "@/lib/waitlist/instance";
 import { WaitlistForm } from "./WaitlistForm";
 
 export function Waitlist() {
@@ -20,7 +21,7 @@ export function Waitlist() {
           </p>
         </div>
         <div className="anim-revelar">
-          <WaitlistForm />
+          <WaitlistForm marca={marcaFormulario()} />
         </div>
       </div>
     </section>

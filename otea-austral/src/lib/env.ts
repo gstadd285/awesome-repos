@@ -65,6 +65,15 @@ export const EnvSchema = z
     EMAIL_REMITENTE: remitente.default(REMITENTE_POR_DEFECTO),
     /** Tope diario de correos de confirmación (Resend gratuito permite 100 al día). */
     WAITLIST_ENVIOS_DIARIOS: z.coerce.number().int().min(1).max(5000).default(80),
+    /**
+     * Secreto maestro de la lista de espera: 256 bits en base64url (`npm run lista:secreto`). De él se derivan,
+     * con HKDF, la clave de la marca de tiempo del formulario y las del cifrado de correos y su índice. Debe
+     * ser el mismo en todas las instancias y vivir en Secret Manager.
+     */
+    WAITLIST_SECRETO: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{43,}$/, "Secreto de la lista demasiado corto (256 bits en base64url)")
+      .optional(),
     ADMIN_CLAVE_HASH: hashClave.optional(),
     /** Secreto TOTP en base32: 160 bits. */
     ADMIN_TOTP_SECRETO: z.string().regex(/^[A-Z2-7]{32}$/, "Secreto TOTP inválido (32 caracteres base32)").optional(),
@@ -78,6 +87,13 @@ export const EnvSchema = z
      * las anteriores las puede inventar cualquiera.
      */
     IP_PROXIES_CONFIABLES: z.coerce.number().int().min(0).max(3).default(1),
+    /**
+     * Redirige a https (308) las solicitudes que el proxy marca como http (`X-Forwarded-Proto`; Cloud Run
+     * siempre lo envía). Está activo por omisión en producción. Es el interruptor de emergencia: con `0`, si
+     * una plataforma no enviara esa cabecera y el sitio entrara en un bucle de redirecciones. También sirve
+     * para probar la imagen en local por http.
+     */
+    HTTPS_FORZADO: z.enum(["0", "1"]).default("1"),
   })
   .superRefine((e, ctx) => {
     // `next build` también corre con NODE_ENV=production, pero la configuración del servidor llega al
@@ -99,6 +115,7 @@ export const EnvSchema = z
     if (e.WAITLIST_MODE === "abierta") {
       if (!e.DATABASE_URL) problema("DATABASE_URL", "La lista abierta necesita DATABASE_URL.");
       if (!e.RESEND_API_KEY) problema("RESEND_API_KEY", "La lista abierta necesita RESEND_API_KEY.");
+      if (!e.WAITLIST_SECRETO) problema("WAITLIST_SECRETO", "La lista abierta necesita WAITLIST_SECRETO.");
     }
     if (produccion && e.DATABASE_URL && !/[?&]sslmode=verify-full(&|$)/.test(e.DATABASE_URL)) {
       problema("DATABASE_URL", "En producción la conexión debe verificar el certificado: agrega sslmode=verify-full.");
@@ -124,11 +141,13 @@ export const env: Env = EnvSchema.parse({
   RESEND_API_KEY: leer("RESEND_API_KEY"),
   EMAIL_REMITENTE: leer("EMAIL_REMITENTE"),
   WAITLIST_ENVIOS_DIARIOS: leer("WAITLIST_ENVIOS_DIARIOS"),
+  WAITLIST_SECRETO: leer("WAITLIST_SECRETO"),
   ADMIN_CLAVE_HASH: leer("ADMIN_CLAVE_HASH"),
   ADMIN_TOTP_SECRETO: leer("ADMIN_TOTP_SECRETO"),
   ADMIN_SESION_SECRETO: leer("ADMIN_SESION_SECRETO"),
   ADMIN_ALIAS: leer("ADMIN_ALIAS"),
   IP_PROXIES_CONFIABLES: leer("IP_PROXIES_CONFIABLES"),
+  HTTPS_FORZADO: leer("HTTPS_FORZADO"),
 });
 
 /** El panel interno existe solo si está configurado por completo; si no, responde 404. */

@@ -97,18 +97,18 @@ describe("lista de espera", () => {
     const { s, store, enviar } = servicio();
     await s.registrar(valido, "c");
     const token = enviar.mock.calls[0][1];
-    expect(await s.confirmar("x".repeat(43))).toBe(false);
-    expect(await s.confirmar(token)).toBe(true);
+    expect(await s.confirmar("x".repeat(43))).toBe("invalida");
+    expect(await s.confirmar(token)).toBe("confirmada");
     expect(store.registros()[0].confirmado).toBe("2026-10-09T12:00:00.000Z");
     expect(store.registros()[0].tokenHash).toBeNull();
-    expect(await s.confirmar(token)).toBe(false);
+    expect(await s.confirmar(token)).toBe("invalida");
   });
 
   it("el enlace vence a las 72 horas", async () => {
     const { s, enviar, avanzar } = servicio();
     await s.registrar(valido, "c");
     avanzar(72 * HORA + 1);
-    expect(await s.confirmar(enviar.mock.calls[0][1])).toBe(false);
+    expect(await s.confirmar(enviar.mock.calls[0][1])).toBe("invalida");
   });
 
   it("si no llegó el correo, reenvía un enlace nuevo después de 10 minutos", async () => {
@@ -121,8 +121,8 @@ describe("lista de espera", () => {
     expect(await s.registrar(valido, "c")).toEqual({ estado: "ok", prueba: false });
     expect(enviar).toHaveBeenCalledTimes(2);
     const [primero, segundo] = enviar.mock.calls.map((c) => c[1]);
-    expect(await s.confirmar(primero)).toBe(false);
-    expect(await s.confirmar(segundo)).toBe(true);
+    expect(await s.confirmar(primero)).toBe("invalida");
+    expect(await s.confirmar(segundo)).toBe("confirmada");
   });
 
   it("una inscripción confirmada no recibe más correos", async () => {
@@ -138,7 +138,7 @@ describe("lista de espera", () => {
     const { s, store, enviar } = servicio("abierta");
     enviar.mockRejectedValueOnce(new Error("caído"));
     expect(await s.registrar(valido, "c")).toEqual({ estado: "reintentar" });
-    expect(await s.confirmar("t".repeat(42) + "0")).toBe(false);
+    expect(await s.confirmar("t".repeat(42) + "0")).toBe("invalida");
     expect(await s.registrar(valido, "c")).toEqual({ estado: "ok", prueba: false });
     expect(enviar).toHaveBeenCalledTimes(2);
     expect(store.registros()).toHaveLength(1);
@@ -171,7 +171,7 @@ describe("lista de espera", () => {
   it("rechaza tokens con formato inválido sin consultar el almacenamiento", async () => {
     const { s } = servicio();
     for (const t of [undefined, "", "corto", "<script>", "a".repeat(200)]) {
-      expect(await s.confirmar(t)).toBe(false);
+      expect(await s.confirmar(t)).toBe("invalida");
     }
   });
 });
@@ -225,3 +225,80 @@ describe("tope diario de correos de confirmación", () => {
   });
 });
 
+
+describe("trampa de tiempo (control 12: bots)", () => {
+  function conMarca(marcaValida: (m: unknown, ahora: Date) => boolean) {
+    const store = createMemoryWaitlistStore();
+    const enviar = vi.fn<(correo: string, token: string) => Promise<void>>(async () => {});
+    const s = crearServicioLista({
+      modo: "memoria",
+      store,
+      enviarConfirmacion: enviar,
+      marcaValida,
+      ahora: () => new Date("2026-10-09T12:00:00Z"),
+      duracionMinimaMs: 0,
+    });
+    return { s, store, enviar };
+  }
+
+  it("con marca válida inscribe; sin ella o con una falsa pide esperar y no guarda ni envía nada", async () => {
+    const { s, store, enviar } = conMarca((m) => m === "marca-buena");
+    expect(await s.registrar({ ...valido, tiempo: "marca-buena" }, "c")).toEqual({ estado: "ok", prueba: true });
+    expect(enviar).toHaveBeenCalledOnce();
+    store.registros(); // una inscripción
+
+    for (const tiempo of [undefined, "", "marca-falsa", 123]) {
+      expect(await s.registrar({ ...valido, correo: "otra@correo.cl", tiempo }, "c")).toEqual({ estado: "espera" });
+    }
+    expect(store.registros()).toHaveLength(1);
+    expect(enviar).toHaveBeenCalledOnce();
+  });
+
+  it("recibe la hora del servicio, no la del navegador", async () => {
+    const vista: Date[] = [];
+    const { s } = conMarca((_m, ahora) => (vista.push(ahora), true));
+    await s.registrar({ ...valido, tiempo: "x" }, "c");
+    expect(vista.map((d) => d.toISOString())).toEqual(["2026-10-09T12:00:00.000Z"]);
+  });
+
+  it("la validación del correo va antes y el campo trampa sigue respondiendo como si nada", async () => {
+    const { s, store } = conMarca(() => false);
+    expect(await s.registrar({ correo: "mal", acepta: "on", sitio_web: "" }, "c")).toMatchObject({ estado: "invalida" });
+    expect(await s.registrar({ ...valido, sitio_web: "https://spam.example" }, "c")).toEqual({ estado: "ok", prueba: true });
+    expect(store.registros()).toHaveLength(0);
+  });
+
+  it("sin la función no se exige marca (la lista cerrada y las pruebas no la usan)", async () => {
+    const { s } = servicio();
+    expect(await s.registrar(valido, "c")).toEqual({ estado: "ok", prueba: true });
+  });
+});
+
+describe("límite de intentos de confirmación (control 11)", () => {
+  it("20 intentos por cliente cada 10 minutos; otro cliente no se ve afectado", async () => {
+    const store = createMemoryWaitlistStore();
+    const s = crearServicioLista({
+      modo: "abierta",
+      store,
+      enviarConfirmacion: async () => {},
+      limiterConfirmar: createFixedWindowLimiter({ limite: 3, ventanaMs: 10 * MINUTO }),
+      duracionMinimaMs: 0,
+    });
+    for (let i = 0; i < 3; i++) expect(await s.confirmar("x".repeat(43), "ip-1")).toBe("invalida");
+    expect(await s.confirmar("x".repeat(43), "ip-1")).toBe("limite");
+    expect(await s.confirmar("x".repeat(43), "ip-2")).toBe("invalida");
+  });
+
+  it("un token válido tampoco se acepta mientras el cliente esté limitado", async () => {
+    const { s, enviar } = servicio("abierta");
+    await s.registrar(valido, "c");
+    const token = enviar.mock.calls[0][1];
+    const limitado = crearServicioLista({
+      modo: "abierta",
+      store: createMemoryWaitlistStore(),
+      enviarConfirmacion: async () => {},
+      limiterConfirmar: createFixedWindowLimiter({ limite: 0, ventanaMs: MINUTO }),
+    });
+    expect(await limitado.confirmar(token, "ip")).toBe("limite");
+  });
+});

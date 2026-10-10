@@ -35,7 +35,9 @@ export function ConfirmForm({ token }: { token: string }) {
       <p role="status" aria-live="polite" className="mt-4 min-h-[1.5rem] text-sm text-texto">
         {estado.estado === "invalida"
           ? "El enlace venció, ya se usó o está incompleto. Puedes volver a inscribirte desde la portada."
-          : null}
+          : estado.estado === "limite"
+            ? "Demasiados intentos. Prueba de nuevo en unos minutos."
+            : null}
       </p>
     </form>
   );

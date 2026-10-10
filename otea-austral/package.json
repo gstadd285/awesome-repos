@@ -14,6 +14,7 @@
     "db:migrar": "node scripts/migrar.mjs",
     "db:rol-app": "node scripts/crear-rol-app.mjs",
     "admin:credenciales": "node scripts/admin-credenciales.mjs",
+    "lista:secreto": "node scripts/lista-secreto.mjs",
     "seguridad:secretos": "node scripts/escanear-secretos.mjs --historial",
     "seguridad:canarios": "node scripts/comprobar-secretos-en-build.mjs"
   },

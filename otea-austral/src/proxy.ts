@@ -1,9 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { buildCsp, generateNonce } from "@/lib/security/csp";
+import { destinoHttps } from "@/lib/security/https";
 
-/** Genera un nonce por solicitud y aplica la CSP estricta. */
+/** Fuerza https y genera un nonce por solicitud para aplicar la CSP estricta. */
 export function proxy(request: NextRequest) {
+  const destino = destinoHttps({
+    reenviado: request.headers.get("x-forwarded-proto"),
+    ruta: request.nextUrl.pathname,
+    busqueda: request.nextUrl.search,
+    sitio: env.NEXT_PUBLIC_SITE_URL,
+    produccion: env.NODE_ENV === "production" && env.HTTPS_FORZADO === "1",
+  });
+  if (destino) return NextResponse.redirect(destino, 308);
+
   const nonce = generateNonce();
   const csp = buildCsp(nonce, { dev: env.NODE_ENV === "development" });
 

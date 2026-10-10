@@ -207,7 +207,8 @@ jobs:
             sleep 1
           done
           test "$(curl -s http://localhost:8080/api/salud)" = '{"estado":"ok"}'
-          cabeceras="$(curl -sI http://localhost:8080/)"
+          # Cloud Run termina TLS y envía `X-Forwarded-Proto: https`: así llegan las solicitudes reales.
+          cabeceras="$(curl -sI -H 'X-Forwarded-Proto: https' http://localhost:8080/)"
           echo "$cabeceras"
           echo "$cabeceras" | grep -i '^content-security-policy:.*nonce-'
           echo "$cabeceras" | grep -i '^strict-transport-security:'
@@ -216,7 +217,15 @@ jobs:
           curl -s http://localhost:8080/sitemap.xml | grep -q 'https://oteaustral.example.org/'
           # Sin optimizador de imágenes ni panel sin configurar.
           test "$(curl -s -o /dev/null -w '%{http_code}' 'http://localhost:8080/_next/image?url=%2Ficon.svg&w=64&q=75')" = "404"
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/admin)" = "404"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: https' http://localhost:8080/admin)" = "404"
+          # HTTPS forzado (plan de seguridad, control 19): lo que llega por http se redirige al dominio configurado.
+          redireccion="$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' 'http://localhost:8080/alertas?x=1')"
+          test "$redireccion" = "308 https://oteaustral.example.org/alertas?x=1"
+          # Una ruta con doble barra no puede sacar al visitante del sitio.
+          destino="$(curl -s --path-as-is -o /dev/null -w '%{redirect_url}' 'http://localhost:8080//otro.example/x')"
+          case "$destino" in https://oteaustral.example.org/*|http://localhost:8080/*) ;; *) echo "Redirección a $destino"; exit 1 ;; esac
+          # La sonda de Cloud Run no se redirige, venga como venga.
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: http' http://localhost:8080/api/salud)" = "200"
 
       - name: Una configuración insegura hace fallar la sonda (Cloud Run no le da tráfico)
         run: |

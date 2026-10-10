@@ -25,6 +25,11 @@ function mensaje(estado: EstadoLista): { texto: string; tono: "exito" | "aviso" 
         texto: "Hoy recibimos muchas inscripciones y ya no podemos enviar más correos. Vuelve a intentarlo mañana.",
         tono: "aviso",
       };
+    case "espera":
+      return {
+        texto: "Espera unos segundos y vuelve a enviar el formulario. Si sigue sin funcionar, recarga la página.",
+        tono: "aviso",
+      };
     case "reintentar":
       return {
         texto: "No pudimos enviar el correo de confirmación. Intenta de nuevo en unos minutos.",
@@ -35,8 +40,11 @@ function mensaje(estado: EstadoLista): { texto: string; tono: "exito" | "aviso" 
   }
 }
 
-/** Formulario con validación en el servidor; funciona también sin JavaScript. */
-export function WaitlistForm() {
+/**
+ * Formulario con validación en el servidor; funciona también sin JavaScript. `marca` es la hora a la que el
+ * servidor generó el formulario, firmada: el servidor descarta los envíos sin marca o demasiado rápidos.
+ */
+export function WaitlistForm({ marca }: { marca: string }) {
   const [estado, accion, pendiente] = useActionState(unirseAListaDeEspera, INICIAL);
   const errores = estado.estado === "invalida" ? estado.errores : {};
   const aviso = mensaje(estado);
@@ -65,6 +73,8 @@ export function WaitlistForm() {
           {errores.correo}
         </p>
       ) : null}
+
+      <input type="hidden" name="tiempo" value={marca} />
 
       {/* Campo trampa para bots: oculto a la vista y al teclado. */}
       <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">

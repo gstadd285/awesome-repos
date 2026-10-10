@@ -17,13 +17,19 @@ export type ResultadoLista =
   /** No se pudo guardar o enviar el correo: se puede intentar de nuevo enseguida. */
   | { estado: "reintentar" }
   /** Se alcanzó el tope diario de correos de confirmación: volver a intentar otro día. */
-  | { estado: "saturada" };
+  | { estado: "saturada" }
+  /** La marca de tiempo del formulario falta, venció o se envió demasiado rápido: esperar y reenviar. */
+  | { estado: "espera" };
+
+export type ResultadoConfirmacion = "confirmada" | "invalida" | "limite";
 
 export type EntradaLista = {
   correo: unknown;
   acepta: unknown;
   /** Campo trampa: las personas lo dejan vacío; los bots suelen llenarlo. */
   sitio_web: unknown;
+  /** Marca de tiempo firmada que puso el servidor al generar el formulario (ver `tiempo.ts`). */
+  tiempo?: unknown;
 };
 
 /** Un enlace de confirmación vale 72 horas. */
@@ -49,6 +55,13 @@ type Dependencias = {
   enviarConfirmacion: (correo: string, token: string) => Promise<void>;
   limiterPorCliente?: FixedWindowLimiter;
   limiterGlobal?: FixedWindowLimiter;
+  /** Límite de intentos de confirmación por cliente (frena a quien prueba tokens o satura la base). */
+  limiterConfirmar?: FixedWindowLimiter;
+  /**
+   * Trampa de tiempo: `true` si la marca del formulario es válida y no llegó demasiado rápido. Sin esta
+   * función no se exige marca (pruebas y modo cerrado).
+   */
+  marcaValida?: (marca: unknown, ahora: Date) => boolean;
   generarToken?: () => string;
   /** Tope diario de correos de confirmación (por defecto {@link MAXIMO_ENVIOS_DIARIOS}). */
   maximoEnviosDiarios?: number;
@@ -84,6 +97,8 @@ export function crearServicioLista({
   enviarConfirmacion,
   limiterPorCliente = createFixedWindowLimiter({ limite: 5, ventanaMs: 10 * 60_000 }),
   limiterGlobal = createFixedWindowLimiter({ limite: 300, ventanaMs: 10 * 60_000 }),
+  limiterConfirmar = createFixedWindowLimiter({ limite: 20, ventanaMs: 10 * 60_000 }),
+  marcaValida,
   generarToken = generarTokenSeguro,
   maximoEnviosDiarios = MAXIMO_ENVIOS_DIARIOS,
   ahora = () => new Date(),
@@ -133,6 +148,10 @@ export function crearServicioLista({
       return conDuracionMinima(async () => {
         if (trampa) return ok;
         const instante = ahora();
+        if (marcaValida && !marcaValida(entrada.tiempo, instante)) {
+          logSecurityEvent({ tipo: "limite_excedido", recurso: "lista_marca_de_tiempo" });
+          return { estado: "espera" };
+        }
         const correo = validada.data.correo;
         const token = generarToken();
         let resultado: "nuevo" | "renovado" | "existente";
@@ -171,11 +190,20 @@ export function crearServicioLista({
       });
     },
 
-    async confirmar(token: unknown): Promise<boolean> {
+    async confirmar(token: unknown, claveCliente = "global"): Promise<ResultadoConfirmacion> {
+      if (!limiterConfirmar.tryConsume(claveCliente)) {
+        logSecurityEvent({ tipo: "limite_excedido", recurso: "lista_confirmar" });
+        return "limite";
+      }
       const t = TokenConfirmacion.safeParse(token);
-      if (!t.success) return false;
+      if (!t.success) return "invalida";
       const instante = ahora();
-      return store.confirmar(await sha256Hex(t.data), instante.toISOString(), antesDe(instante, VIGENCIA_ENLACE_MS));
+      const confirmada = await store.confirmar(
+        await sha256Hex(t.data),
+        instante.toISOString(),
+        antesDe(instante, VIGENCIA_ENLACE_MS),
+      );
+      return confirmada ? "confirmada" : "invalida";
     },
   };
 }

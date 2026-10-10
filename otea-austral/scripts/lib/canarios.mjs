@@ -17,6 +17,7 @@ export const CANARIOS = {
   WAITLIST_MODE: "abierta",
   DATABASE_URL: "postgresql://CANARIO_USUARIO:CANARIO-clave-bd-8f3a1c@localhost:5432/CANARIO_BD",
   RESEND_API_KEY: "re_CANARIO0123456789abcdefCANARIO", // escaner:ignorar valor falso a propósito (canario)
+  WAITLIST_SECRETO: "CANARIO_lista_".padEnd(46, "v"),
   ADMIN_CLAVE_HASH: `pbkdf2-sha256$600000$${"CANARIOsal".padEnd(22, "x")}$${"CANARIOhash".padEnd(43, "y")}`,
   ADMIN_TOTP_SECRETO: "CANARIO".repeat(5).slice(0, 32),
   ADMIN_SESION_SECRETO: "CANARIO_sesion_".padEnd(48, "z"),

@@ -91,7 +91,7 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("lista de espera en Postgres", () => {
     expect(Object.keys(fila).sort()).toEqual(
       ["confirmado", "correo", "creado", "token_emitido", "token_hash", "version_consentimiento"].sort(),
     );
-    expect(await servicio.confirmar(enviado)).toBe(true);
+    expect(await servicio.confirmar(enviado)).toBe("confirmada");
   });
 
   it("cuenta los enlaces enviados desde un instante, sin los liberados", async () => {
