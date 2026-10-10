@@ -7,10 +7,11 @@
 #   construir. Ningún secreto entra a las capas.
 # - Etapas: dependencias → compilación → ejecución. La imagen final solo lleva la
 #   salida `standalone` de Next.js, sin npm, sin código fuente y sin dependencias
-#   de desarrollo.
+#   de desarrollo (a la imagen base se le quitan npm, corepack y yarn).
 # - Corre sin privilegios (UID 10001) y escucha en $PORT (Cloud Run fija 8080).
 # - Base fijada por digest (versión de Node de .nvmrc, Alpine 3.23). Dependabot
-#   propone las actualizaciones (ecosistema docker).
+#   propone las actualizaciones (ecosistema docker) y la CI escanea la imagen con
+#   Trivy.
 
 FROM node:22.22-alpine3.23@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS base
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -40,6 +41,12 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0
 
 RUN addgroup -S -g 10001 otea && adduser -S -u 10001 -G otea -H -s /sbin/nologin otea
+
+# La imagen base trae npm, corepack y yarn y la aplicación no usa ninguno (arranca con `node server.js`). Se
+# quitan: menos superficie para quien lograra ejecutar comandos y fuera los hallazgos de las dependencias que
+# npm empaqueta (la CI escanea la imagen). Las etapas de compilación sí los necesitan y los conservan.
+RUN rm -rf /usr/local/lib/node_modules /opt/yarn-v* \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 # `npm run build` deja en `.next/standalone` el servidor, `public/` y `.next/static/` (ver
 # scripts/preparar-standalone.mjs).

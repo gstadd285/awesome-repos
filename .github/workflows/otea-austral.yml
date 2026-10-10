@@ -95,11 +95,11 @@ jobs:
       - name: Auditoría de dependencias de producción
         run: npm audit --omit=dev --audit-level=high
 
-      # Las de desarrollo tienen hallazgos sin corrección publicada (ver SECURITY.md):
-      # se muestran, pero no bloquean.
-      - name: Auditoría completa (informativa)
-        run: npm audit --audit-level=high
-        continue-on-error: true
+      # Plan de seguridad, control 20: también las dependencias de desarrollo. Bloquea cualquier aviso alto o
+      # crítico que no esté evaluado en seguridad/avisos-npm-aceptados.json (con motivo y fecha de revisión;
+      # hoy solo `braces`, sin versión corregida publicada, ver SECURITY.md).
+      - name: Auditoría de todas las dependencias, con los avisos aceptados a la vista
+        run: npm run seguridad:dependencias
 
       # NIST CSF ID.AM-02: inventario del software que se despliega.
       - name: Inventario de software (SBOM CycloneDX)
@@ -190,13 +190,42 @@ jobs:
       - name: Construir la imagen
         run: docker build --tag otea-austral:ci .
 
-      - name: Corre sin privilegios y sin secretos, código fuente ni mapas de código
+      - name: Corre sin privilegios y sin secretos, código fuente, mapas de código ni gestores de paquetes
         run: |
           test "$(docker run --rm --entrypoint id otea-austral:ci -u)" = "10001"
           docker run --rm --entrypoint sh otea-austral:ci -c '
-            test ! -e /app/src && test ! -e /app/.env && test ! -e /app/node_modules/sharp
+            set -e
+            test ! -e /app/src
+            test ! -e /app/.env
+            test ! -e /app/node_modules/sharp
             sobrantes="$(find /app \( -name "*.map" -o -name ".env*" \) | head -3)"
-            test -z "$sobrantes" || { echo "Sobran archivos: $sobrantes"; exit 1; }'
+            test -z "$sobrantes" || { echo "Sobran archivos: $sobrantes"; exit 1; }
+            # Sin gestores de paquetes: la aplicación no los usa y solo ampliarían la superficie.
+            for programa in npm npx yarn corepack; do
+              if command -v "$programa" >/dev/null; then echo "Sobra $programa"; exit 1; fi
+            done'
+
+      # Plan de seguridad, control 20: la imagen se escanea con Trivy (imagen fijada por digest; actualizarla
+      # a mano de vez en cuando, Dependabot no sigue los digests dentro de un `run`). Bloquean las críticas
+      # con corrección y todo lo alto o crítico de las dependencias de la aplicación; las altas de los
+      # paquetes del sistema (Alpine) se muestran y se resuelven al actualizar la imagen base.
+      - name: Escanear la imagen en busca de vulnerabilidades conocidas
+        env:
+          TRIVY: aquasec/trivy:0.67.2@sha256:e2b22eac59c02003d8749f5b8d9bd073b62e30fefaef5b7c8371204e0a4b0c08
+        run: |
+          mkdir -p "$HOME/.cache/trivy"
+          docker save otea-austral:ci --output "$RUNNER_TEMP/imagen.tar"
+          trivy() { docker run --rm -v "$RUNNER_TEMP:/datos:ro" -v "$HOME/.cache/trivy:/root/.cache" "$TRIVY" "$@"; }
+          # La base de datos de vulnerabilidades se baja del espejo de Google (sin los límites de ghcr.io).
+          for intento in 1 2 3; do
+            trivy image --download-db-only --no-progress --db-repository mirror.gcr.io/aquasec/trivy-db:2 && break
+            test "$intento" = 3 && exit 1
+            sleep 10
+          done
+          escanear() { trivy image --input /datos/imagen.tar --scanners vuln --skip-db-update --ignore-unfixed --no-progress "$@"; }
+          escanear --pkg-types library --severity HIGH,CRITICAL --exit-code 1
+          escanear --pkg-types os --severity CRITICAL --exit-code 1
+          escanear --pkg-types os --severity HIGH --exit-code 0
 
       - name: Arranca con configuración válida y responde con las cabeceras de seguridad
         run: |
