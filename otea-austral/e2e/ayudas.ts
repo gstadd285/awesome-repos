@@ -16,3 +16,6 @@ export async function sinScrollHorizontal(page: Page): Promise<boolean> {
 
 /** Sesión del panel guardada por `admin.setup.ts` para las pruebas con sesión. */
 export const SESION_ADMIN = "e2e/.auth/admin.json";
+
+/** Código TOTP que usó `admin.setup.ts` para entrar (ya gastado). */
+export const CODIGO_USADO = "e2e/.auth/codigo-usado.txt";

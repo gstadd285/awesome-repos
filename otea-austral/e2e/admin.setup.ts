@@ -1,6 +1,8 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { expect, test as preparar } from "@playwright/test";
 import { codigoTotp, decodificarBase32, pasoTotp } from "../src/lib/admin/totp";
-import { SESION_ADMIN } from "./ayudas";
+import { CODIGO_USADO, SESION_ADMIN } from "./ayudas";
 
 /** Código TOTP vigente para las credenciales generadas por playwright.config.ts. */
 function codigoActual(): string {
@@ -12,11 +14,15 @@ preparar("entrar al panel con frase y código", async ({ page }) => {
   await page.goto("/admin");
   await expect(page.getByRole("heading", { level: 1, name: "Acceso al panel." })).toBeVisible();
   await page.getByLabel("Frase de acceso").fill(process.env.E2E_ADMIN_FRASE ?? "");
-  await page.getByLabel("Código de tu app de autenticación").fill(codigoActual());
+  const codigo = codigoActual();
+  await page.getByLabel("Código de tu app de autenticación").fill(codigo);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/\/admin\/alertas$/);
 
   const [cookie] = (await page.context().cookies()).filter((c) => c.name === "__Host-otea_admin");
   expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: "Strict", path: "/" });
   await page.context().storageState({ path: SESION_ADMIN });
+  // Para comprobar que ese mismo código no se acepta por segunda vez.
+  await mkdir(path.dirname(CODIGO_USADO), { recursive: true });
+  await writeFile(CODIGO_USADO, codigo);
 });

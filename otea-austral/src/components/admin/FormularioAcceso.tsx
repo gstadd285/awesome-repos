@@ -12,6 +12,7 @@ const MENSAJES: Record<EstadoAcceso["estado"], string | null> = {
   inicial: null,
   rechazado: "La frase o el código no son correctos. Si el código ya se usó, espera el siguiente.",
   limite: "Demasiados intentos. Espera 15 minutos antes de volver a probar.",
+  no_disponible: "No pudimos verificar el acceso en este momento. Inténtalo de nuevo en unos minutos.",
 };
 
 function Entrar() {

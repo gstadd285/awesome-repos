@@ -1,5 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
-import { SESION_ADMIN, vigilarErrores } from "./ayudas";
+import { readFile } from "node:fs/promises";
+import { expect, test, type Browser, type Page } from "@playwright/test";
+import pg from "pg";
+import { crearSesion } from "../src/lib/admin/sesion";
+import { CODIGO_USADO, SESION_ADMIN, vigilarErrores } from "./ayudas";
 
 // DATOS DE EJEMPLO: alertas ficticias, marcadas como ejemplo, en la base desechable de las pruebas.
 test.skip(!process.env.DATABASE_URL, "Sin base de datos no hay panel.");
@@ -23,6 +26,81 @@ test.describe("panel interno sin sesión", () => {
     await expect(page.getByRole("status")).toHaveText(/La frase o el código no son correctos/);
     await expect(page).toHaveURL(/\/admin$/);
     expect((await page.context().cookies()).some((c) => c.name === "__Host-otea_admin")).toBe(false);
+  });
+
+  test("un código ya usado no se acepta de nuevo", async ({ page }) => {
+    await page.goto("/admin");
+    await page.getByLabel("Frase de acceso").fill(process.env.E2E_ADMIN_FRASE ?? "");
+    await page.getByLabel("Código de tu app de autenticación").fill(await readFile(CODIGO_USADO, "utf8"));
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(page.getByRole("status")).toHaveText(/La frase o el código no son correctos/);
+    expect((await page.context().cookies()).some((c) => c.name === "__Host-otea_admin")).toBe(false);
+  });
+});
+
+/**
+ * La validez de la sesión la decide la base, no solo la firma de la cookie.
+ * Estas pruebas crean sus propias sesiones (con el secreto de firma de la
+ * corrida y el usuario de la aplicación) para no usar códigos TOTP ni cerrar
+ * la sesión que comparten las demás pruebas.
+ */
+test.describe("sesiones del panel", () => {
+  async function contextoConCookie(browser: Browser, valor: string) {
+    const contexto = await browser.newContext({ baseURL: "http://localhost:3200" });
+    await contexto.addCookies([
+      { name: "__Host-otea_admin", value: valor, domain: "localhost", path: "/", httpOnly: true, secure: true, sameSite: "Strict" },
+    ]);
+    return contexto;
+  }
+
+  async function sesionRegistrada(): Promise<string> {
+    const { valor, sesion } = crearSesion(process.env.E2E_ADMIN_SESION ?? "", Date.now());
+    const cliente = new pg.Client({ connectionString: process.env.DATABASE_URL });
+    await cliente.connect();
+    try {
+      await cliente.query("insert into admin_sesiones (sid, expira) values ($1, $2)", [sesion.sid, new Date(sesion.exp)]);
+    } finally {
+      await cliente.end();
+    }
+    return valor;
+  }
+
+  test("cerrar sesión revoca la cookie, también una copia", async ({ browser }) => {
+    const valor = await sesionRegistrada();
+    const original = await contextoConCookie(browser, valor);
+    const copia = await contextoConCookie(browser, valor);
+    try {
+      const pagina = await original.newPage();
+      await pagina.goto("/admin/alertas");
+      await expect(pagina).toHaveURL(/\/admin\/alertas$/);
+      const otra = await copia.newPage();
+      await otra.goto("/admin/alertas");
+      await expect(otra).toHaveURL(/\/admin\/alertas$/);
+
+      await pagina.getByRole("button", { name: "Salir" }).click();
+      await expect(pagina).toHaveURL(/\/admin$/);
+      expect((await original.cookies()).some((c) => c.name === "__Host-otea_admin")).toBe(false);
+
+      // La cookie copiada tenía firma válida y no ha vencido, pero la sesión está revocada.
+      await otra.goto("/admin/alertas");
+      await expect(otra).toHaveURL(/\/admin$/);
+      await expect(otra.getByRole("heading", { level: 1, name: "Acceso al panel." })).toBeVisible();
+    } finally {
+      await original.close();
+      await copia.close();
+    }
+  });
+
+  test("una cookie bien firmada pero sin sesión en la base no entra", async ({ browser }) => {
+    const { valor } = crearSesion(process.env.E2E_ADMIN_SESION ?? "", Date.now());
+    const contexto = await contextoConCookie(browser, valor);
+    try {
+      const pagina = await contexto.newPage();
+      await pagina.goto("/admin/alertas");
+      await expect(pagina).toHaveURL(/\/admin$/);
+    } finally {
+      await contexto.close();
+    }
   });
 });
 
@@ -161,16 +239,5 @@ test.describe("panel interno con sesión", () => {
     await expect(form.getByRole("alert")).toContainText("El formulario venció o no es válido");
     await page.goto("/admin/alertas");
     await expect(page.getByText(`Evento de ejemplo e2e ${sufijo} c`)).toHaveCount(0);
-  });
-
-  test("salir cierra la sesión", async ({ browser }) => {
-    // Contexto propio: no invalida la sesión guardada que usan las otras pruebas.
-    const contexto = await browser.newContext({ storageState: SESION_ADMIN });
-    const page = await contexto.newPage();
-    await page.goto("/admin/alertas");
-    await page.getByRole("button", { name: "Salir" }).click();
-    await expect(page).toHaveURL(/\/admin$/);
-    expect((await contexto.cookies()).some((c) => c.name === "__Host-otea_admin")).toBe(false);
-    await contexto.close();
   });
 });
