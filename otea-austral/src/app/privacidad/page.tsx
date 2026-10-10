@@ -31,6 +31,8 @@ export default function PrivacidadPage() {
           <li>
             <strong>Lista de espera (cuando abra):</strong> tu correo, la fecha y la versión del
             consentimiento que aceptaste. Otea no guarda tu IP ni datos de tu navegador en su base de datos.
+            El correo se guarda cifrado: el sitio no tiene permiso para leerlo de vuelta de la base de datos y
+            solo el equipo de Otea, con una clave aparte, lo descifra para avisarte del lanzamiento.
           </li>
           <li>
             <strong>Registros del servidor:</strong> el proveedor de alojamiento registra cada solicitud al

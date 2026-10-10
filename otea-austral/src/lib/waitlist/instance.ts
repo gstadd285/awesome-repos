@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { baseDeDatos } from "@/lib/db/instancia";
 import { env } from "@/lib/env";
+import { crearCifradorCorreo } from "./cifrado";
 import { derivarClave } from "./claves";
 import { crearRemitenteResend } from "./correo";
 import { crearServicioLista } from "./service";
@@ -22,10 +23,11 @@ function crear(): Instancia {
   const marcaValida = (valor: unknown, ahora: Date) =>
     revisarMarcaDeTiempo(claveTiempo, valor, ahora.getTime()) === "ok";
 
-  if (env.WAITLIST_MODE === "abierta" && db && env.RESEND_API_KEY) {
+  if (env.WAITLIST_MODE === "abierta" && db && env.RESEND_API_KEY && env.WAITLIST_SECRETO) {
     const servicio = crearServicioLista({
       modo: "abierta",
-      store: crearStorePostgres(db),
+      // El correo se guarda cifrado (ver `store-postgres.ts`); el secreto es el mismo en todas las instancias.
+      store: crearStorePostgres(db, crearCifradorCorreo(env.WAITLIST_SECRETO)),
       marcaValida,
       maximoEnviosDiarios: env.WAITLIST_ENVIOS_DIARIOS,
       enviarConfirmacion: crearRemitenteResend({

@@ -26,6 +26,10 @@ export type BaseDePrueba = {
   app: BaseDeDatos;
   /** Conexión con el rol dueño, para comprobar lo que la aplicación no ve. */
   propietario: BaseDeDatos;
+  /** Cadena de conexión del dueño, para abrir una conexión propia (transacciones de varias sentencias). */
+  urlPropietario: string;
+  /** Aplica las migraciones que falten (con `migraciones` parcial al crear la base); devuelve sus nombres. */
+  migrarTodo(): Promise<string[]>;
   cerrar(): Promise<void>;
 };
 
@@ -42,7 +46,11 @@ async function conAdministrador<T>(fn: (cliente: pg.Client) => Promise<T>): Prom
   }
 }
 
-export async function crearBaseDePrueba(): Promise<BaseDePrueba> {
+/**
+ * @param opciones.migraciones cuántas migraciones aplicar al crear la base (por defecto todas). Sirve para
+ *   probar una migración sobre datos que ya existían: ver `migrarTodo()`.
+ */
+export async function crearBaseDePrueba({ migraciones }: { migraciones?: number } = {}): Promise<BaseDePrueba> {
   if (!URL_PRUEBAS) throw new Error("Falta PRUEBAS_DATABASE_URL.");
   const sufijo = randomBytes(6).toString("hex");
   const nombre = `otea_prueba_${sufijo}`;
@@ -65,13 +73,18 @@ export async function crearBaseDePrueba(): Promise<BaseDePrueba> {
 
   const urlBase = new URL(URL_PRUEBAS);
   urlBase.pathname = `/${nombre}`;
-  const migrador = new pg.Client({ connectionString: urlBase.toString() });
-  await migrador.connect();
-  try {
-    await migrar(migrador, await leerMigraciones(), await leerSemillaFuentes());
-  } finally {
-    await migrador.end();
-  }
+  const todas = await leerMigraciones();
+  const fuentes = await leerSemillaFuentes();
+  const migrarHasta = async (hasta?: number): Promise<string[]> => {
+    const migrador = new pg.Client({ connectionString: urlBase.toString() });
+    await migrador.connect();
+    try {
+      return await migrar(migrador, hasta === undefined ? todas : todas.slice(0, hasta), fuentes);
+    } finally {
+      await migrador.end();
+    }
+  };
+  await migrarHasta(migraciones);
 
   const urlApp = new URL(urlBase);
   urlApp.username = nombre;
@@ -82,6 +95,8 @@ export async function crearBaseDePrueba(): Promise<BaseDePrueba> {
   return {
     app,
     propietario,
+    urlPropietario: urlBase.toString(),
+    migrarTodo: () => migrarHasta(),
     async cerrar() {
       await Promise.all([app.cerrar(), propietario.cerrar()]);
       await conAdministrador(async (c) => {

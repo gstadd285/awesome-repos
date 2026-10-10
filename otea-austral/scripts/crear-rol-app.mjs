@@ -15,6 +15,7 @@ import {
   validarClave,
   verificadorScram,
 } from "./lib/rol-app.mjs";
+import { motivoConexionInsegura } from "./lib/conexion.mjs";
 
 const urlAdmin = process.env.DATABASE_URL_ADMIN;
 const nombre = process.argv[2] ?? "otea_web";
@@ -23,10 +24,9 @@ if (!urlAdmin) {
   process.exit(1);
 }
 
-const destino = new URL(urlAdmin);
-const local = ["localhost", "127.0.0.1", "::1"].includes(destino.hostname);
-if (!local && !["verify-full", "require", "verify-ca"].includes(destino.searchParams.get("sslmode") ?? "")) {
-  console.error("La conexión debe ir cifrada: agrega sslmode=verify-full a DATABASE_URL_ADMIN.");
+const inseguro = motivoConexionInsegura(urlAdmin);
+if (inseguro) {
+  console.error(inseguro);
   process.exit(1);
 }
 

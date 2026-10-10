@@ -169,52 +169,66 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("Row-Level Security (Postgres)", () => {
   });
 
   describe("lista de espera: la aplicación solo toca inscripciones pendientes", () => {
-    const pendiente = (correo: string) =>
-      app(
-        `insert into lista_espera (correo, token_hash, token_emitido, creado, version_consentimiento)
-         values ($1, $2, now(), now(), 'v1') returning 1`,
-        [correo, createHash("sha256").update(correo).digest("hex")],
+    // Datos sintéticos con la forma que exige la base (índice de 64 hex y texto cifrado `v1.…`).
+    const clave = (nombre: string) => ({
+      indice: createHash("sha256").update(nombre).digest("hex"),
+      cifrado: `v1.${"A".repeat(60)}`,
+    });
+    const pendiente = (nombre: string) => {
+      const { indice, cifrado } = clave(nombre);
+      return app(
+        `insert into lista_espera (correo_indice, correo_cifrado, token_hash, token_emitido, creado, version_consentimiento)
+         values ($1, $2, $3, now(), now(), 'v1') returning 1`,
+        [indice, cifrado, createHash("sha256").update(`token-${nombre}`).digest("hex")],
       );
+    };
 
     it("no puede crear una inscripción ya confirmada", async () => {
+      const { indice, cifrado } = clave("colada");
       await expect(
         app(
-          `insert into lista_espera (correo, token_hash, token_emitido, creado, version_consentimiento, confirmado)
-           values ('colada@correo.cl', null, now(), now(), 'v1', now())`,
+          `insert into lista_espera (correo_indice, correo_cifrado, token_hash, token_emitido, creado, version_consentimiento, confirmado)
+           values ($1, $2, null, now(), now(), 'v1', now())`,
+          [indice, cifrado],
         ),
       ).rejects.toMatchObject({ code: "42501" });
     });
 
     it("cambia y borra las pendientes", async () => {
-      await pendiente("pendiente@correo.cl");
-      expect(await app("update lista_espera set version_consentimiento = 'v2' where correo = 'pendiente@correo.cl' returning 1")).toHaveLength(1);
-      expect(await app("delete from lista_espera where correo = 'pendiente@correo.cl' returning 1")).toHaveLength(1);
+      await pendiente("pendiente");
+      const { indice } = clave("pendiente");
+      expect(await app("update lista_espera set version_consentimiento = 'v2' where correo_indice = $1 returning 1", [indice])).toHaveLength(1);
+      expect(await app("delete from lista_espera where correo_indice = $1 returning 1", [indice])).toHaveLength(1);
     });
 
     it("una confirmada queda fuera de su alcance: ni cambiarla ni borrarla (0 filas, sin error)", async () => {
+      const { indice, cifrado } = clave("confirmada");
       await dueño(
-        `insert into lista_espera (correo, token_hash, token_emitido, creado, version_consentimiento, confirmado)
-         values ('confirmada@correo.cl', null, now(), now(), 'v1', now())`,
+        `insert into lista_espera (correo_indice, correo_cifrado, token_hash, token_emitido, creado, version_consentimiento, confirmado)
+         values ($1, $2, null, now(), now(), 'v1', now())`,
+        [indice, cifrado],
       );
-      expect(await app("update lista_espera set version_consentimiento = 'v2' where correo = 'confirmada@correo.cl' returning 1")).toEqual([]);
-      expect(await app("delete from lista_espera where correo = 'confirmada@correo.cl' returning 1")).toEqual([]);
-      expect(await app("delete from lista_espera returning 1")).not.toContainEqual(expect.objectContaining({ correo: "confirmada@correo.cl" }));
-      expect(await dueño("select version_consentimiento from lista_espera where correo = 'confirmada@correo.cl'")).toEqual([
+      expect(await app("update lista_espera set version_consentimiento = 'v2' where correo_indice = $1 returning 1", [indice])).toEqual([]);
+      expect(await app("delete from lista_espera where correo_indice = $1 returning 1", [indice])).toEqual([]);
+      // Ni siquiera borrando «todo» alcanza a la confirmada.
+      await app("delete from lista_espera returning 1");
+      expect(await dueño("select version_consentimiento from lista_espera where correo_indice = $1", [indice])).toEqual([
         { version_consentimiento: "v1" },
       ]);
     });
 
     it("reinscribir un correo ya confirmado no cambia nada ni falla (ON CONFLICT respeta la política)", async () => {
+      const { indice, cifrado } = clave("confirmada");
       const filas = await app(
-        `insert into lista_espera (correo, token_hash, token_emitido, creado, version_consentimiento)
-         values ('confirmada@correo.cl', $1, now(), now(), 'v9')
-         on conflict (correo) do update set token_hash = excluded.token_hash, version_consentimiento = excluded.version_consentimiento
+        `insert into lista_espera (correo_indice, correo_cifrado, token_hash, token_emitido, creado, version_consentimiento)
+         values ($1, $2, $3, now(), now(), 'v9')
+         on conflict (correo_indice) do update set token_hash = excluded.token_hash, version_consentimiento = excluded.version_consentimiento
          where lista_espera.confirmado is null
          returning 1`,
-        ["b".repeat(64)],
+        [indice, cifrado, "b".repeat(64)],
       );
       expect(filas).toEqual([]);
-      expect(await dueño("select version_consentimiento, token_hash from lista_espera where correo = 'confirmada@correo.cl'")).toEqual([
+      expect(await dueño("select version_consentimiento, token_hash from lista_espera where correo_indice = $1", [indice])).toEqual([
         { version_consentimiento: "v1", token_hash: null },
       ]);
     });
