@@ -25,8 +25,26 @@ jobs:
     defaults:
       run:
         working-directory: otea-austral
+    # Postgres desechable para las pruebas de base de datos (migraciones,
+    # permisos mínimos, disparadores y repositorios).
+    services:
+      postgres:
+        image: postgres:17.8@sha256:69dddb030ab69d669d8d7c6abf67aeb448178e5270d5f123a21f4f7ac8b46a24
+        env:
+          # Base efímera de la CI, sin datos: no es un secreto.
+          POSTGRES_PASSWORD: postgres-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     env:
       NEXT_TELEMETRY_DISABLED: "1"
+      PRUEBAS_DATABASE_URL: postgres://postgres:postgres-ci@localhost:5432/postgres
+      # Si falta la base, las pruebas fallan en vez de omitirse.
+      PRUEBAS_DB_OBLIGATORIAS: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,8 +69,17 @@ jobs:
       - name: Tipos
         run: npm run typecheck
 
-      - name: Pruebas
+      - name: Pruebas (incluye Postgres con el usuario de mínimos privilegios)
         run: npm test
+
+      - name: Migraciones idempotentes y usuario de la aplicación
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:postgres-ci@localhost:5432/postgres
+          CLAVE_ROL_APP: ci-otea-web-solo-pruebas
+        run: |
+          npm run db:migrar
+          npm run db:migrar
+          npm run db:rol-app -- otea_web
 
       - name: Build
         run: npm run build

@@ -4,10 +4,12 @@ import {
   aprobar,
   calcularConfianza,
   calcularNivelVerificacion,
+  cambiarFuentes,
   contarOrganismosDistintos,
   crearAlerta,
   editar,
   enviarARevision,
+  motivosInvariantesPublicada,
   motivosParaNoPublicar,
   publicar,
   retractar,
@@ -173,6 +175,11 @@ describe("publicación (regla 3)", () => {
     expect(publicar(base(), [prensa()], [], ctx()).ok).toBe(true);
   });
 
+  it("la fecha de la alerta pasa a ser la de su publicación", () => {
+    const c = { ...ctx(), fecha: "2026-10-09T15:30:00Z" };
+    expect(valor(publicar(base(), [prensa()], [], c)).alerta.fecha).toBe("2026-10-09T15:30:00Z");
+  });
+
   it("ninguna alerta se publica sin fuentes", () => {
     expect(publicar(base(), [], [], ctx()).ok).toBe(false);
   });
@@ -268,5 +275,76 @@ describe("retractación (regla 5)", () => {
   it("solo aplica a alertas publicadas o corregidas", () => {
     expect(retractar(base(), ctx(), "x").ok).toBe(false);
     expect(retractar(base({ estado: "retractada" }), ctx(), "x").ok).toBe(false);
+  });
+});
+
+describe("lenguaje: Otea no aconseja", () => {
+  it("rechaza crear una alerta con lenguaje de recomendación", () => {
+    const r = crearAlerta(sinEstado(base({ resumen: "Recomendamos comprar petroleras" })), ctx());
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivos[0]).toMatch(/^resumen: evita lenguaje de recomendación/);
+  });
+
+  it("revisa también las filas", () => {
+    const filas = [{ sector: "Bancos", direccion: "gana" as const, condicion: "Señal de compra", confianza: "media" as const }];
+    const r = crearAlerta(sinEstado(base({ filas })), ctx());
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivos[0]).toMatch(/^filas\.0\.condicion:/);
+  });
+
+  it("rechaza correcciones y retractaciones con promesas de rentabilidad", () => {
+    const publicada = base({ estado: "publicada" });
+    expect(editar(publicada, { evento: "Otro" }, ctx(), "Rentabilidad garantizada").ok).toBe(false);
+    expect(retractar(publicada, ctx(), "Era una inversión sin riesgo").ok).toBe(false);
+  });
+});
+
+describe("cambiarFuentes", () => {
+  it("en borrador deja una fila editada y no cambia el estado", () => {
+    const t = valor(cambiarFuentes(base(), "Fuente agregada: Banco Central", ctx()));
+    expect(t.alerta.estado).toBe("borrador");
+    expect(t.auditoria.map((a) => [a.accion, a.nota])).toEqual([["editada", "Fuente agregada: Banco Central"]]);
+    expect(t.correccion).toBeUndefined();
+  });
+
+  it("invalida una aprobación anterior (regla 3)", () => {
+    const alerta = base({ estado: "en_revision", impacto: "alto" });
+    const t = valor(cambiarFuentes(alerta, "Fuente retirada", ctx()));
+    expect(tieneAprobacionVigente("a1", [audit("creada"), audit("aprobada"), ...t.auditoria])).toBe(false);
+  });
+
+  it("en una publicada exige texto público y la pasa a corregida (regla 4)", () => {
+    const publicada = base({ estado: "publicada" });
+    const sinTexto = cambiarFuentes(publicada, "Fuente retirada", ctx());
+    expect(sinTexto.ok).toBe(false);
+
+    const t = valor(cambiarFuentes(publicada, "Fuente retirada: Diario A", ctx(), "Se retiró una fuente de prensa."));
+    expect(t.alerta.estado).toBe("corregida");
+    expect(t.correccion).toMatchObject({ tipo: "correccion", texto_publico: "Se retiró una fuente de prensa." });
+    expect(t.auditoria[0].accion).toBe("corregida");
+    expect(t.auditoria[0].nota).toContain("Fuente retirada: Diario A");
+  });
+
+  it("no toca una retractada (regla 5)", () => {
+    expect(cambiarFuentes(base({ estado: "retractada" }), "x", ctx(), "texto").ok).toBe(false);
+  });
+});
+
+describe("motivosInvariantesPublicada", () => {
+  it("no aplica a borradores", () => {
+    expect(motivosInvariantesPublicada(base(), [])).toEqual([]);
+  });
+
+  it("una publicada conserva al menos una fuente", () => {
+    expect(motivosInvariantesPublicada(base({ estado: "publicada" }), [])).toHaveLength(1);
+    expect(motivosInvariantesPublicada(base({ estado: "corregida" }), [primaria()])).toEqual([]);
+  });
+
+  it("con impacto alto exige dos organismos distintos", () => {
+    const alta = base({ estado: "corregida", impacto: "alto" });
+    expect(motivosInvariantesPublicada(alta, [primaria(), primaria()])).toEqual([
+      "Impacto alto exige dos fuentes de organismos distintos.",
+    ]);
+    expect(motivosInvariantesPublicada(alta, [primaria(), prensa()])).toEqual([]);
   });
 });

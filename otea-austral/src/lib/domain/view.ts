@@ -61,6 +61,19 @@ export function construirVista(
       };
     });
 
+  return vistaConFuentes(alerta, fuentes, correcciones);
+}
+
+/**
+ * Calcula la vista con fuentes ya resueltas. La base de datos las entrega
+ * así: cada enlace guarda el organismo y el tipo que tenía la fuente al
+ * enlazarse, para que un cambio del registro no altere la confianza.
+ */
+export function vistaConFuentes(
+  alerta: Alert,
+  fuentes: FuenteVista[],
+  correcciones: readonly Correction[] = [],
+): AlertView {
   const confianza = calcularConfianza(fuentes);
   return {
     ...alerta,

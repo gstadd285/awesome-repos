@@ -15,7 +15,11 @@ export type SecurityEvent =
       linea?: number;
       columna?: number;
     }
-  | { tipo: "limite_excedido"; recurso: string };
+  | { tipo: "limite_excedido"; recurso: string }
+  /** Falla de un servicio externo; `codigo` es un código técnico, nunca el mensaje. */
+  | { tipo: "fallo_servicio"; servicio: "base_de_datos" | "correo"; codigo: string }
+  /** Intentos de entrar al panel interno (sin la clave ni el código usados). */
+  | { tipo: "acceso_admin"; resultado: "correcto" | "rechazado" | "limite" | "cierre" };
 
 const MAX_LARGO = 300;
 

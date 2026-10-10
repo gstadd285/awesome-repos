@@ -15,6 +15,7 @@ import {
   type NivelVerificacion,
   type TipoFuente,
 } from "./schemas";
+import { frasesProhibidas, motivoLenguaje } from "./lenguaje";
 
 /** Lo mínimo de una fuente que importa para calcular el respaldo. */
 export type FuenteRespaldo = { tipo: TipoFuente; organismo: string };
@@ -156,6 +157,8 @@ function correccionPublica(
   texto: string,
   ctx: Contexto,
 ): Resultado<Correction> {
+  const frases = frasesProhibidas(texto);
+  if (frases.length > 0) return { ok: false, motivos: [motivoLenguaje("texto_publico", frases)] };
   const r = CorrectionSchema.safeParse({
     id: ctx.generarId(),
     alert_id: alerta.id,
@@ -168,11 +171,28 @@ function correccionPublica(
     : { ok: false, motivos: r.error.issues.map((i) => `texto_publico: ${i.message}`) };
 }
 
+/** Texto público de una alerta en el que se busca lenguaje de recomendación. */
+function textosPublicos(alerta: Alert): [string, string][] {
+  return [
+    ["evento", alerta.evento],
+    ["resumen", alerta.resumen],
+    ...alerta.filas.flatMap((f, i): [string, string][] => [
+      [`filas.${i}.sector`, f.sector],
+      [`filas.${i}.condicion`, f.condicion],
+    ]),
+  ];
+}
+
 function validar(alerta: Alert): Resultado<Alert> {
   const r = AlertSchema.safeParse(alerta);
-  return r.success
-    ? { ok: true, valor: r.data }
-    : { ok: false, motivos: r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) };
+  if (!r.success) {
+    return { ok: false, motivos: r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) };
+  }
+  const motivos = textosPublicos(r.data).flatMap(([campo, texto]) => {
+    const frases = frasesProhibidas(texto);
+    return frases.length > 0 ? [motivoLenguaje(campo, frases)] : [];
+  });
+  return motivos.length > 0 ? { ok: false, motivos } : { ok: true, valor: r.data };
 }
 
 export function crearAlerta(
@@ -216,7 +236,8 @@ export function publicar(
 ): Resultado<Transicion> {
   const motivos = motivosParaNoPublicar(alerta, fuentes, auditoria);
   if (motivos.length > 0) return { ok: false, motivos };
-  const nueva: Alert = { ...alerta, estado: "publicada" };
+  // La fecha pública de la alerta es la de su publicación.
+  const nueva: Alert = { ...alerta, estado: "publicada", fecha: ctx.fecha };
   return {
     ok: true,
     valor: { alerta: nueva, auditoria: [filaAuditoria(nueva, "publicada", ctx)] },
@@ -318,6 +339,67 @@ export function retractar(
     valor: {
       alerta: nueva,
       auditoria: [filaAuditoria(nueva, "retractada", ctx, `Retractación ${c.valor.id}`)],
+      correccion: c.valor,
+    },
+  };
+}
+
+/**
+ * Invariantes de una alerta publicada o corregida después de cambiar su
+ * contenido o sus fuentes: conserva al menos una fuente y, con impacto alto,
+ * dos organismos distintos (regla 3). Si ya no se sostiene, corresponde
+ * retractarla, no vaciarla.
+ */
+export function motivosInvariantesPublicada(
+  alerta: Alert,
+  fuentes: readonly FuenteRespaldo[],
+): string[] {
+  if (!ESTADOS_PUBLICADOS.includes(alerta.estado)) return [];
+  const motivos: string[] = [];
+  if (fuentes.length === 0) {
+    motivos.push("Una alerta publicada debe conservar al menos una fuente.");
+  }
+  if (alerta.impacto === "alto" && contarOrganismosDistintos(fuentes) < 2) {
+    motivos.push("Impacto alto exige dos fuentes de organismos distintos.");
+  }
+  return motivos;
+}
+
+/**
+ * Agregar o retirar una fuente cambia el respaldo de la alerta. En borrador
+ * o revisión deja una fila `editada` (y una aprobación anterior deja de
+ * valer). En una publicada o corregida es una corrección (regla 4): pasa a
+ * `corregida`, con texto público y fila en la auditoría.
+ */
+export function cambiarFuentes(
+  alerta: Alert,
+  descripcion: string,
+  ctx: Contexto,
+  textoCorreccion?: string,
+): Resultado<Transicion> {
+  if (alerta.estado === "retractada") {
+    return { ok: false, motivos: ["Una alerta retractada no se edita."] };
+  }
+  const nota = descripcion.trim().slice(0, 400);
+  if (!ESTADOS_PUBLICADOS.includes(alerta.estado)) {
+    return { ok: true, valor: { alerta, auditoria: [filaAuditoria(alerta, "editada", ctx, nota)] } };
+  }
+
+  const texto = textoCorreccion?.trim() ?? "";
+  if (texto.length === 0) {
+    return {
+      ok: false,
+      motivos: ["Cambiar las fuentes de una alerta publicada exige un texto público de corrección."],
+    };
+  }
+  const nueva: Alert = { ...alerta, estado: "corregida" };
+  const c = correccionPublica(nueva, "correccion", texto, ctx);
+  if (!c.ok) return c;
+  return {
+    ok: true,
+    valor: {
+      alerta: nueva,
+      auditoria: [filaAuditoria(nueva, "corregida", ctx, `Corrección ${c.valor.id}. ${nota}`.trim())],
       correccion: c.valor,
     },
   };
