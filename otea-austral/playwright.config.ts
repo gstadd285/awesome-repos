@@ -60,10 +60,11 @@ export default defineConfig({
     { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin/ },
   ],
   webServer: {
-    command: `npm run start -- -p ${PUERTO}`,
+    // El mismo servidor que corre en el contenedor: `node .next/standalone/server.js`.
+    command: "npm run start",
     url: `http://localhost:${PUERTO}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: { WAITLIST_MODE: "memoria", OTEA_E2E: "1", ...panel },
+    env: { PORT: String(PUERTO), HOSTNAME: "127.0.0.1", WAITLIST_MODE: "memoria", OTEA_E2E: "1", ...panel },
   },
 });

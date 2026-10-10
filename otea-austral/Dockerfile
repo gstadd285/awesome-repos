@@ -38,9 +38,9 @@ ENV NODE_ENV=production \
 
 RUN addgroup -S -g 10001 otea && adduser -S -u 10001 -G otea -H -s /sbin/nologin otea
 
+# `npm run build` deja en `.next/standalone` el servidor, `public/` y `.next/static/` (ver
+# scripts/preparar-standalone.mjs).
 COPY --from=compilacion --chown=10001:10001 /app/.next/standalone ./
-COPY --from=compilacion --chown=10001:10001 /app/.next/static ./.next/static
-COPY --from=compilacion --chown=10001:10001 /app/public ./public
 
 USER 10001:10001
 EXPOSE 8080
