@@ -87,10 +87,28 @@ El botón "Recibir alertas" ya lleva a la lista de espera (tercio 2).
       (`docs/seguridad/auditoria-owasp-2025.md`).
 - [x] `CLAUDE.md` actualizado con lo aprendido.
 
+## Incremento · Lista de 20 controles de seguridad ✅
+
+Plan, estado de cada control y evidencia en [`docs/seguridad/plan-20-controles.md`](seguridad/plan-20-controles.md).
+
+- [x] Escáner de secretos (archivos e historial), build con secretos falsos y comprobación de que ninguna
+      respuesta del sitio contiene secretos; `server-only` y reglas de lint.
+- [x] Reglas de arquitectura que se comprueban solas (SQL, frontera cliente/servidor, autenticación del panel,
+      inventario de endpoints, sin subida de archivos, `public/` de lista cerrada).
+- [x] Seguridad por fila (RLS) en las nueve tablas (migración `0003`).
+- [x] Correos de la lista de espera cifrados (migración `0004`), con exportación y rotación del secreto.
+- [x] Redirección de http a https, marca de tiempo firmada contra bots y límite en la confirmación.
+- [x] Auditoría de todas las dependencias con avisos aceptados evaluados, escaneo de la imagen con Trivy, imagen
+      sin gestores de paquetes y sin scripts de instalación.
+
 ## Falta para abrir al público (no es código)
 
 - [ ] Crear los proyectos en Google Cloud, Neon y Resend y desplegar siguiendo `docs/despliegue.md`.
 - [ ] Verificación en dos pasos en todas las cuentas (R6) y presupuesto con alertas de 40 USD.
+- [ ] Activar en GitHub _Secret scanning_, _Push protection_ y _Dependabot alerts_; generar `WAITLIST_SECRETO` y
+      guardar una copia fuera de línea (sin ella, los correos cifrados no se recuperan).
+- [ ] Probar la redirección a https en una revisión sin tráfico antes de dar tráfico real (`docs/despliegue.md`).
+- [ ] Decidir si se añade un desafío tipo CAPTCHA a la lista de espera (introduce un tercero).
 - [ ] Comprar el dominio y actualizar `NEXT_PUBLIC_SITE_URL`.
 - [ ] Revisión legal de privacidad, términos, aviso legal y metodología.
 - [ ] Alerta de accesos fallidos al panel y retención de registros de 30 días.

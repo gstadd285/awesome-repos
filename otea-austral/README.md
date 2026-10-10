@@ -35,6 +35,12 @@ npm run dev                  # http://localhost:3000
 | `npm run db:migrar` | Aplica las migraciones y la semilla de fuentes (`DATABASE_URL_ADMIN`, rol dueño) |
 | `npm run db:rol-app` | Crea el usuario de mínimos privilegios de la aplicación |
 | `npm run admin:credenciales` | Genera la frase, el secreto TOTP y los secretos de sesión del panel |
+| `npm run lista:secreto` | Genera `WAITLIST_SECRETO` (marca de tiempo del formulario y cifrado de los correos) |
+| `npm run lista:exportar` | Exporta los correos confirmados, descifrados (`DATABASE_URL_ADMIN` + `WAITLIST_SECRETO`) |
+| `npm run lista:recifrar` | Rota `WAITLIST_SECRETO` (ensayo; `-- --aplicar` para rotar de verdad) |
+| `npm run seguridad:secretos` | Busca secretos en los archivos y en todo el historial de git |
+| `npm run seguridad:canarios` | Construye con secretos falsos y comprueba que ninguno queda en el resultado |
+| `npm run seguridad:dependencias` | Audita todas las dependencias contra los avisos aceptados |
 | `docker build -t otea-austral .` | Imagen para Cloud Run (sin privilegios, sin secretos) |
 
 ## Qué hay hoy

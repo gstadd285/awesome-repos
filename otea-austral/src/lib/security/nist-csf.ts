@@ -191,10 +191,15 @@ export const CONTROLES: Control[] = [
     id: "ID-03",
     titulo: "Vulnerabilidades en dependencias",
     descripcion:
-      "La verificación automática se detiene ante vulnerabilidades altas en lo que se despliega, y cada semana se proponen actualizaciones.",
+      "La verificación se detiene ante vulnerabilidades altas en lo que se despliega y en la imagen (Trivy); las de desarrollo solo pasan evaluadas, con motivo y fecha de revisión. Cada semana se proponen actualizaciones.",
     estado: "implementado",
     subcategorias: ["ID.RA-01"],
-    evidencia: [CI, "../.github/dependabot.yml"],
+    evidencia: [
+      CI,
+      "../.github/dependabot.yml",
+      "scripts/auditar-dependencias.mjs",
+      "seguridad/avisos-npm-aceptados.json",
+    ],
   },
   {
     id: "ID-04",
@@ -248,10 +253,10 @@ export const CONTROLES: Control[] = [
     id: "PR-02",
     titulo: "Cifrado en tránsito",
     descripcion:
-      "Solo HTTPS, con HSTS de dos años y actualización automática de recursos inseguros.",
+      "Solo HTTPS: HSTS de dos años, redirección de http a https en la aplicación, actualización automática de recursos inseguros y conexión a la base de datos con TLS verificado.",
     estado: "implementado",
     subcategorias: ["PR.DS-02"],
-    evidencia: ["src/lib/security/headers.ts", "src/lib/security/csp.ts"],
+    evidencia: ["src/lib/security/headers.ts", "src/lib/security/csp.ts", "src/lib/security/https.ts", "src/proxy.ts"],
   },
   {
     id: "PR-03",
@@ -301,13 +306,14 @@ export const CONTROLES: Control[] = [
     id: "PR-08",
     titulo: "Límite de solicitudes",
     descripcion:
-      "Reportes de seguridad, acceso al panel y lista de espera limitan solicitudes por IP y en total, y la lista tiene un tope diario de correos en la base. Los límites por IP viven en cada instancia: son una primera barrera, no un tope global.",
+      "Reportes, panel, lista de espera y su confirmación limitan solicitudes por IP; la lista suma campo trampa, marca de tiempo firmada y tope diario en la base. Los límites por IP viven en cada instancia: primera barrera, no tope global.",
     estado: "parcial",
     subcategorias: ["PR.IR-04"],
     evidencia: [
       "src/lib/security/rate-limit.ts",
       "src/app/admin/acciones.ts",
       "src/lib/waitlist/service.ts",
+      "src/lib/waitlist/tiempo.ts",
     ],
   },
   {
@@ -345,6 +351,53 @@ export const CONTROLES: Control[] = [
     subcategorias: ["PR.DS-11"],
     evidencia: [INCIDENTES],
     tercio: 3,
+  },
+
+  {
+    id: "PR-12",
+    titulo: "Secretos fuera del código y del resultado",
+    descripcion:
+      "Un escáner busca claves en los archivos y en todo el historial de git. Cada build usa secretos falsos para comprobar que ninguno queda en el resultado, y las pruebas de navegador que ninguna respuesta los contiene.",
+    estado: "implementado",
+    subcategorias: ["PR.DS-01", "PR.PS-06"],
+    evidencia: [
+      "scripts/escanear-secretos.mjs",
+      "scripts/comprobar-secretos-en-build.mjs",
+      "e2e/admin-secretos.spec.ts",
+      CI,
+    ],
+  },
+  {
+    id: "PR-13",
+    titulo: "Datos cifrados y seguridad por fila",
+    descripcion:
+      "Los correos de la lista de espera se guardan cifrados (AES-256-GCM): la aplicación puede escribirlos, no leerlos. Cada tabla activa seguridad por fila: la base niega lo que ninguna política permite expresamente.",
+    estado: "implementado",
+    subcategorias: ["PR.DS-01", "PR.AA-05"],
+    evidencia: [
+      "db/migraciones/0003_seguridad_por_fila.sql",
+      "db/migraciones/0004_correos_cifrados.sql",
+      "src/lib/waitlist/cifrado.ts",
+      "src/lib/db/rls.test.ts",
+    ],
+  },
+  {
+    id: "PR-14",
+    titulo: "Reglas de seguridad que se comprueban solas",
+    descripcion:
+      "Pruebas y reglas de lint leen el código y fallan si una acción del panel no exige sesión, se arma SQL con datos, el navegador importa la base o la configuración, aparece una subida de archivos o cambia el inventario de endpoints.",
+    estado: "implementado",
+    subcategorias: ["PR.PS-06"],
+    evidencia: ["src/lib/security/arquitectura.test.ts", "eslint.config.mjs", "docs/seguridad/plan-20-controles.md"],
+  },
+  {
+    id: "PR-15",
+    titulo: "Imagen del contenedor mínima",
+    descripcion:
+      "Sin privilegios, sin código fuente, mapas de código, archivos de entorno ni gestores de paquetes (npm, yarn). La CI la construye, la comprueba y la escanea con Trivy.",
+    estado: "implementado",
+    subcategorias: ["PR.PS-01", "PR.PS-05"],
+    evidencia: ["Dockerfile", ".dockerignore", CI],
   },
 
   // ── Detectar ────────────────────────────────────────────────────────────

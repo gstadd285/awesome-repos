@@ -111,9 +111,9 @@ contacta npm y Google Fonts; la CI corre en GitHub.
 | R2 | Inyección de scripts (XSS) | Baja | Alto | CSP con nonce, escapado de React, reportes de violación | Mitigado |
 | R3 | Publicar como confirmada información sin respaldo | Media | Alto | Confianza calculada, reglas de publicación (lógica y base de datos), auditoría y correcciones públicas | Mitigado |
 | R4 | Acceso no autorizado al panel interno | Media | Alto | Frase + TOTP de un solo uso, sesión revocable, límite de intentos, CSRF, permisos mínimos; revisión OWASP | Mitigado; falta la alerta de accesos fallidos y una prueba independiente |
-| R5 | Fuga de correos de la lista de espera | Baja | Alto | Minimización, permisos mínimos de la base, TLS verificado, registros sin datos personales, tope diario de correos | Mitigado en parte; pendiente revisión legal y abrir con proveedores reales |
+| R5 | Fuga de correos de la lista de espera | Baja | Alto | Minimización, **correos cifrados en la base (la aplicación no puede leerlos)**, seguridad por fila, permisos mínimos, TLS verificado, registros sin datos personales, tope diario de correos | Mitigado en parte; pendiente revisión legal, guardar el secreto de la lista fuera de línea y abrir con proveedores reales |
 | R6 | Toma de cuentas de proveedores | Media | Alto | Verificación en dos pasos y códigos de respaldo | **Pendiente: acción de la persona responsable** |
-| R7 | Secreto expuesto (token de despliegue o de base de datos) | Baja | Alto | Solo variables de entorno, rotación, procedimiento de contención | Mitigado en parte |
+| R7 | Secreto expuesto (token de despliegue o de base de datos) | Baja | Alto | Solo variables de entorno, escáner de secretos sobre archivos e historial, build con secretos falsos, rotación, procedimiento de contención | Mitigado en parte; falta activar _Secret scanning_ y _Push protection_ en GitHub |
 | R8 | Indisponibilidad (ataque de volumen o caída del proveedor) | Media | Medio | CDN del alojamiento, límites de solicitudes, vuelta a versión sana | Mitigado en parte |
 | R9 | Pérdida o secuestro del dominio | Baja | Alto | Renovación automática, bloqueo de transferencia, dos pasos en el registrador | Pendiente (dominio por comprar) |
 

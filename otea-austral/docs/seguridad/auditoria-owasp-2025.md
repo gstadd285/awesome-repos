@@ -142,6 +142,103 @@ endurecimiento, todas atendidas o documentadas. No quedan hallazgos abiertos de 
   construir (quedan autoalojadas; el navegador nunca contacta a Google). Si se quisiera construir sin red,
   habría que pasar a `next/font/local` con archivos versionados.
 
+## Seguimiento: plan de los 20 controles (2026-10-10)
+
+Después de la revisión se aplicó una lista de 20 controles de seguridad para aplicaciones web, cruzada con el
+código real ([`plan-20-controles.md`](plan-20-controles.md)). Al hacerlo aparecieron estos hallazgos adicionales,
+todos corregidos en esa misma entrega. Misma advertencia que arriba: severidad y confianza son una estimación
+asistida por IA, no una prueba de intrusión.
+
+| ID | Categoría | Severidad | Confianza | Estado |
+|---|---|---|---|---|
+| OWASP-A04-001 | Fallas criptográficas | Media | Alta | Corregido |
+| OWASP-A01-001 | Control de acceso (defensa en profundidad) | Baja | Alta | Corregido |
+| OWASP-A03-001 | Cadena de suministro (imagen) | Baja | Alta | Corregido |
+| OWASP-A03-002 | Cadena de suministro (instalación) | Baja | Alta | Corregido |
+| OWASP-A02-002 | Configuración (HTTPS) | Informativa | Media | Corregido |
+| OWASP-A07-004 | Fallas de autenticación (bots) | Informativa | Media | Mitigado, decisión pendiente |
+
+#### OWASP-A04-001 · Los correos de la lista de espera estaban en claro en la base
+
+- **Severidad:** Media. Una copia de la base, un acceso indebido a la consola del proveedor o un compromiso
+  de la aplicación revelaban todos los correos. **Confianza:** Alta (`lista_espera.correo` en la migración 0001
+  y permiso `SELECT` de tabla completa para la aplicación).
+- **CWE:** [CWE-312 · Cleartext Storage of Sensitive Information](https://cwe.mitre.org/data/definitions/312.html).
+- **Mitigaciones que ya existían:** el proveedor cifra el disco; datos mínimos (sin IP ni agente); el token solo
+  se guarda como hash.
+- **Corrección:** migración `0004`. El correo se cifra con AES-256-GCM antes de guardarse y la fila se
+  identifica por un índice ciego HMAC-SHA256; el usuario de la base **puede escribir pero no leer** el correo
+  cifrado (permisos por columna), así que ni un compromiso de la aplicación permite volcar la lista. Lo
+  descifra solo el dueño, con `WAITLIST_SECRETO` (`npm run lista:exportar`). La migración se niega a correr si
+  hay correos en claro (para no perder datos). Pruebas con Postgres real: nada queda en claro en ninguna
+  columna, la aplicación no puede leer `correo_cifrado`, un texto cifrado copiado a otra fila no se descifra,
+  la base rechaza cualquier valor que no tenga forma de correo cifrado.
+- **Riesgo residual:** quien tenga la base **y** `WAITLIST_SECRETO` los lee; el secreto vive en Secret Manager,
+  fuera de la base. Si se pierde, los correos guardados no se recuperan: copia fuera de línea obligatoria.
+
+#### OWASP-A01-001 · La aplicación podía borrar y modificar cualquier inscripción, incluso las confirmadas
+
+- **Severidad:** Baja (la aplicación solo borraba pendientes vencidas, pero un error o un compromiso podía
+  borrar la lista completa). **Confianza:** Alta (`grant … delete` de tabla completa y ninguna tabla con RLS).
+- **CWE:** [CWE-285 · Improper Authorization](https://cwe.mitre.org/data/definitions/285.html) (defensa en
+  profundidad).
+- **Corrección:** migración `0003`, seguridad por fila en las nueve tablas. La aplicación solo cambia y borra
+  inscripciones **pendientes**; el registro de fuentes es de solo lectura; las alertas nunca se borran y nacen
+  como borrador; la auditoría y las correcciones solo admiten altas; una sesión solo se revoca. Pruebas: toda
+  tabla tiene RLS (una nueva sin ella rompe la prueba), todo permiso tiene su política, las políticas siguen
+  negando **aunque se conceda un permiso de más** y el usuario de la aplicación no puede saltarse RLS.
+  `db:rol-app` rechaza un usuario con superusuario o `BYPASSRLS`.
+
+#### OWASP-A03-001 · La imagen llevaba npm, yarn y corepack, con 13 hallazgos (uno crítico)
+
+- **Severidad:** Baja (la aplicación no ejecuta npm; explotarlo exigiría ya poder ejecutar comandos en el
+  contenedor). **Confianza:** Alta (Trivy sobre la imagen: `tar` 7.5.11 crítico, `brace-expansion`, `sigstore`,
+  `picomatch`, `pacote`, `ip-address`: todos dentro de `/usr/local/lib/node_modules/npm`).
+- **CWE:** [CWE-1104 · Use of Unmaintained Third Party Components](https://cwe.mitre.org/data/definitions/1104.html).
+- **Corrección:** la etapa final del Dockerfile elimina npm, npx, corepack y yarn de la base (las etapas de
+  compilación los conservan): 0 hallazgos en paquetes de Node y menos superficie. La CI comprueba que no estén
+  y escanea la imagen con Trivy en cada cambio. Quedan 4 hallazgos altos de OpenSSL en Alpine (Node usa el suyo
+  propio), que se muestran sin bloquear y se resuelven al refrescar la imagen base.
+
+#### OWASP-A03-002 · Los paquetes podían ejecutar scripts al instalarse
+
+- **Severidad:** Baja. **Confianza:** Alta. Un paquete comprometido corre código en el equipo o en la CI con
+  solo instalarse. Solo 3 paquetes del lockfile tienen scripts de instalación (`fsevents`, solo macOS, y
+  `unrs-resolver`) y ninguno hace falta.
+- **CWE:** [CWE-829 · Inclusion of Functionality from Untrusted Control Sphere](https://cwe.mitre.org/data/definitions/829.html).
+- **Corrección:** `ignore-scripts=true` en `.npmrc` (los scripts `npm run …` siguen funcionando); lint, tipos,
+  448 pruebas y build verificados con una instalación limpia.
+
+#### OWASP-A02-002 · Sin redirección de http a https dentro de la aplicación
+
+- **Severidad:** Informativa. **Confianza:** Media (depende de la plataforma: Cloud Run ya sirve https; HSTS
+  protege las visitas siguientes pero no la primera).
+- **Corrección:** `src/proxy.ts` redirige (308) lo que `X-Forwarded-Proto` marque como http al dominio
+  configurado, sin redirecciones abiertas (`//otro.example`), con la sonda de salud exenta y el interruptor
+  `HTTPS_FORZADO=0` para un bucle de emergencia. Hallazgo útil: el servidor de Next.js **añade** esa cabecera
+  según la conexión que recibe, así que una petición http directa al contenedor también se redirige (la CI lo
+  tiene en cuenta). Si la plataforma no enviara la cabecera, habría un bucle: ver `docs/despliegue.md`.
+
+#### OWASP-A07-004 · Protección contra bots limitada a un campo trampa
+
+- **Severidad:** Informativa. **Confianza:** Media.
+- **Mitigación:** marca de tiempo firmada (HMAC) en el formulario (se descartan los envíos sin marca, con
+  marca falsa, en menos de 3 s o con la pestaña abierta más de un día) y 20 intentos de confirmación por IP cada
+  10 minutos, además del campo trampa, los límites y el tope diario existentes.
+- **Pendiente (decisión de la persona responsable):** un desafío tipo CAPTCHA (Cloudflare Turnstile) frenaría a
+  un bot dedicado, pero introduce un tercero en la página; ver `SECURITY.md`, «Decisiones».
+
+#### Endurecimiento sin hallazgo
+
+- **Secretos:** escáner de claves sobre archivos e historial (limpio), build con secretos falsos y pruebas de
+  navegador que verifican que ninguna respuesta contiene secretos, `server-only` y reglas de lint.
+- **Reglas que se comprueban solas:** SQL parametrizado, frontera cliente/servidor, autenticación del panel,
+  inventario de endpoints, sin subida de archivos, `public/` de lista cerrada y SVG sin scripts.
+- **Cabeceras y tamaños:** `X-Permitted-Cross-Domain-Policies`, `Origin-Agent-Cluster`, panel sin caché y
+  cuerpos de Server Actions de 100 KB como máximo.
+- **Auditoría de dependencias:** también las de desarrollo, con una lista de avisos aceptados con motivo y fecha
+  de revisión (hoy, solo `braces`).
+
 ## Cobertura por categoría
 
 | Categoría | Cobertura | Resultado |
@@ -149,7 +246,7 @@ endurecimiento, todas atendidas o documentadas. No quedan hallazgos abiertos de 
 | A01 Control de acceso roto | Evaluada | Sin hallazgos. Toda página y acción del panel llama a `exigirSesion`/`exigirAccionAdmin` en el servidor; los identificadores se validan (`Id`) antes de consultar; no hay rutas con objetos de otras personas; el único destino saliente es `api.resend.com` (fijo, sin redirecciones); no hay redirecciones abiertas (solo rutas internas generadas). CSRF: token ligado a la sesión más la comprobación de `Origin` de Next.js y `SameSite=Strict` |
 | A02 Configuración incorrecta | Evaluada (código y plantilla; no el entorno real) | Observaciones de endurecimiento arriba. Cookie `__Host-`, CSP, HSTS, `frame-ancestors`, `X-Robots-Tag` en el panel |
 | A03 Cadena de suministro | Parcialmente evaluada | Versiones exactas, `package-lock.json`, `npm ci`, acciones de CI fijadas por SHA, imagen base por digest, `npm audit` de producción sin vulnerabilidades. En desarrollo hay un aviso alto sin corrección publicada (`braces` vía `eslint-config-next`, ver `SECURITY.md`). La verificación de firmas npm corre en la CI y no pudo ejecutarse en el entorno de esta revisión |
-| A04 Fallas criptográficas | Evaluada | Sin hallazgos. PBKDF2-SHA256 de 600 000 iteraciones con sal, HMAC-SHA256 con secreto de ≥256 bits y separación de propósito, `timingSafeEqual`, tokens de 256 bits con CSPRNG de los que solo se guarda el hash, TLS con verificación de certificado exigida hacia la base |
+| A04 Fallas criptográficas | Evaluada | Un hallazgo en el seguimiento (A04-001: correos en claro, **corregido**). PBKDF2-SHA256 de 600 000 iteraciones con sal, HMAC-SHA256 con secreto de ≥256 bits y separación de propósito, `timingSafeEqual`, tokens de 256 bits con CSPRNG de los que solo se guarda el hash, TLS con verificación de certificado exigida hacia la base |
 | A05 Inyección | Evaluada | Sin hallazgos. Consultas parametrizadas en toda la aplicación; los únicos SQL construidos con texto son un ayudante de pruebas (valores generados localmente) y el script de operador `crear-rol-app` (nombre validado con expresión regular y literal escapado). React escapa la salida; el JSON-LD fijo escapa `<`; el correo HTML escapa el enlace |
 | A06 Diseño inseguro | Evaluada | Hallazgo A06-001. Un único administrador: la regla «aprobación posterior a la última edición» existe, pero no hay cuatro ojos (decisión 7 de `docs/plan.md`) |
 | A07 Fallas de autenticación | Evaluada | Hallazgos A07-001, -002 y -003 |

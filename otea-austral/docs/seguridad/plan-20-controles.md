@@ -231,6 +231,47 @@ Una fase no se da por cerrada si rompe pruebas anteriores.
 | Comprar el dominio y activar HSTS `preload` | Persona responsable | `preload` es difícil de revertir |
 | Prueba de seguridad independiente | Persona responsable | Esta revisión es asistida por IA |
 
-## Registro de avance
+## Resultado
 
-_(Se completa al terminar cada fase; ver el informe de avance.)_
+Fase A (`c9b88e5`), B1 (`9352bf3`), B2 (`5d7c4c3`), B3 (`2c701ff`) y B4 (`522da0c`) están integradas en el
+[PR #2](https://github.com/gstadd285/awesome-repos/pull/2). Pruebas: de 296 a **448** unitarias y de
+integración (con Postgres real) y de 53 a **74** de navegador, todas en verde, con lint, tipos y build.
+
+| # | Control | Resultado | Evidencia principal |
+|---|---|---|---|
+| 1 | Ocultar API keys | ✅ Reforzado | `server-only`, regla de lint sobre `process.env`, `npm run seguridad:canarios`, `e2e/admin-secretos.spec.ts` (ninguna respuesta contiene secretos) |
+| 2 | Eliminar secretos de Git | ✅ Aplicado (historial limpio) · 🟡 activar _Secret scanning_ y _Push protection_ en GitHub | `scripts/escanear-secretos.mjs` en la CI (archivos e historial), receta de «secreto en git» |
+| 3 | Key pública para la base de datos | ⚪ Equivalente cubierto y vigilado | `arquitectura.test.ts` (frontera cliente/servidor), regla de lint sobre `pg`, usuario `otea_web` de mínimos privilegios |
+| 4 | Row-Level Security | ✅ Aplicado | `db/migraciones/0003_seguridad_por_fila.sql`, `src/lib/db/rls.test.ts` (verificado por mutación) |
+| 5 | Encriptar datos sensibles | ✅ Aplicado | `db/migraciones/0004_correos_cifrados.sql`, `src/lib/waitlist/cifrado.ts`, `lista:exportar` y `lista:recifrar` |
+| 6 | Forzar la autenticación | ✅ Reforzado | `arquitectura.test.ts` (acciones y páginas del panel) |
+| 7 | Restringir el acceso a registros | ✅ Aplicado | RLS, la aplicación sin lectura de correos, prueba de que lo no publicado no sale al público |
+| 8 | Bloquear manipulación de campos | ✅ Reforzado | `formulario.test.ts` y `repositorio.test.ts` (campos de más, escrituras prohibidas) |
+| 9 | Proteger las cookies de sesión | ✅ Reforzado | `admin.test.ts` (atributos de la cookie, duración ≤ 12 h como la base) |
+| 10 | Hashear contraseñas | ✅ Sin cambios de código (decisión documentada) | `admin.test.ts` (entropía de la frase, mínimo de iteraciones) |
+| 11 | Rate limiting | 🟡 Aplicado en la confirmación; límites por instancia, sin límite global (decisión) | `service.ts`, `SECURITY.md` |
+| 12 | Protección contra bots | 🟡 Marca de tiempo firmada aplicada; CAPTCHA pendiente de decisión | `src/lib/waitlist/tiempo.ts`, `e2e/lista-de-espera.spec.ts` |
+| 13 | Parametrizar queries | ✅ Reforzado | `arquitectura.test.ts` (verificado con SQL malo a propósito) |
+| 14 | Validar inputs | ✅ Reforzado | Tope de 100 KB en las Server Actions (`next.config.ts`) |
+| 15 | Sanitizar contenido | ✅ Reforzado | Reglas de lint (`react/no-danger`, `innerHTML`, `eval`, `document.write`) y prueba del JSON-LD |
+| 16 | Restringir archivos | ✅ Reforzado | `public/` y SVG de lista cerrada, sin subidas, sin mapas de código ni gestores de paquetes en la imagen |
+| 17 | Devolver solo los datos necesarios | ✅ Reforzado | Prueba de contrato de la vista pública; pruebas de secretos en respuestas |
+| 18 | Security headers | ✅ Reforzado | `headers.test.ts`, +2 cabeceras, panel sin caché (e2e) |
+| 19 | Forzar HTTPS | ✅ Aplicado · 🟡 probar en una revisión sin tráfico al desplegar | `src/lib/security/https.ts`, `src/proxy.ts`, pasos de la CI del contenedor |
+| 20 | Escanear dependencias | ✅ Aplicado | `scripts/auditar-dependencias.mjs`, Trivy en la CI, `.npmrc` con `ignore-scripts` |
+
+### Lo que encontró el trabajo (además de lo planeado)
+
+- La imagen del contenedor llevaba **npm, yarn y corepack con 13 hallazgos, uno crítico** (`tar`), en las
+  dependencias que npm empaqueta. Ya no los lleva.
+- Un `UPDATE` o `DELETE` bloqueado por RLS **no falla: afecta 0 filas**. Un `UPDATE … RETURNING` falla si la fila
+  nueva no pasa la política de lectura. Las pruebas con la base real lo cubren (ver `CLAUDE.md`).
+- El servidor de Next.js **añade** `X-Forwarded-Proto` según la conexión cuando falta: una petición http directa al
+  contenedor también se redirige. Por eso existe el interruptor `HTTPS_FORZADO=0` y la prueba con una revisión
+  sin tráfico.
+- Postgres limita los cuantificadores de las expresiones regulares a 255: la restricción del texto cifrado
+  comprueba el largo aparte.
+
+### Lo que sigue pendiente (no es código)
+
+Ver la tabla de «Decisiones y acciones que no son de código» más arriba y `SECURITY.md`.

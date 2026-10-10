@@ -184,19 +184,23 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
   nunca `console.log` con datos de entrada. Auditoría de solo agregar.
 - Puntos que reciben datos: tipo de contenido, tamaño y volumen limitados
   (`createFixedWindowLimiter`).
-- Lista de espera (`src/lib/waitlist/`): Server Action con validación Zod, campo trampa, límite por
-  IP (cifrada con SHA-256, solo en memoria) y doble opt-in con token cuyo hash se guarda. Con
-  `WAITLIST_MODE=cerrada` (por defecto) no guarda correos; `memoria` solo para desarrollo y e2e (el
-  esquema de entorno la rechaza en producción salvo `OTEA_E2E=1`).
+- Lista de espera (`src/lib/waitlist/`): Server Action con validación Zod, campo trampa, **marca de tiempo
+  firmada** (`tiempo.ts`: sin marca, falsa, en menos de 3 s o vencida → «espera»), límite por IP (cifrada con
+  SHA-256, solo en memoria; también en la confirmación) y doble opt-in con token cuyo hash se guarda. **El correo
+  se guarda cifrado** (AES-256-GCM + índice ciego HMAC, `cifrado.ts`; el usuario de la base escribe pero no puede
+  leer `correo_cifrado`; solo el dueño descifra con `npm run lista:exportar`). Todo sale de `WAITLIST_SECRETO`
+  (HKDF por propósito, `claves.ts`). Con `WAITLIST_MODE=cerrada` (por defecto) no guarda correos; `memoria` solo
+  para desarrollo y e2e (el esquema de entorno la rechaza en producción salvo `OTEA_E2E=1`; sin cifrado).
 - **Panel `/admin`** (`src/app/admin/`, `src/lib/admin/`): sin `ADMIN_*` y `DATABASE_URL` responde 404.
   Acceso con frase (PBKDF2) y código TOTP; la sesión es una cookie `__Host-` firmada **y registrada en
   la base** (`admin_sesiones`), así que «Salir» la revoca de verdad. Toda página privada llama a
   `exigirSesion()` y toda Server Action a `exigirAccionAdmin(formData)` (sesión + token CSRF). Una
   acción o página nueva del panel que no lo haga es un fallo de seguridad.
 - **Base de datos:** la aplicación entra con un usuario de mínimos privilegios (`otea_app`), nunca con
-  el dueño. Cada tabla nueva necesita sus `grant` por columna y, si es de solo agregar, un disparador
-  `otea_rechazar` (ver `0001` y `0002`). Consultas siempre parametrizadas (`$1`); el texto SQL nunca
-  lleva datos de entrada. `returning` necesita `select`: con permisos por columna usa `returning 1`.
+  el dueño. Cada tabla nueva necesita sus `grant` por columna, **RLS activada con una política por operación
+  permitida** (`0003`; `rls.test.ts` falla si falta) y, si es de solo agregar, un disparador `otea_rechazar` (ver
+  `0001` y `0002`). Consultas siempre parametrizadas (`$1`); el texto SQL solo interpola constantes `SQL_…`
+  (lo vigila `arquitectura.test.ts`). `returning` necesita `select`: con permisos por columna usa `returning 1`.
 - **Lo que no puede depender de la memoria de una instancia vive en la base:** códigos TOTP gastados,
   sesiones revocadas y el tope diario de correos. Los límites por IP en memoria son solo una primera
   barrera (Cloud Run puede tener varias instancias).
@@ -204,7 +208,20 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
   (sonda de Cloud Run) lo importa. Una variable nueva con reglas de seguridad va en `EnvSchema`.
   `next build` también corre con `NODE_ENV=production`; lo que solo existe al ejecutar se exime con
   `NEXT_PHASE === "phase-production-build"` (ver `construyendo` en `env.ts`).
-- Revisión OWASP y sus hallazgos: `docs/seguridad/auditoria-owasp-2025.md`.
+- **Secretos:** `process.env` se lee solo en `src/lib/env.ts` (regla de lint) y `env.ts` y el cliente de la base
+  son `server-only`. `npm run seguridad:secretos` (CI) busca claves en archivos e historial; si una línea es un
+  valor falso a propósito, se marca con `escaner:ignorar` y el motivo. `npm run seguridad:canarios` construye con
+  secretos falsos y falla si alguno queda en `.next/`: una variable secreta nueva se agrega a
+  `scripts/lib/canarios.mjs` (una prueba lo exige). Los canarios usan solo la marca `CANARIO` en mayúsculas.
+- **Reglas que se comprueban solas** (`src/lib/security/arquitectura.test.ts` y `eslint.config.mjs`): toda acción y
+  página del panel exige sesión, ningún componente de cliente importa la base ni la configuración, no hay subida
+  de archivos, `public/` es de lista cerrada, y el inventario de Server Actions y de endpoints es fijo: **agregar
+  uno exige actualizar la prueba, y con ello revisar su autenticación, validación, tamaño y límites.**
+- **HTTPS:** `src/proxy.ts` redirige (308) lo que `X-Forwarded-Proto` marque como http (`https.ts`). Ojo: el servidor
+  de Next.js **añade** esa cabecera según la conexión cuando falta, así que una petición http directa al contenedor
+  también se redirige; `HTTPS_FORZADO=0` lo apaga (emergencia o pruebas locales por http).
+- Revisión OWASP y sus hallazgos: `docs/seguridad/auditoria-owasp-2025.md`. Plan de los 20 controles:
+  `docs/seguridad/plan-20-controles.md`.
 - Al agregar o cambiar un control, actualizar `nist-csf.ts` con su evidencia; la prueba falla si un
   archivo citado no existe (y cada descripción admite 280 caracteres). Nunca presentarlo como
   certificación.
@@ -223,6 +240,12 @@ npm run test:e2e     # Playwright sobre el build (levanta ese servidor en el pue
 npm run db:migrar    # DATABASE_URL_ADMIN (rol dueño): aplica db/migraciones y la semilla de fuentes
 npm run db:rol-app   # crea el usuario de la aplicación e imprime su URL una sola vez
 npm run admin:credenciales   # frase, TOTP y secretos de sesión del panel
+npm run lista:secreto        # WAITLIST_SECRETO (marca de tiempo del formulario y cifrado de correos)
+npm run lista:exportar       # DATABASE_URL_ADMIN + WAITLIST_SECRETO: correos confirmados, descifrados (-- --csv)
+npm run lista:recifrar       # rotar WAITLIST_SECRETO (ensayo; -- --aplicar para rotar de verdad)
+npm run seguridad:secretos   # escáner de secretos en archivos e historial (lo corre la CI)
+npm run seguridad:canarios   # build con secretos falsos: ninguno debe quedar en .next/ (lo corre la CI)
+npm run seguridad:dependencias   # audita TODAS las dependencias contra seguridad/avisos-npm-aceptados.json
 docker build -t otea-austral .
 ```
 
@@ -270,7 +293,8 @@ src/
     design/            contraste
     security/          CSP, cabeceras, reportes CSP, registro, límites, security.txt, perfil NIST
     sources/           registro de fuentes (semilla validada)
-    waitlist/          lista de espera: esquema, almacenamiento (memoria y Postgres), correo, servicio
+    waitlist/          lista de espera: esquema, almacenamiento (memoria y Postgres cifrado), correo, servicio,
+                       marca de tiempo (tiempo.ts), cifrado y claves derivadas
     admin/             sesión firmada, TOTP, frase, almacén de sesiones en la base
     alertas/           repositorio Postgres de alertas, fuentes, correcciones y auditoría; formularios
     db/                cliente de Postgres (pool, transacciones) y ayudante de pruebas
@@ -278,8 +302,10 @@ src/
   app/alertas/         alertas publicadas; app/api/salud: sonda de Cloud Run
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
-db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel)
-scripts/               migrar, crear rol de la aplicación, credenciales del panel, preparar standalone
+db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados)
+scripts/               migrar, rol de la aplicación, credenciales del panel, preparar standalone, lista de espera
+                       (secreto, exportar, recifrar), escáner de secretos, canarios, auditoría de dependencias
+seguridad/             avisos de npm aceptados (con motivo y fecha de revisión)
 despliegue/            plantilla del servicio de Cloud Run
 Dockerfile             imagen multi-etapa sin privilegios
 e2e/                   pruebas de navegador (Playwright)
@@ -307,6 +333,31 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   lejanas cuando cuentes filas.
 - **`tsconfig` incluye `**/*.ts`:** `e2e/` y los `*.test.ts` se comprueban en `npm run typecheck` y en el
   build; por eso no se excluyen del contexto de Docker.
+
+## Lo aprendido (plan de los 20 controles)
+
+- **RLS en Postgres, lo que importa:** un `UPDATE`/`DELETE` sobre filas que la política no deja ver afecta 0 filas
+  (sin error); un `INSERT` que no cumple la política falla con `42501`; `UPDATE … RETURNING` exige que la fila
+  nueva pase la política de `select`; `SELECT … FOR UPDATE` también esconde esas filas (una política `using`
+  restrictiva en `alertas` convertiría «retractada» en «no existe»); `INSERT … ON CONFLICT DO UPDATE … WHERE`
+  contra una fila fuera de la política se salta en silencio. Las pruebas de integración con la base real son la red.
+- **Postgres limita los cuantificadores de las expresiones regulares a 255** (`{39,400}` falla al migrar): el largo
+  se comprueba aparte con `char_length`.
+- **El dueño de la base no pasa por RLS** (no se usa FORCE): lo necesitan las migraciones y la semilla.
+- **`crearBaseDePrueba({ migraciones: n })`** migra solo hasta la n-ésima y `base.migrarTodo()` termina: sirve para
+  probar una migración sobre datos que ya existían (ver `lista-scripts.test.ts`). `base.urlPropietario` abre una
+  conexión propia para transacciones de varias sentencias.
+- **`tsconfig` apunta a ES2017:** una prueba con una expresión regular con la bandera `s` falla en `tsc` y en
+  `next build`; usa `[\s\S]`.
+- **Los canarios solo con mayúsculas** (`CANARIO`): el nombre del script `seguridad:canarios` está en el
+  `package.json` que Next copia a `standalone`.
+- **La imagen base de Node trae npm, corepack y yarn** (con sus dependencias, que Trivy marca): la etapa final los
+  quita. Validar Trivy aquí: `docker pull aquasec/trivy` (Docker Hub) y la base de datos del espejo
+  `mirror.gcr.io/aquasec/trivy-db:2`; `ghcr.io` y `dl-cdn.alpinelinux.org` están bloqueados en este entorno.
+- **`.npmrc` tiene `ignore-scripts=true`:** si una dependencia nueva necesitara su script de instalación, hay que
+  ejecutarlo a mano o reconsiderarla.
+- **`next build` ejecuta `tsc` sobre `e2e/` y los `*.test.ts`:** un error de tipos en una prueba rompe el build y el
+  servidor de Playwright (que no arranca, sin más pista).
 
 ## Notas de Next.js
 
