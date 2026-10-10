@@ -1,14 +1,21 @@
+import { logSecurityEvent } from "@/lib/security/log";
 import { createFixedWindowLimiter, type FixedWindowLimiter } from "@/lib/security/rate-limit";
 import { SolicitudListaSchema, TokenConfirmacion, VERSION_CONSENTIMIENTO } from "./schema";
 import type { WaitlistStore } from "./store";
 
-export type ModoLista = "cerrada" | "memoria";
+/**
+ * `cerrada`: no guarda correos. `memoria`: desarrollo y pruebas, sin correo
+ * real. `abierta`: Postgres y envío del enlace de confirmación.
+ */
+export type ModoLista = "cerrada" | "memoria" | "abierta";
 
 export type ResultadoLista =
   | { estado: "ok"; prueba: boolean }
   | { estado: "cerrada" }
   | { estado: "invalida"; errores: { correo?: string; acepta?: string } }
-  | { estado: "limite" };
+  | { estado: "limite" }
+  /** No se pudo guardar o enviar el correo: se puede intentar de nuevo enseguida. */
+  | { estado: "reintentar" };
 
 export type EntradaLista = {
   correo: unknown;
@@ -17,15 +24,28 @@ export type EntradaLista = {
   sitio_web: unknown;
 };
 
+/** Un enlace de confirmación vale 72 horas. */
+export const VIGENCIA_ENLACE_MS = 72 * 60 * 60_000;
+/** Si no llegó el correo, se puede pedir otro enlace después de 10 minutos. */
+export const ESPERA_REENVIO_MS = 10 * 60_000;
+/** Las inscripciones sin confirmar se borran a los 30 días. */
+export const PLAZO_PENDIENTES_MS = 30 * 24 * 60 * 60_000;
+const INTERVALO_PURGA_MS = 60 * 60_000;
+
 type Dependencias = {
   modo: ModoLista;
   store: WaitlistStore;
-  /** Envía el enlace de confirmación (doble opt-in). */
+  /** Envía el enlace de confirmación (doble opt-in). Lanza si no pudo. */
   enviarConfirmacion: (correo: string, token: string) => Promise<void>;
   limiterPorCliente?: FixedWindowLimiter;
   limiterGlobal?: FixedWindowLimiter;
   generarToken?: () => string;
   ahora?: () => Date;
+  /**
+   * Toda respuesta que pasa por el almacenamiento tarda al menos esto, para
+   * que el tiempo no delate si el correo ya estaba inscrito.
+   */
+  duracionMinimaMs?: number;
 };
 
 export function generarTokenSeguro(): string {
@@ -38,6 +58,8 @@ export async function sha256Hex(texto: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+const antesDe = (fecha: Date, ms: number) => new Date(fecha.getTime() - ms).toISOString();
 
 /**
  * Inscripción con doble opt-in. Responde lo mismo si el correo es nuevo,
@@ -52,7 +74,30 @@ export function crearServicioLista({
   limiterGlobal = createFixedWindowLimiter({ limite: 300, ventanaMs: 10 * 60_000 }),
   generarToken = generarTokenSeguro,
   ahora = () => new Date(),
+  duracionMinimaMs = 1200,
 }: Dependencias) {
+  const ok: ResultadoLista = { estado: "ok", prueba: modo === "memoria" };
+  let ultimaPurga = 0;
+
+  async function conDuracionMinima(fn: () => Promise<ResultadoLista>): Promise<ResultadoLista> {
+    const inicio = performance.now();
+    try {
+      return await fn();
+    } finally {
+      const resto = duracionMinimaMs - (performance.now() - inicio);
+      if (resto > 0) await new Promise((r) => setTimeout(r, resto));
+    }
+  }
+
+  /** Borra pendientes vencidos como mucho una vez por hora; si falla, ya habrá otra ocasión. */
+  async function purgar(instante: Date) {
+    if (instante.getTime() - ultimaPurga < INTERVALO_PURGA_MS) return;
+    ultimaPurga = instante.getTime();
+    await store.purgarPendientes(antesDe(instante, PLAZO_PENDIENTES_MS)).catch(() => {
+      logSecurityEvent({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: "purga" });
+    });
+  }
+
   return {
     async registrar(entrada: EntradaLista, claveCliente: string): Promise<ResultadoLista> {
       if (!limiterPorCliente.tryConsume(claveCliente) || !limiterGlobal.tryConsume()) {
@@ -69,27 +114,49 @@ export function crearServicioLista({
         return { estado: "invalida", errores };
       }
 
-      if (typeof entrada.sitio_web === "string" && entrada.sitio_web.trim() !== "") {
-        return { estado: "ok", prueba: modo === "memoria" };
-      }
+      const trampa = typeof entrada.sitio_web === "string" && entrada.sitio_web.trim() !== "";
+      if (modo === "cerrada" && !trampa) return { estado: "cerrada" };
 
-      if (modo === "cerrada") return { estado: "cerrada" };
+      return conDuracionMinima(async () => {
+        if (trampa) return ok;
+        const instante = ahora();
+        const correo = validada.data.correo;
+        const token = generarToken();
+        let resultado: "nuevo" | "renovado" | "existente";
+        try {
+          resultado = await store.guardar(
+            {
+              correo,
+              tokenHash: await sha256Hex(token),
+              ahora: instante.toISOString(),
+              versionConsentimiento: VERSION_CONSENTIMIENTO,
+            },
+            antesDe(instante, ESPERA_REENVIO_MS),
+          );
+        } catch {
+          logSecurityEvent({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: "lista_guardar" });
+          return { estado: "reintentar" };
+        }
 
-      const token = generarToken();
-      const resultado = await store.guardar({
-        correo: validada.data.correo,
-        tokenHash: await sha256Hex(token),
-        creado: ahora().toISOString(),
-        versionConsentimiento: VERSION_CONSENTIMIENTO,
+        if (resultado !== "existente") {
+          try {
+            await enviarConfirmacion(correo, token);
+          } catch {
+            // El remitente ya registró la falla (sin datos personales).
+            await store.liberarReenvio(correo).catch(() => {});
+            return { estado: "reintentar" };
+          }
+        }
+        await purgar(instante);
+        return ok;
       });
-      if (resultado === "nuevo") await enviarConfirmacion(validada.data.correo, token);
-      return { estado: "ok", prueba: modo === "memoria" };
     },
 
     async confirmar(token: unknown): Promise<boolean> {
       const t = TokenConfirmacion.safeParse(token);
       if (!t.success) return false;
-      return store.confirmar(await sha256Hex(t.data));
+      const instante = ahora();
+      return store.confirmar(await sha256Hex(t.data), instante.toISOString(), antesDe(instante, VIGENCIA_ENLACE_MS));
     },
   };
 }

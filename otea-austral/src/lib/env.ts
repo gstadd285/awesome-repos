@@ -1,13 +1,25 @@
 import { z } from "zod";
+import { Actor } from "@/lib/domain/schemas";
 import { parseHttpsUrl, httpsUrl } from "@/lib/domain/url";
 
 /**
+ * Configuración del servidor, validada al arrancar. Los secretos llegan como
+ * variables de entorno (Secret Manager en producción) y nunca se escriben en
+ * el repositorio ni en los registros. Este módulo solo se usa en el
+ * servidor: Next.js no copia al navegador variables sin `NEXT_PUBLIC_`.
+ */
+
+/**
  * Canal privado para reportar vulnerabilidades: `mailto:` o una URL https.
- * Por defecto, el formulario privado de GitHub del repositorio (hay que
- * activarlo en Settings → Security → Private vulnerability reporting).
+ * Por defecto, el formulario privado de GitHub del repositorio.
  */
 export const CONTACTO_SEGURIDAD_POR_DEFECTO =
   "https://github.com/gstadd285/awesome-repos/security/advisories/new";
+
+export const REMITENTE_POR_DEFECTO = "Otea Austral <alertas@oteaustral.com>";
+
+/** Iteraciones mínimas de PBKDF2-SHA256 (recomendación OWASP 2023). */
+export const ITERACIONES_MINIMAS = 600_000;
 
 const contactoSeguridad = z
   .string()
@@ -15,6 +27,21 @@ const contactoSeguridad = z
     (v) => /^mailto:[^@\s/]+@[^@\s/]+\.[a-z]{2,}$/i.test(v) || parseHttpsUrl(v) !== null,
     "Debe ser mailto:correo o una URL https",
   );
+
+const urlPostgres = z.string().regex(/^postgres(ql)?:\/\/\S+$/, "Debe ser una URL postgres:// o postgresql://");
+
+const remitente = z
+  .string()
+  .regex(
+    /^[^<>\r\n@]{1,60} <[^@\s<>]+@[^@\s<>]+\.[a-z]{2,}>$/i,
+    "Usa el formato «Nombre <correo@dominio>»",
+  );
+
+/** `pbkdf2-sha256$iteraciones$sal$hash` (lo genera `npm run admin:credenciales`). */
+const hashClave = z
+  .string()
+  .regex(/^pbkdf2-sha256\$\d{6,7}\$[A-Za-z0-9_-]{22,}\$[A-Za-z0-9_-]{43}$/, "Formato de hash inválido")
+  .refine((v) => Number(v.split("$")[1]) >= ITERACIONES_MINIMAS, "Muy pocas iteraciones");
 
 export const EnvSchema = z
   .object({
@@ -25,22 +52,75 @@ export const EnvSchema = z
       .default("http://localhost:3000"),
     SECURITY_CONTACT: contactoSeguridad.default(CONTACTO_SEGURIDAD_POR_DEFECTO),
     /**
-     * `cerrada` (por defecto): la lista no guarda correos. `memoria`: solo
-     * desarrollo y pruebas (se pierde al reiniciar y no envía correos).
+     * `cerrada` (por defecto): no guarda correos. `memoria`: solo desarrollo y
+     * pruebas. `abierta`: Postgres y correo de confirmación real.
      */
-    WAITLIST_MODE: z.enum(["cerrada", "memoria"]).default("cerrada"),
-    /** Permite `memoria` en un build de producción solo para pruebas e2e. */
+    WAITLIST_MODE: z.enum(["cerrada", "memoria", "abierta"]).default("cerrada"),
+    /** Permite `memoria` y bases sin TLS en un build de producción, solo para pruebas e2e. */
     OTEA_E2E: z.enum(["0", "1"]).default("0"),
+    /** Conexión de la aplicación (usuario miembro de `otea_app`, nunca el dueño). */
+    DATABASE_URL: urlPostgres.optional(),
+    RESEND_API_KEY: z.string().regex(/^re_[A-Za-z0-9_-]{10,200}$/, "Clave de Resend inválida").optional(),
+    EMAIL_REMITENTE: remitente.default(REMITENTE_POR_DEFECTO),
+    ADMIN_CLAVE_HASH: hashClave.optional(),
+    /** Secreto TOTP en base32: 160 bits. */
+    ADMIN_TOTP_SECRETO: z.string().regex(/^[A-Z2-7]{32}$/, "Secreto TOTP inválido (32 caracteres base32)").optional(),
+    /** Firma de la cookie de sesión: al menos 256 bits en base64url. */
+    ADMIN_SESION_SECRETO: z.string().regex(/^[A-Za-z0-9_-]{43,}$/, "Secreto de sesión demasiado corto").optional(),
+    /** Alias del panel en la auditoría (nunca un correo). */
+    ADMIN_ALIAS: Actor.default("admin"),
+    /**
+     * Proxies de confianza que agregan su entrada a `X-Forwarded-For`
+     * (Cloud Run: 1). La IP del cliente es la que dejó el último de ellos;
+     * las anteriores las puede inventar cualquiera.
+     */
+    IP_PROXIES_CONFIABLES: z.coerce.number().int().min(0).max(3).default(1),
   })
-  .refine((e) => !(e.NODE_ENV === "production" && e.WAITLIST_MODE === "memoria" && e.OTEA_E2E !== "1"), {
-    message: "WAITLIST_MODE=memoria no se permite en producción: los correos se perderían.",
-    path: ["WAITLIST_MODE"],
+  .superRefine((e, ctx) => {
+    const produccion = e.NODE_ENV === "production" && e.OTEA_E2E !== "1";
+    const problema = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
+
+    if (produccion && e.WAITLIST_MODE === "memoria") {
+      problema("WAITLIST_MODE", "WAITLIST_MODE=memoria no se permite en producción: los correos se perderían.");
+    }
+    if (e.WAITLIST_MODE === "abierta") {
+      if (!e.DATABASE_URL) problema("DATABASE_URL", "La lista abierta necesita DATABASE_URL.");
+      if (!e.RESEND_API_KEY) problema("RESEND_API_KEY", "La lista abierta necesita RESEND_API_KEY.");
+      if (produccion && !e.NEXT_PUBLIC_SITE_URL.startsWith("https://")) {
+        problema("NEXT_PUBLIC_SITE_URL", "Los enlaces de confirmación necesitan la URL https del sitio.");
+      }
+    }
+    if (produccion && e.DATABASE_URL && !/[?&]sslmode=verify-full(&|$)/.test(e.DATABASE_URL)) {
+      problema("DATABASE_URL", "En producción la conexión debe verificar el certificado: agrega sslmode=verify-full.");
+    }
+    const admin = [e.ADMIN_CLAVE_HASH, e.ADMIN_TOTP_SECRETO, e.ADMIN_SESION_SECRETO].filter(Boolean).length;
+    if (admin > 0 && admin < 3) {
+      problema("ADMIN_CLAVE_HASH", "El panel necesita ADMIN_CLAVE_HASH, ADMIN_TOTP_SECRETO y ADMIN_SESION_SECRETO juntas.");
+    }
+    if (admin === 3 && !e.DATABASE_URL) problema("DATABASE_URL", "El panel necesita DATABASE_URL.");
   });
 
-export const env = EnvSchema.parse({
-  NODE_ENV: process.env.NODE_ENV,
-  NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || undefined,
-  SECURITY_CONTACT: process.env.SECURITY_CONTACT || undefined,
-  WAITLIST_MODE: process.env.WAITLIST_MODE || undefined,
-  OTEA_E2E: process.env.OTEA_E2E || undefined,
+export type Env = z.infer<typeof EnvSchema>;
+
+const leer = (nombre: string) => process.env[nombre] || undefined;
+
+export const env: Env = EnvSchema.parse({
+  NODE_ENV: leer("NODE_ENV"),
+  NEXT_PUBLIC_SITE_URL: leer("NEXT_PUBLIC_SITE_URL"),
+  SECURITY_CONTACT: leer("SECURITY_CONTACT"),
+  WAITLIST_MODE: leer("WAITLIST_MODE"),
+  OTEA_E2E: leer("OTEA_E2E"),
+  DATABASE_URL: leer("DATABASE_URL"),
+  RESEND_API_KEY: leer("RESEND_API_KEY"),
+  EMAIL_REMITENTE: leer("EMAIL_REMITENTE"),
+  ADMIN_CLAVE_HASH: leer("ADMIN_CLAVE_HASH"),
+  ADMIN_TOTP_SECRETO: leer("ADMIN_TOTP_SECRETO"),
+  ADMIN_SESION_SECRETO: leer("ADMIN_SESION_SECRETO"),
+  ADMIN_ALIAS: leer("ADMIN_ALIAS"),
+  IP_PROXIES_CONFIABLES: leer("IP_PROXIES_CONFIABLES"),
 });
+
+/** El panel interno existe solo si está configurado por completo; si no, responde 404. */
+export function panelActivo(e: Env = env): boolean {
+  return Boolean(e.ADMIN_CLAVE_HASH && e.ADMIN_TOTP_SECRETO && e.ADMIN_SESION_SECRETO && e.DATABASE_URL);
+}

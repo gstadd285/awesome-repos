@@ -26,3 +26,58 @@ describe("EnvSchema", () => {
     expect(EnvSchema.safeParse({ SECURITY_CONTACT: "mailto:seguridad@oteaustral.com" }).success).toBe(true);
   });
 });
+
+describe("EnvSchema · tercio 3", () => {
+  const HASH = `pbkdf2-sha256$600000$${"s".repeat(22)}$${"h".repeat(43)}`;
+  const TOTP = "A".repeat(32);
+  const SESION = "x".repeat(43);
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+
+  it("la lista abierta exige base de datos y clave de correo", () => {
+    expect(EnvSchema.safeParse({ WAITLIST_MODE: "abierta" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ WAITLIST_MODE: "abierta", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab" }).success).toBe(
+      true,
+    );
+  });
+
+  it("en producción la lista abierta exige la URL https del sitio", () => {
+    const base = { NODE_ENV: "production", WAITLIST_MODE: "abierta", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab" };
+    expect(EnvSchema.safeParse(base).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...base, NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" }).success).toBe(true);
+  });
+
+  it("en producción la base de datos debe verificar el certificado", () => {
+    const sinTls = "postgresql://otea_web:clave@host.neon.tech/neondb?sslmode=require";
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", DATABASE_URL: sinTls }).success).toBe(false);
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", DATABASE_URL: DB }).success).toBe(true);
+  });
+
+  it("el panel se configura completo o no se configura", () => {
+    expect(EnvSchema.safeParse({ ADMIN_CLAVE_HASH: HASH }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ADMIN_CLAVE_HASH: HASH, ADMIN_TOTP_SECRETO: TOTP, ADMIN_SESION_SECRETO: SESION }).success).toBe(
+      false,
+    );
+    expect(
+      EnvSchema.safeParse({
+        ADMIN_CLAVE_HASH: HASH,
+        ADMIN_TOTP_SECRETO: TOTP,
+        ADMIN_SESION_SECRETO: SESION,
+        DATABASE_URL: DB,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rechaza hashes débiles, secretos cortos y alias con correo", () => {
+    const debil = `pbkdf2-sha256$100000$${"s".repeat(22)}$${"h".repeat(43)}`;
+    expect(EnvSchema.safeParse({ ADMIN_CLAVE_HASH: debil }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ADMIN_SESION_SECRETO: "corto" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ADMIN_ALIAS: "persona@correo.cl" }).success).toBe(false);
+  });
+
+  it("valida el remitente y los proxies de confianza", () => {
+    expect(EnvSchema.parse({}).EMAIL_REMITENTE).toBe("Otea Austral <alertas@oteaustral.com>");
+    expect(EnvSchema.safeParse({ EMAIL_REMITENTE: "x\r\nBcc: otro@x.cl" }).success).toBe(false);
+    expect(EnvSchema.parse({ IP_PROXIES_CONFIABLES: "2" }).IP_PROXIES_CONFIABLES).toBe(2);
+    expect(EnvSchema.safeParse({ IP_PROXIES_CONFIABLES: "9" }).success).toBe(false);
+  });
+});

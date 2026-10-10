@@ -13,13 +13,18 @@ function mensaje(estado: EstadoLista): { texto: string; tono: "exito" | "aviso" 
       return {
         texto: estado.prueba
           ? "Listo. Modo de prueba: no enviamos correos; el enlace de confirmación queda en el registro del servidor."
-          : "¡Gracias! Si el correo es válido, te llegará un mensaje para confirmar tu inscripción.",
+          : "¡Gracias! Si el correo es válido, te llegará un mensaje con un enlace para confirmar tu inscripción (vence en 72 horas).",
         tono: "exito",
       };
     case "cerrada":
       return { texto: "La lista de espera abre pronto. Por ahora no guardamos correos.", tono: "aviso" };
     case "limite":
       return { texto: "Demasiados intentos. Prueba de nuevo en unos minutos.", tono: "aviso" };
+    case "reintentar":
+      return {
+        texto: "No pudimos enviar el correo de confirmación. Intenta de nuevo en unos minutos.",
+        tono: "aviso",
+      };
     default:
       return null;
   }

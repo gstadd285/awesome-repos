@@ -3,20 +3,28 @@ import { createFixedWindowLimiter } from "@/lib/security/rate-limit";
 import { crearServicioLista, generarTokenSeguro, sha256Hex } from "./service";
 import { createMemoryWaitlistStore } from "./store";
 
-function servicio(modo: "cerrada" | "memoria" = "memoria", limite = 100) {
+function servicio(modo: "cerrada" | "memoria" | "abierta" = "memoria", limite = 100) {
   const store = createMemoryWaitlistStore();
   const enviar = vi.fn<(correo: string, token: string) => Promise<void>>(async () => {});
   let n = 0;
+  const reloj = { ahora: new Date("2026-10-09T12:00:00Z") };
   const s = crearServicioLista({
     modo,
     store,
     enviarConfirmacion: enviar,
     limiterPorCliente: createFixedWindowLimiter({ limite, ventanaMs: 60_000 }),
     generarToken: () => `${"t".repeat(42)}${n++}`,
-    ahora: () => new Date("2026-10-09T12:00:00Z"),
+    ahora: () => reloj.ahora,
+    duracionMinimaMs: 0,
   });
-  return { s, store, enviar };
+  const avanzar = (ms: number) => {
+    reloj.ahora = new Date(reloj.ahora.getTime() + ms);
+  };
+  return { s, store, enviar, avanzar };
 }
+
+const MINUTO = 60_000;
+const HORA = 60 * MINUTO;
 
 const valido = { correo: "  Persona@Correo.CL ", acepta: "on", sitio_web: "" };
 
@@ -26,10 +34,10 @@ describe("lista de espera", () => {
     expect(await s.registrar(valido, "cliente")).toEqual({ estado: "ok", prueba: true });
     const [registro] = store.registros();
     expect(Object.keys(registro).sort()).toEqual(
-      ["confirmado", "correo", "creado", "tokenHash", "versionConsentimiento"].sort(),
+      ["confirmado", "correo", "creado", "tokenEmitido", "tokenHash", "versionConsentimiento"].sort(),
     );
     expect(registro.correo).toBe("persona@correo.cl");
-    expect(registro.confirmado).toBe(false);
+    expect(registro.confirmado).toBeNull();
     expect(enviar).toHaveBeenCalledOnce();
   });
 
@@ -90,8 +98,73 @@ describe("lista de espera", () => {
     const token = enviar.mock.calls[0][1];
     expect(await s.confirmar("x".repeat(43))).toBe(false);
     expect(await s.confirmar(token)).toBe(true);
-    expect(store.registros()[0].confirmado).toBe(true);
+    expect(store.registros()[0].confirmado).toBe("2026-10-09T12:00:00.000Z");
+    expect(store.registros()[0].tokenHash).toBeNull();
     expect(await s.confirmar(token)).toBe(false);
+  });
+
+  it("el enlace vence a las 72 horas", async () => {
+    const { s, enviar, avanzar } = servicio();
+    await s.registrar(valido, "c");
+    avanzar(72 * HORA + 1);
+    expect(await s.confirmar(enviar.mock.calls[0][1])).toBe(false);
+  });
+
+  it("si no llegó el correo, reenvía un enlace nuevo después de 10 minutos", async () => {
+    const { s, enviar, avanzar } = servicio("abierta");
+    await s.registrar(valido, "c");
+    await s.registrar(valido, "c");
+    expect(enviar).toHaveBeenCalledOnce();
+
+    avanzar(10 * MINUTO + 1);
+    expect(await s.registrar(valido, "c")).toEqual({ estado: "ok", prueba: false });
+    expect(enviar).toHaveBeenCalledTimes(2);
+    const [primero, segundo] = enviar.mock.calls.map((c) => c[1]);
+    expect(await s.confirmar(primero)).toBe(false);
+    expect(await s.confirmar(segundo)).toBe(true);
+  });
+
+  it("una inscripción confirmada no recibe más correos", async () => {
+    const { s, enviar, avanzar } = servicio("abierta");
+    await s.registrar(valido, "c");
+    await s.confirmar(enviar.mock.calls[0][1]);
+    avanzar(HORA);
+    expect(await s.registrar(valido, "c")).toEqual({ estado: "ok", prueba: false });
+    expect(enviar).toHaveBeenCalledOnce();
+  });
+
+  it("si el envío falla pide reintentar y permite otro envío enseguida", async () => {
+    const { s, store, enviar } = servicio("abierta");
+    enviar.mockRejectedValueOnce(new Error("caído"));
+    expect(await s.registrar(valido, "c")).toEqual({ estado: "reintentar" });
+    expect(await s.confirmar("t".repeat(42) + "0")).toBe(false);
+    expect(await s.registrar(valido, "c")).toEqual({ estado: "ok", prueba: false });
+    expect(enviar).toHaveBeenCalledTimes(2);
+    expect(store.registros()).toHaveLength(1);
+  });
+
+  it("borra las inscripciones sin confirmar después de 30 días", async () => {
+    const { s, store, avanzar } = servicio("abierta");
+    await s.registrar(valido, "c");
+    await s.registrar({ ...valido, correo: "otra@correo.cl" }, "d");
+    avanzar(31 * 24 * HORA);
+    await s.registrar({ ...valido, correo: "nueva@correo.cl" }, "e");
+    expect(store.registros().map((r) => r.correo)).toEqual(["nueva@correo.cl"]);
+  });
+
+  it("la respuesta tarda lo mismo esté o no inscrito el correo", async () => {
+    const store = createMemoryWaitlistStore();
+    const s = crearServicioLista({
+      modo: "abierta",
+      store,
+      enviarConfirmacion: async () => {},
+      duracionMinimaMs: 80,
+    });
+    for (let i = 0; i < 2; i++) {
+      const inicio = performance.now();
+      await s.registrar(valido, "c");
+      expect(performance.now() - inicio).toBeGreaterThanOrEqual(75);
+    }
   });
 
   it("rechaza tokens con formato inválido sin consultar el almacenamiento", async () => {
