@@ -65,6 +65,25 @@ export function sentenciasRol(nombre, secreto, existe) {
 }
 
 /**
+ * Atributos que el usuario de la aplicación NO debe tener (migración 0003): superusuario, saltarse la
+ * seguridad por fila, crear bases o roles y replicar darían a la aplicación más poder del que necesita; sin
+ * herencia no recibiría los permisos de `otea_app`.
+ *
+ * @param {Record<string, boolean>} rol fila de `pg_roles`
+ * @returns {string[]}
+ */
+export function atributosIndebidos(rol) {
+  const indebidos = [];
+  if (rol.rolsuper) indebidos.push("superusuario");
+  if (rol.rolbypassrls) indebidos.push("salta la seguridad por fila (BYPASSRLS)");
+  if (rol.rolcreatedb) indebidos.push("puede crear bases de datos");
+  if (rol.rolcreaterole) indebidos.push("puede crear roles");
+  if (rol.rolreplication) indebidos.push("puede replicar");
+  if (rol.rolinherit === false) indebidos.push("sin herencia: no recibiría los permisos de otea_app");
+  return indebidos;
+}
+
+/**
  * URL de conexión de la aplicación a partir de la del dueño: mismo host y
  * base, otro usuario. En Neon usa el host con agrupador de conexiones
  * (`-pooler`) y exige verificar el certificado.
