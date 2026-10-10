@@ -53,9 +53,18 @@ describe("EnvSchema · tercio 3", () => {
     vi.stubEnv("NEXT_PHASE", "phase-production-build");
     try {
       expect(EnvSchema.safeParse({ NODE_ENV: "production" }).success).toBe(true);
+      // La CI define una base local sin TLS durante el build de las pruebas e2e.
+      const sinTls = "postgresql://otea_web:clave@localhost:5432/postgres";
+      expect(EnvSchema.safeParse({ NODE_ENV: "production", DATABASE_URL: sinTls }).success).toBe(true);
     } finally {
       vi.unstubAllEnvs();
     }
+    // Al ejecutar sí se exige.
+    const sinTls = "postgresql://otea_web:clave@localhost:5432/postgres";
+    expect(
+      EnvSchema.safeParse({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com", DATABASE_URL: sinTls })
+        .success,
+    ).toBe(false);
   });
 
   it("en producción la base de datos debe verificar el certificado", () => {

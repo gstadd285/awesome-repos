@@ -79,13 +79,14 @@ export const EnvSchema = z
     IP_PROXIES_CONFIABLES: z.coerce.number().int().min(0).max(3).default(1),
   })
   .superRefine((e, ctx) => {
-    const produccion = e.NODE_ENV === "production" && e.OTEA_E2E !== "1";
-    // `next build` también corre con NODE_ENV=production, pero aún sin la configuración del servidor
-    // (la imagen se construye una vez y la URL llega al ejecutar): ahí no se exige.
+    // `next build` también corre con NODE_ENV=production, pero la configuración del servidor llega al
+    // ejecutar (la imagen se construye una vez; la CI define una base local sin TLS solo para sus
+    // pruebas): las reglas de producción no se exigen mientras se construye.
     const construyendo = process.env.NEXT_PHASE === "phase-production-build";
+    const produccion = e.NODE_ENV === "production" && e.OTEA_E2E !== "1" && !construyendo;
     const problema = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
 
-    if (produccion && !construyendo && !e.NEXT_PUBLIC_SITE_URL.startsWith("https://")) {
+    if (produccion && !e.NEXT_PUBLIC_SITE_URL.startsWith("https://")) {
       problema(
         "NEXT_PUBLIC_SITE_URL",
         "En producción falta NEXT_PUBLIC_SITE_URL con la URL https del sitio: sin ella el sitio publicaría enlaces a localhost.",
