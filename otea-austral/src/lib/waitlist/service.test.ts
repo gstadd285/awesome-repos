@@ -3,7 +3,7 @@ import { createFixedWindowLimiter } from "@/lib/security/rate-limit";
 import { crearServicioLista, generarTokenSeguro, sha256Hex } from "./service";
 import { createMemoryWaitlistStore } from "./store";
 
-function servicio(modo: "cerrada" | "memoria" | "abierta" = "memoria", limite = 100) {
+function servicio(modo: "cerrada" | "memoria" | "abierta" = "memoria", limite = 100, maximoEnviosDiarios?: number) {
   const store = createMemoryWaitlistStore();
   const enviar = vi.fn<(correo: string, token: string) => Promise<void>>(async () => {});
   let n = 0;
@@ -14,6 +14,7 @@ function servicio(modo: "cerrada" | "memoria" | "abierta" = "memoria", limite = 
     enviarConfirmacion: enviar,
     limiterPorCliente: createFixedWindowLimiter({ limite, ventanaMs: 60_000 }),
     generarToken: () => `${"t".repeat(42)}${n++}`,
+    maximoEnviosDiarios,
     ahora: () => reloj.ahora,
     duracionMinimaMs: 0,
   });
@@ -182,3 +183,45 @@ describe("generarTokenSeguro", () => {
     expect(generarTokenSeguro()).not.toBe(a);
   });
 });
+
+describe("tope diario de correos de confirmación", () => {
+  const correo = (n: number) => ({ correo: `persona${n}@correo.cl`, acepta: "on", sitio_web: "" });
+
+  it("al llegar al tope no guarda ni envía más, y se reanuda a las 24 horas", async () => {
+    const { s, store, enviar, avanzar } = servicio("abierta", 100, 3);
+    for (let n = 1; n <= 3; n++) expect(await s.registrar(correo(n), "c")).toEqual({ estado: "ok", prueba: false });
+    expect(await s.registrar(correo(4), "c")).toEqual({ estado: "saturada" });
+    expect(enviar).toHaveBeenCalledTimes(3);
+    expect(store.registros()).toHaveLength(3);
+
+    avanzar(24 * HORA + 1);
+    expect(await s.registrar(correo(4), "c")).toEqual({ estado: "ok", prueba: false });
+    expect(enviar).toHaveBeenCalledTimes(4);
+  });
+
+  it("un correo ya inscrito recibe la misma respuesta de saturación (no revela quién está)", async () => {
+    const { s } = servicio("abierta", 100, 1);
+    expect(await s.registrar(correo(1), "c")).toEqual({ estado: "ok", prueba: false });
+    expect(await s.registrar(correo(1), "c")).toEqual({ estado: "saturada" });
+    expect(await s.registrar(correo(2), "c")).toEqual({ estado: "saturada" });
+  });
+
+  it("un envío fallido no gasta el cupo", async () => {
+    const { s, enviar } = servicio("abierta", 100, 1);
+    enviar.mockRejectedValueOnce(new Error("proveedor caído"));
+    expect(await s.registrar(correo(1), "c")).toEqual({ estado: "reintentar" });
+    expect(await s.registrar(correo(2), "c")).toEqual({ estado: "ok", prueba: false });
+    expect(await s.registrar(correo(3), "c")).toEqual({ estado: "saturada" });
+  });
+
+  it("el campo trampa no gasta cupo ni se entera del tope", async () => {
+    const { s, enviar } = servicio("abierta", 100, 1);
+    expect(await s.registrar({ ...correo(1), sitio_web: "https://spam.example" }, "c")).toEqual({
+      estado: "ok",
+      prueba: false,
+    });
+    expect(enviar).not.toHaveBeenCalled();
+    expect(await s.registrar(correo(2), "c")).toEqual({ estado: "ok", prueba: false });
+  });
+});
+

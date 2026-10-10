@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EnvSchema } from "./env";
 
 describe("EnvSchema", () => {
@@ -40,16 +40,37 @@ describe("EnvSchema · tercio 3", () => {
     );
   });
 
-  it("en producción la lista abierta exige la URL https del sitio", () => {
+  it("en producción exige la URL https del sitio, pero no mientras se construye la imagen", () => {
     const base = { NODE_ENV: "production", WAITLIST_MODE: "abierta", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab" };
     expect(EnvSchema.safeParse(base).success).toBe(false);
     expect(EnvSchema.safeParse({ ...base, NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" }).success).toBe(true);
+    // Sin configuración alguna (la URL por omisión es localhost): tampoco se arranca.
+    expect(EnvSchema.safeParse({ NODE_ENV: "production" }).success).toBe(false);
+    // Las pruebas e2e y el desarrollo local siguen funcionando sin URL.
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", OTEA_E2E: "1" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ NODE_ENV: "development" }).success).toBe(true);
+
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    try {
+      expect(EnvSchema.safeParse({ NODE_ENV: "production" }).success).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("en producción la base de datos debe verificar el certificado", () => {
     const sinTls = "postgresql://otea_web:clave@host.neon.tech/neondb?sslmode=require";
-    expect(EnvSchema.safeParse({ NODE_ENV: "production", DATABASE_URL: sinTls }).success).toBe(false);
-    expect(EnvSchema.safeParse({ NODE_ENV: "production", DATABASE_URL: DB }).success).toBe(true);
+    const sitio = { NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" };
+    expect(EnvSchema.safeParse({ ...sitio, DATABASE_URL: sinTls }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...sitio, DATABASE_URL: DB }).success).toBe(true);
+  });
+
+  it("el tope diario de correos tiene un valor por omisión y límites", () => {
+    expect(EnvSchema.parse({}).WAITLIST_ENVIOS_DIARIOS).toBe(80);
+    expect(EnvSchema.parse({ WAITLIST_ENVIOS_DIARIOS: "50" }).WAITLIST_ENVIOS_DIARIOS).toBe(50);
+    for (const malo of ["0", "-1", "10000", "mucho"]) {
+      expect(EnvSchema.safeParse({ WAITLIST_ENVIOS_DIARIOS: malo }).success).toBe(false);
+    }
   });
 
   it("el panel se configura completo o no se configura", () => {

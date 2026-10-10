@@ -20,6 +20,11 @@ function mensaje(estado: EstadoLista): { texto: string; tono: "exito" | "aviso" 
       return { texto: "La lista de espera abre pronto. Por ahora no guardamos correos.", tono: "aviso" };
     case "limite":
       return { texto: "Demasiados intentos. Prueba de nuevo en unos minutos.", tono: "aviso" };
+    case "saturada":
+      return {
+        texto: "Hoy recibimos muchas inscripciones y ya no podemos enviar más correos. Vuelve a intentarlo mañana.",
+        tono: "aviso",
+      };
     case "reintentar":
       return {
         texto: "No pudimos enviar el correo de confirmación. Intenta de nuevo en unos minutos.",

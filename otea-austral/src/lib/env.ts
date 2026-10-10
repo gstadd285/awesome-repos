@@ -62,6 +62,8 @@ export const EnvSchema = z
     DATABASE_URL: urlPostgres.optional(),
     RESEND_API_KEY: z.string().regex(/^re_[A-Za-z0-9_-]{10,200}$/, "Clave de Resend inválida").optional(),
     EMAIL_REMITENTE: remitente.default(REMITENTE_POR_DEFECTO),
+    /** Tope diario de correos de confirmación (Resend gratuito permite 100 al día). */
+    WAITLIST_ENVIOS_DIARIOS: z.coerce.number().int().min(1).max(5000).default(80),
     ADMIN_CLAVE_HASH: hashClave.optional(),
     /** Secreto TOTP en base32: 160 bits. */
     ADMIN_TOTP_SECRETO: z.string().regex(/^[A-Z2-7]{32}$/, "Secreto TOTP inválido (32 caracteres base32)").optional(),
@@ -78,17 +80,23 @@ export const EnvSchema = z
   })
   .superRefine((e, ctx) => {
     const produccion = e.NODE_ENV === "production" && e.OTEA_E2E !== "1";
+    // `next build` también corre con NODE_ENV=production, pero aún sin la configuración del servidor
+    // (la imagen se construye una vez y la URL llega al ejecutar): ahí no se exige.
+    const construyendo = process.env.NEXT_PHASE === "phase-production-build";
     const problema = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
 
+    if (produccion && !construyendo && !e.NEXT_PUBLIC_SITE_URL.startsWith("https://")) {
+      problema(
+        "NEXT_PUBLIC_SITE_URL",
+        "En producción falta NEXT_PUBLIC_SITE_URL con la URL https del sitio: sin ella el sitio publicaría enlaces a localhost.",
+      );
+    }
     if (produccion && e.WAITLIST_MODE === "memoria") {
       problema("WAITLIST_MODE", "WAITLIST_MODE=memoria no se permite en producción: los correos se perderían.");
     }
     if (e.WAITLIST_MODE === "abierta") {
       if (!e.DATABASE_URL) problema("DATABASE_URL", "La lista abierta necesita DATABASE_URL.");
       if (!e.RESEND_API_KEY) problema("RESEND_API_KEY", "La lista abierta necesita RESEND_API_KEY.");
-      if (produccion && !e.NEXT_PUBLIC_SITE_URL.startsWith("https://")) {
-        problema("NEXT_PUBLIC_SITE_URL", "Los enlaces de confirmación necesitan la URL https del sitio.");
-      }
     }
     if (produccion && e.DATABASE_URL && !/[?&]sslmode=verify-full(&|$)/.test(e.DATABASE_URL)) {
       problema("DATABASE_URL", "En producción la conexión debe verificar el certificado: agrega sslmode=verify-full.");
@@ -113,6 +121,7 @@ export const env: Env = EnvSchema.parse({
   DATABASE_URL: leer("DATABASE_URL"),
   RESEND_API_KEY: leer("RESEND_API_KEY"),
   EMAIL_REMITENTE: leer("EMAIL_REMITENTE"),
+  WAITLIST_ENVIOS_DIARIOS: leer("WAITLIST_ENVIOS_DIARIOS"),
   ADMIN_CLAVE_HASH: leer("ADMIN_CLAVE_HASH"),
   ADMIN_TOTP_SECRETO: leer("ADMIN_TOTP_SECRETO"),
   ADMIN_SESION_SECRETO: leer("ADMIN_SESION_SECRETO"),

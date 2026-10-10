@@ -50,5 +50,13 @@ export function crearStorePostgres(db: BaseDeDatos): WaitlistStore {
       );
       return filas.length;
     },
+
+    async enviosDesde(desde) {
+      const [fila] = await db.consulta<{ n: number }>(
+        "select count(*)::int as n from lista_espera where token_emitido >= $1",
+        [desde],
+      );
+      return fila.n;
+    },
   };
 }

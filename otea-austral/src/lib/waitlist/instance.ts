@@ -15,6 +15,7 @@ function crear(): Servicio {
     return crearServicioLista({
       modo: "abierta",
       store: crearStorePostgres(db),
+      maximoEnviosDiarios: env.WAITLIST_ENVIOS_DIARIOS,
       enviarConfirmacion: crearRemitenteResend({
         apiKey: env.RESEND_API_KEY,
         remitente: env.EMAIL_REMITENTE,

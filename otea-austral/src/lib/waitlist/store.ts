@@ -35,6 +35,8 @@ export interface WaitlistStore {
   liberarReenvio(correo: string): Promise<void>;
   /** Borra las inscripciones sin confirmar cuyo último enlace es anterior a `antesDe`. */
   purgarPendientes(antesDe: string): Promise<number>;
+  /** Cuántos enlaces de confirmación se enviaron desde `desde` (los envíos fallidos no cuentan). */
+  enviosDesde(desde: string): Promise<number>;
 }
 
 const ANULADO = new Date(0).toISOString();
@@ -86,6 +88,9 @@ export function createMemoryWaitlistStore(): WaitlistStore & { registros(): read
         }
       }
       return borrados;
+    },
+    async enviosDesde(desde) {
+      return [...porCorreo.values()].filter((r) => r.tokenEmitido >= desde).length;
     },
     registros() {
       return [...porCorreo.values()].map((r) => ({ ...r }));

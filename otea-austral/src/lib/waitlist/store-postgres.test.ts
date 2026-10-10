@@ -93,4 +93,16 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("lista de espera en Postgres", () => {
     );
     expect(await servicio.confirmar(enviado)).toBe(true);
   });
+
+  it("cuenta los enlaces enviados desde un instante, sin los liberados", async () => {
+    // Fechas lejanas: otras pruebas de este archivo usan la hora real.
+    const LEJOS = 100 * 24 * 60 * MINUTO;
+    await store.guardar(inscripcion("cuenta1@example.org", "7".repeat(64), LEJOS), en(LEJOS - MINUTO));
+    await store.guardar(inscripcion("cuenta2@example.org", "8".repeat(64), LEJOS + MINUTO), en(LEJOS - MINUTO));
+    expect(await store.enviosDesde(en(LEJOS))).toBe(2);
+    expect(await store.enviosDesde(en(LEJOS + 1))).toBe(1);
+    expect(await store.enviosDesde(en(LEJOS + 2 * MINUTO))).toBe(0);
+    await store.liberarReenvio("cuenta2@example.org");
+    expect(await store.enviosDesde(en(LEJOS))).toBe(1);
+  });
 });

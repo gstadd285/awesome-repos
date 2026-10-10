@@ -15,7 +15,9 @@ export type ResultadoLista =
   | { estado: "invalida"; errores: { correo?: string; acepta?: string } }
   | { estado: "limite" }
   /** No se pudo guardar o enviar el correo: se puede intentar de nuevo enseguida. */
-  | { estado: "reintentar" };
+  | { estado: "reintentar" }
+  /** Se alcanzó el tope diario de correos de confirmación: volver a intentar otro día. */
+  | { estado: "saturada" };
 
 export type EntradaLista = {
   correo: unknown;
@@ -28,6 +30,14 @@ export type EntradaLista = {
 export const VIGENCIA_ENLACE_MS = 72 * 60 * 60_000;
 /** Si no llegó el correo, se puede pedir otro enlace después de 10 minutos. */
 export const ESPERA_REENVIO_MS = 10 * 60_000;
+/**
+ * Tope de enlaces de confirmación por día. Protege la cuota del proveedor de
+ * correo (Resend gratuito: 100 al día) y el buzón de terceros de quien use el
+ * formulario para enviar correo no pedido. Se cuenta en la base, así que vale
+ * para todas las instancias y sobrevive a los reinicios.
+ */
+export const MAXIMO_ENVIOS_DIARIOS = 80;
+const DIA_MS = 24 * 60 * 60_000;
 /** Las inscripciones sin confirmar se borran a los 30 días. */
 export const PLAZO_PENDIENTES_MS = 30 * 24 * 60 * 60_000;
 const INTERVALO_PURGA_MS = 60 * 60_000;
@@ -40,6 +50,8 @@ type Dependencias = {
   limiterPorCliente?: FixedWindowLimiter;
   limiterGlobal?: FixedWindowLimiter;
   generarToken?: () => string;
+  /** Tope diario de correos de confirmación (por defecto {@link MAXIMO_ENVIOS_DIARIOS}). */
+  maximoEnviosDiarios?: number;
   ahora?: () => Date;
   /**
    * Toda respuesta que pasa por el almacenamiento tarda al menos esto, para
@@ -73,6 +85,7 @@ export function crearServicioLista({
   limiterPorCliente = createFixedWindowLimiter({ limite: 5, ventanaMs: 10 * 60_000 }),
   limiterGlobal = createFixedWindowLimiter({ limite: 300, ventanaMs: 10 * 60_000 }),
   generarToken = generarTokenSeguro,
+  maximoEnviosDiarios = MAXIMO_ENVIOS_DIARIOS,
   ahora = () => new Date(),
   duracionMinimaMs = 1200,
 }: Dependencias) {
@@ -124,6 +137,12 @@ export function crearServicioLista({
         const token = generarToken();
         let resultado: "nuevo" | "renovado" | "existente";
         try {
+          // Con el tope alcanzado no se guarda ni se envía nada, ni siquiera a un correo ya inscrito:
+          // así la respuesta no distingue si el correo estaba y el servicio nunca excede la cuota.
+          if ((await store.enviosDesde(antesDe(instante, DIA_MS))) >= maximoEnviosDiarios) {
+            logSecurityEvent({ tipo: "limite_excedido", recurso: "lista_envios_diarios" });
+            return { estado: "saturada" };
+          }
           resultado = await store.guardar(
             {
               correo,
