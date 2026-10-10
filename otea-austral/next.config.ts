@@ -11,6 +11,13 @@ const nextConfig: NextConfig = {
   // El sitio no usa `next/image`: sin optimizador no existe el endpoint público `/_next/image`.
   images: { unoptimized: true },
   reactStrictMode: true,
+  experimental: {
+    serverActions: {
+      // Todos los formularios son pequeños (el mayor, una alerta con 8 filas, no llega a 20 KB). El tope
+      // por defecto de 1 MB solo deja más margen para gastar memoria al procesar cuerpos enormes.
+      bodySizeLimit: "100kb",
+    },
+  },
   turbopack: {
     rules: {
       "*.css": {

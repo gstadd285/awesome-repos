@@ -13,7 +13,9 @@
     "test:e2e": "playwright test",
     "db:migrar": "node scripts/migrar.mjs",
     "db:rol-app": "node scripts/crear-rol-app.mjs",
-    "admin:credenciales": "node scripts/admin-credenciales.mjs"
+    "admin:credenciales": "node scripts/admin-credenciales.mjs",
+    "seguridad:secretos": "node scripts/escanear-secretos.mjs --historial",
+    "seguridad:canarios": "node scripts/comprobar-secretos-en-build.mjs"
   },
   "dependencies": {
     "next": "16.4.0",

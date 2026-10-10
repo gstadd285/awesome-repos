@@ -25,6 +25,9 @@ function DatosEstructurados({ nonce }: { nonce?: string }) {
     <script
       type="application/ld+json"
       nonce={nonce}
+      // Única excepción a react/no-danger: contenido fijo (sin datos de usuarios) y con `<` escapado,
+      // para que no pueda cerrar la etiqueta. Un JSON-LD no se puede dar como hijo de React.
+      // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: JSON.stringify(datos).replace(/</g, "\\u003c") }}
     />
   );

@@ -50,12 +50,29 @@ legal o al proveedor.
 
 | Situación | Acciones |
 |---|---|
-| Secreto expuesto | Revocar y rotar de inmediato; revisar los registros del proveedor; si quedó en git, rotar igual (borrar el historial no basta). |
+| Secreto expuesto | Revocar y rotar de inmediato; revisar los registros del proveedor; si quedó en git, rotar igual (borrar el historial no basta). Pasos en «Secreto en git» más abajo. |
 | Cuenta tomada | Recuperar la cuenta, cerrar sesiones, cambiar contraseña, revisar verificación en dos pasos, tokens y aplicaciones autorizadas. |
 | Código no autorizado en el sitio | Volver a la última versión sana (sección 4); revisar dependencias y CI; mantener la CSP en modo bloqueo. |
 | Dependencia comprometida | Fijar la versión sana anterior, regenerar el lockfile, revisar el SBOM del despliegue afectado. |
 | Alerta publicada fuera de las reglas | Retractar o corregir con texto público (nunca borrar); revisar la auditoría. |
 | Formulario abusado | Desactivarlo temporalmente y ajustar el límite de solicitudes. |
+
+#### Secreto en git (la CI lo detecta con `npm run seguridad:secretos`)
+
+1. **Revocar y rotar primero**, antes de tocar git: desde que el secreto se subió, cualquiera que haya
+   clonado, hecho un fork o visto la sugerencia de un PR pudo copiarlo. Cada secreto se rota en su sistema
+   (Neon, Resend, Google Cloud, `npm run admin:credenciales` para el panel; ver `docs/despliegue.md`).
+2. Revisar los registros del proveedor desde la fecha del commit por usos que no sean tuyos.
+3. Limpiar el historial solo después de rotar: reescribirlo con `git filter-repo --replace-text` (no con
+   `git filter-branch`), forzar el push de las ramas y pedir a GitHub que elimine las vistas en caché y las
+   referencias de los PR (soporte de GitHub). Avisar a quien tenga clones o forks.
+4. Volver a correr `npm run seguridad:secretos` (revisa archivos y todo el historial) y dejar constancia en
+   la bitácora del incidente.
+5. Si fue un falso positivo, no se silencia el escáner: se agrega `escaner:ignorar` y el motivo en esa
+   línea, para que quede a la vista en la revisión.
+
+Prevención: activar _Secret scanning_ y _Push protection_ en GitHub (Settings → Code security), que
+bloquea el push antes de que el secreto llegue al repositorio.
 
 ### 3.4 Erradicar (RS.MI-02)
 

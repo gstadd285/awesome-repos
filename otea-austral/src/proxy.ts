@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { env } from "@/lib/env";
 import { buildCsp, generateNonce } from "@/lib/security/csp";
 
 /** Genera un nonce por solicitud y aplica la CSP estricta. */
 export function proxy(request: NextRequest) {
   const nonce = generateNonce();
-  const csp = buildCsp(nonce, { dev: process.env.NODE_ENV === "development" });
+  const csp = buildCsp(nonce, { dev: env.NODE_ENV === "development" });
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);

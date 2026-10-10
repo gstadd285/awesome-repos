@@ -14,6 +14,9 @@ export const securityHeaders: { key: string; value: string }[] = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+  // Sin políticas entre dominios de Flash/PDF (obsoleto, pero costo cero) y con el origen aislado.
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+  { key: "Origin-Agent-Cluster", value: "?1" },
   // Destino de la Reporting API para `report-to` de la CSP.
   { key: "Reporting-Endpoints", value: `${CSP_REPORT_GROUP}="${CSP_REPORT_PATH}"` },
 ];

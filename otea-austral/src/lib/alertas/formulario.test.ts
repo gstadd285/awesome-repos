@@ -33,6 +33,43 @@ describe("formularios del panel", () => {
     });
   });
 
+  it("ignora los campos que no le corresponden: quien envía no puede fijar estado, versión, confianza ni id (control 8)", () => {
+    const intruso = {
+      ...BASE,
+      revisor: "Equipo",
+      estado: "publicada",
+      version: "99",
+      id: "alerta-ajena",
+      confianza: "alta",
+      nivel_verificacion: "fuente_oficial",
+      fecha: "2020-01-01T00:00:00Z",
+      creada: "2020-01-01T00:00:00Z",
+      actor: "otro",
+      fila_0_estado: "publicada",
+      fila_0_confianza_mostrada: "alta",
+      fila_9_sector: "Fuera del máximo de filas",
+      fila_9_condicion: "Fuera del máximo de filas",
+    };
+    const contenido = leerContenido(formulario(intruso));
+    expect(contenido.ok && Object.keys(contenido.valor).sort()).toEqual(["evento", "filas", "impacto", "resumen", "tema"]);
+    expect(contenido.ok && contenido.valor.filas).toHaveLength(1);
+    expect(contenido.ok && Object.keys(contenido.valor.filas[0]).sort()).toEqual(["condicion", "confianza", "direccion", "sector"]);
+
+    const nueva = leerNuevaAlerta(formulario(intruso));
+    expect(nueva.ok && Object.keys(nueva.valor).sort()).toEqual([
+      "es_ejemplo",
+      "evento",
+      "filas",
+      "impacto",
+      "resumen",
+      "revisor",
+      "tema",
+    ]);
+
+    const enlace = leerEnlace(formulario({ source_id: "bcch", url: "https://x.cl/", organismo: "Falso", tipo: "primaria", retirada: "x" }));
+    expect(Object.keys(enlace).sort()).toEqual(["fecha_consulta", "fecha_publicacion", "source_id", "titulo_documento", "url"]);
+  });
+
   it("explica en español qué falta", () => {
     const r = leerContenido(formulario({ ...BASE, tema: "otro", fila_0_sector: "", fila_0_condicion: "" }));
     expect(r.ok).toBe(false);

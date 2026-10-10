@@ -28,7 +28,10 @@ COPY . .
 RUN npm run build \
     # Sin `next/image` (ver next.config.ts) `sharp` no se usa: sus 46 MB de binarios nativos
     # entran por el trazado del servidor de Next.js y no se pueden excluir por ruta.
-    && rm -rf .next/standalone/node_modules/sharp .next/standalone/node_modules/@img
+    && rm -rf .next/standalone/node_modules/sharp .next/standalone/node_modules/@img \
+    # Mapas de código: en la salida standalone quedan solo índices vacíos de las páginas, pero la imagen
+    # no debe llevar ninguno (la CI lo comprueba).
+    && find .next/standalone -name '*.map' -delete
 
 # ── Ejecución ──────────────────────────────────────────────────────────────────
 FROM base AS ejecucion

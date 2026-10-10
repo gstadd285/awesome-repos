@@ -1,15 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALFABETO_FRASE,
   base32,
   generarFrase,
+  ITERACIONES,
   generarSecretoSesion,
   generarSecretoTotp,
   hashearFrase,
   uriTotp,
 } from "../../../scripts/lib/credenciales.mjs";
-import { EnvSchema } from "@/lib/env";
+import { EnvSchema, ITERACIONES_MINIMAS } from "@/lib/env";
 import { verificarFrase } from "./clave";
-import { COOKIE_SESION, crearSesion, DURACION_SESION_MS, leerSesion, tokenCsrf, verificarCsrf } from "./sesion";
+import {
+  COOKIE_SESION,
+  crearSesion,
+  DURACION_SESION_MS,
+  leerSesion,
+  OPCIONES_COOKIE,
+  tokenCsrf,
+  verificarCsrf,
+} from "./sesion";
 import { codigoTotp, decodificarBase32, verificarTotp } from "./totp";
 
 // RFC 6238, apéndice B (SHA-1): secreto ASCII "12345678901234567890".
@@ -63,6 +73,19 @@ describe("frase de acceso", () => {
     expect(await verificarFrase("", hash)).toBe(false);
   });
 
+  it("la frase generada tiene al menos 120 bits de entropía y el hash usa el mínimo de OWASP", () => {
+    // 5 grupos de 5 caracteres de un alfabeto de 31: 25 × log2(31) ≈ 124 bits.
+    expect(25 * Math.log2(ALFABETO_FRASE.length)).toBeGreaterThanOrEqual(120);
+    expect(ITERACIONES).toBeGreaterThanOrEqual(ITERACIONES_MINIMAS);
+    expect(ITERACIONES_MINIMAS).toBeGreaterThanOrEqual(600_000);
+  });
+
+  it("el esquema de entorno rechaza un hash con pocas iteraciones", () => {
+    const hash = `pbkdf2-sha256$100000$${"A".repeat(22)}$${"B".repeat(43)}`;
+    const r = EnvSchema.safeParse({ ADMIN_CLAVE_HASH: hash });
+    expect(r.success).toBe(false);
+  });
+
   it("un hash mal formado nunca coincide", async () => {
     for (const malo of ["", "texto", "md5$1$a$b", "pbkdf2-sha256$0$aaaaaaaaaaaaaaaaaaaaaa$bb"]) {
       expect(await verificarFrase("frase", malo)).toBe(false);
@@ -89,6 +112,15 @@ describe("sesión firmada", () => {
     const { valor } = crearSesion(SECRETO, AHORA);
     expect(leerSesion(SECRETO, valor, AHORA + DURACION_SESION_MS - 1)).not.toBeNull();
     expect(leerSesion(SECRETO, valor, AHORA + DURACION_SESION_MS)).toBeNull();
+  });
+
+  it("la cookie es HttpOnly, Secure, SameSite=Strict y de ruta / sin Domain (requisitos de __Host-)", () => {
+    expect(OPCIONES_COOKIE).toEqual({ httpOnly: true, secure: true, sameSite: "strict", path: "/" });
+    expect(OPCIONES_COOKIE).not.toHaveProperty("domain");
+  });
+
+  it("la sesión de la aplicación nunca dura más que el máximo que admite la base (12 horas, migración 0002)", () => {
+    expect(DURACION_SESION_MS).toBeLessThanOrEqual(12 * 60 * 60_000);
   });
 
   it("rechaza firmas alteradas, otro secreto y cargas inventadas", () => {

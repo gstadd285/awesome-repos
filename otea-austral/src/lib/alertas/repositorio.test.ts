@@ -208,4 +208,73 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("repositorio de alertas (Postgres)", () =>
     await expect(base.propietario.consulta("delete from correcciones")).rejects.toThrow(/no admite DELETE/);
     await expect(base.propietario.consulta("truncate alerta_auditoria")).rejects.toThrow(/no admite TRUNCATE/);
   });
+
+  it("el listado público nunca incluye borradores ni alertas en revisión (control 7)", async () => {
+    const borrador = await borradorConFuente();
+    const enRevision = await borradorConFuente();
+    ok(await repo.enviarARevision(enRevision.id, enRevision.version, ctx()));
+    const publicada = await borradorConFuente();
+    ok(await repo.publicar(publicada.id, publicada.version, ctx()));
+
+    const ids = (await repo.publicas(500)).map((a) => a.id);
+    expect(ids).toContain(publicada.id);
+    expect(ids).not.toContain(borrador.id);
+    expect(ids).not.toContain(enRevision.id);
+    expect((await repo.publicas(500)).every((a) => ["publicada", "corregida", "retractada"].includes(a.estado))).toBe(true);
+  });
+
+  it("la vista pública solo lleva los campos pensados para el público (control 17)", async () => {
+    const { id, version } = await borradorConFuente();
+    ok(await repo.publicar(id, version, ctx()));
+    const publica = (await repo.publicas(500)).find((a) => a.id === id);
+    expect(Object.keys(publica ?? {}).sort()).toEqual([
+      "confianza",
+      "correcciones",
+      "es_ejemplo",
+      "estado",
+      "evento",
+      "fecha",
+      "filas",
+      "fuentes",
+      "id",
+      "impacto",
+      "nivel_verificacion",
+      "resumen",
+      "revisor",
+      "tema",
+    ]);
+    // Del enlace a la fuente salen los datos de la cita, no los internos (identificador del enlace, fechas de alta o retiro).
+    // (`identificador` solo aparece si el enlace lo tiene.)
+    expect(Object.keys(publica?.fuentes[0] ?? {}).sort()).toEqual([
+      "fecha_publicacion",
+      "nombre_fuente",
+      "organismo",
+      "tipo",
+      "titulo",
+      "url",
+    ]);
+  });
+
+  it("la aplicación solo escribe las columnas autorizadas: no fija revisor, ejemplo, estado inicial ni datos copiados (control 8)", async () => {
+    const { id } = await borradorConFuente();
+    for (const sql of [
+      "update alertas set revisor = 'otro' where id = $1",
+      "update alertas set es_ejemplo = false where id = $1",
+      "update alertas set creada = now() where id = $1",
+      "update alertas set id = 'otro-id' where id = $1",
+      "update alerta_fuentes set url = 'https://example.org/x' where alert_id = $1",
+      "update alerta_fuentes set organismo = 'Otro' where alert_id = $1",
+      "update alerta_fuentes set tipo = 'primaria' where alert_id = $1",
+      "update fuentes set tipo = 'primaria' where id = 'bcch'",
+    ]) {
+      await expect(base.app.consulta(sql, sql.includes("$1") ? [id] : [])).rejects.toThrow(/permission denied/);
+    }
+    // Al insertar tampoco puede declarar el estado ni la versión: nacen como borrador, versión 1.
+    await expect(
+      base.app.consulta(
+        `insert into alertas (id, tema, evento, resumen, filas, fecha, revisor, impacto, estado, version)
+         values ('intruso-1', 'cobre', 'e', 'r', '[{"sector":"s"}]', now(), 'r', 'bajo', 'publicada', 7)`,
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
 });

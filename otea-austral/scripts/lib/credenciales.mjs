@@ -10,7 +10,7 @@ const pbkdf2Async = promisify(pbkdf2);
 export const ITERACIONES = 600_000;
 
 // Sin caracteres que se confundan (0/o, 1/l/i).
-const ALFABETO_FRASE = "abcdefghjkmnpqrstuvwxyz23456789";
+export const ALFABETO_FRASE = "abcdefghjkmnpqrstuvwxyz23456789";
 const ALFABETO_BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 /** Frase aleatoria de 5 grupos de 5 caracteres (≈ 124 bits). */

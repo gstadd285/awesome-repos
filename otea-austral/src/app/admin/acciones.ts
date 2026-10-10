@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { almacenSesiones, exigirAccionAdmin } from "@/lib/admin/acceso";
 import { verificarFrase } from "@/lib/admin/clave";
-import { COOKIE_SESION, crearSesion, DURACION_SESION_MS } from "@/lib/admin/sesion";
+import { COOKIE_SESION, crearSesion, DURACION_SESION_MS, OPCIONES_COOKIE } from "@/lib/admin/sesion";
 import { verificarTotp } from "@/lib/admin/totp";
 import { env, panelActivo } from "@/lib/env";
 import { ipCliente } from "@/lib/security/ip";
@@ -34,8 +34,6 @@ function control(): Control {
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const fallaDeBase = (codigo: string) =>
   logSecurityEvent({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo });
-
-const OPCIONES_COOKIE = { httpOnly: true, secure: true, sameSite: "strict", path: "/" } as const;
 
 /**
  * Acceso al panel con dos factores: frase (hash PBKDF2-SHA256 de 600 000

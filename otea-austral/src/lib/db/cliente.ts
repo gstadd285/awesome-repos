@@ -1,3 +1,4 @@
+import "server-only";
 import { Pool, types, type PoolClient, type QueryResultRow } from "pg";
 import { logSecurityEvent } from "@/lib/security/log";
 

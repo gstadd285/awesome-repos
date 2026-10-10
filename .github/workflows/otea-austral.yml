@@ -49,6 +49,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Historial completo: el escáner de secretos revisa todos los commits, no solo el último.
+          fetch-depth: 0
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -58,6 +60,10 @@ jobs:
 
       - name: Instalar dependencias (versiones fijas del lockfile)
         run: npm ci
+
+      # Plan de seguridad, control 2: ningún secreto en los archivos ni en el historial de git.
+      - name: Buscar secretos en los archivos y en todo el historial
+        run: npm run seguridad:secretos
 
       # NIST CSF ID.RA-09: autenticidad e integridad del software antes de usarlo.
       - name: Verificar firmas del registro npm
@@ -81,8 +87,10 @@ jobs:
           npm run db:migrar
           npm run db:rol-app -- otea_web
 
-      - name: Build
-        run: npm run build
+      # Plan de seguridad, control 1: se construye con secretos falsos y se comprueba que ninguno queda
+      # en el resultado (que es lo que llega al navegador y a la imagen), ni mapas de código públicos.
+      - name: Build con secretos falsos y comprobación de que no quedan en el resultado
+        run: npm run seguridad:canarios
 
       - name: Auditoría de dependencias de producción
         run: npm audit --omit=dev --audit-level=high
@@ -182,11 +190,13 @@ jobs:
       - name: Construir la imagen
         run: docker build --tag otea-austral:ci .
 
-      - name: Corre sin privilegios y sin secretos ni código fuente
+      - name: Corre sin privilegios y sin secretos, código fuente ni mapas de código
         run: |
           test "$(docker run --rm --entrypoint id otea-austral:ci -u)" = "10001"
           docker run --rm --entrypoint sh otea-austral:ci -c '
-            test ! -e /app/src && test ! -e /app/.env && test ! -e /app/node_modules/sharp'
+            test ! -e /app/src && test ! -e /app/.env && test ! -e /app/node_modules/sharp
+            sobrantes="$(find /app \( -name "*.map" -o -name ".env*" \) | head -3)"
+            test -z "$sobrantes" || { echo "Sobran archivos: $sobrantes"; exit 1; }'
 
       - name: Arranca con configuración válida y responde con las cabeceras de seguridad
         run: |

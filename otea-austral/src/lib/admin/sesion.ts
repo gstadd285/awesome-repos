@@ -2,13 +2,21 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 /**
- * Sesión del panel en una cookie firmada con HMAC-SHA256: sin estado en el
- * servidor. `__Host-` obliga a `Secure`, `Path=/` y sin `Domain`, así un
- * subdominio no puede plantar la cookie. Se cierra al vencer o al rotar
- * `ADMIN_SESION_SECRETO`.
+ * Sesión del panel en una cookie firmada con HMAC-SHA256 y registrada en la base
+ * (`admin_sesiones`): la firma descarta falsificaciones sin tocar la base y la
+ * base decide si sigue vigente, así que «Salir» la revoca de verdad. `__Host-`
+ * obliga a `Secure`, `Path=/` y sin `Domain`, así un subdominio no puede plantar
+ * la cookie. Se cierra al vencer, al revocarla o al rotar `ADMIN_SESION_SECRETO`.
  */
 export const COOKIE_SESION = "__Host-otea_admin";
 export const DURACION_SESION_MS = 8 * 60 * 60_000;
+
+/**
+ * Atributos de la cookie de sesión del panel. Una prueba los fija: `HttpOnly` (el JavaScript de la
+ * página no la lee), `Secure` y `Path=/` sin `Domain` (requisitos de `__Host-`) y `SameSite=Strict`
+ * (el navegador no la envía desde otros sitios).
+ */
+export const OPCIONES_COOKIE = { httpOnly: true, secure: true, sameSite: "strict", path: "/" } as const;
 
 const SesionSchema = z.strictObject({
   v: z.literal(1),
