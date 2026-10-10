@@ -13,3 +13,6 @@ export function vigilarErrores(page: Page): string[] {
 export async function sinScrollHorizontal(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 }
+
+/** Sesión del panel guardada por `admin.setup.ts` para las pruebas con sesión. */
+export const SESION_ADMIN = "e2e/.auth/admin.json";

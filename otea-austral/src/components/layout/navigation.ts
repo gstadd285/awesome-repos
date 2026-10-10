@@ -2,6 +2,7 @@
 export const NAV_PRINCIPAL = [
   { href: "/#como-funciona", texto: "Cómo funciona" },
   { href: "/#temas", texto: "Temas" },
+  { href: "/alertas", texto: "Alertas" },
   { href: "/metodologia", texto: "Metodología" },
   { href: "/fuentes", texto: "Fuentes" },
 ] as const;

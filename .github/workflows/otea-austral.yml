@@ -112,8 +112,22 @@ jobs:
     defaults:
       run:
         working-directory: otea-austral
+    services:
+      postgres:
+        image: postgres:17.8@sha256:69dddb030ab69d669d8d7c6abf67aeb448178e5270d5f123a21f4f7ac8b46a24
+        env:
+          POSTGRES_PASSWORD: postgres-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     env:
       NEXT_TELEMETRY_DISABLED: "1"
+      # La aplicación entra con el usuario de mínimos privilegios, como en producción.
+      DATABASE_URL: postgres://otea_web:ci-otea-web-solo-pruebas@localhost:5432/postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -130,6 +144,14 @@ jobs:
 
       - name: Instalar Chromium para Playwright
         run: npx playwright install --with-deps chromium
+
+      - name: Base de datos de prueba (migraciones y usuario de la aplicación)
+        env:
+          DATABASE_URL_ADMIN: postgres://postgres:postgres-ci@localhost:5432/postgres
+          CLAVE_ROL_APP: ci-otea-web-solo-pruebas
+        run: |
+          npm run db:migrar
+          npm run db:rol-app -- otea_web
 
       - name: Build
         run: npm run build

@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { sinScrollHorizontal, vigilarErrores } from "./ayudas";
 
 const PAGINAS = [
+  ["/alertas", "Alertas publicadas."],
   ["/metodologia", "Cómo verificamos cada alerta."],
   ["/fuentes", "De dónde sale la información."],
   ["/seguridad", "Cómo protegemos Otea Austral"],

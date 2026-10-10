@@ -2,6 +2,9 @@ import { z } from "zod";
 import { TEMAS } from "./temas";
 import { httpsUrl } from "./url";
 
+// Mensajes de validación en español (se leen en el panel interno).
+z.config(z.locales.es());
+
 export { TEMA_ETIQUETA } from "./temas";
 
 // ── Enumeraciones ──────────────────────────────────────────────────────────

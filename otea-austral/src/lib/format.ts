@@ -37,3 +37,10 @@ export function formatearDia(instante: string): string {
 export function formatearFechaHora(instante: string): string {
   return diaHora.format(new Date(instante));
 }
+
+const calendarioChile = new Intl.DateTimeFormat("en-CA", { timeZone: ZONA_CHILE });
+
+/** Fecha de hoy en Chile como `AAAA-MM-DD` (valor por defecto de campos de fecha). */
+export function hoyEnChile(ahora = new Date()): string {
+  return calendarioChile.format(ahora);
+}

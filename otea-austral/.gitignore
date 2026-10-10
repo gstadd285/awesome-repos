@@ -47,3 +47,6 @@ next-env.d.ts
 # pruebas e2e
 /test-results/
 /playwright-report/
+
+# sesión del panel creada por las pruebas e2e
+/e2e/.auth/

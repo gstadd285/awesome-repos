@@ -25,7 +25,8 @@ export default function PrivacidadPage() {
       <Apartado numero="02" titulo="Qué datos tratamos">
         <ul>
           <li>
-            <strong>Hoy:</strong> el sitio no usa cookies, analítica ni formularios que guarden datos.
+            <strong>Visitas:</strong> el sitio no usa cookies de seguimiento ni analítica. Solo el equipo de
+            Otea recibe una cookie técnica de sesión al entrar a su panel interno.
           </li>
           <li>
             <strong>Lista de espera (cuando abra):</strong> tu correo, la fecha y la versión del
@@ -46,14 +47,16 @@ export default function PrivacidadPage() {
       <Apartado numero="04" titulo="Con qué base y por cuánto tiempo">
         <p>
           Con tu consentimiento, que puedes retirar cuando quieras. Guardamos el correo hasta que te des de
-          baja; las inscripciones que no se confirmen se eliminarán (el plazo exacto se publicará al abrir la
-          lista).
+          baja. El enlace de confirmación vence a las 72 horas y las inscripciones que no se confirman se
+          borran solas a los 30 días.
         </p>
       </Apartado>
       <Apartado numero="05" titulo="Quién más los ve">
         <p>
-          Los proveedores de alojamiento, base de datos y envío de correos, que aún están por definir. Los
-          listaremos aquí, con su ubicación, antes de abrir la lista de espera.
+          Los proveedores previstos, que solo reciben lo necesario para prestar su servicio: Google Cloud Run
+          (alojamiento del sitio), Neon (base de datos) y Resend (envío del correo de confirmación), con
+          servidores en Estados Unidos. Antes de abrir la lista de espera confirmaremos aquí sus regiones y
+          condiciones.
         </p>
       </Apartado>
       <Apartado numero="06" titulo="Tus derechos">

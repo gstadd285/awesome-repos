@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:migrar": "node scripts/migrar.mjs",
-    "db:rol-app": "node scripts/crear-rol-app.mjs"
+    "db:rol-app": "node scripts/crear-rol-app.mjs",
+    "admin:credenciales": "node scripts/admin-credenciales.mjs"
   },
   "dependencies": {
     "next": "16.4.0",

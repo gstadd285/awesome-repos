@@ -12,6 +12,7 @@ export const SITIO = {
 /** Rutas públicas indexables (sitemap). */
 export const RUTAS_PUBLICAS = [
   "/",
+  "/alertas",
   "/metodologia",
   "/fuentes",
   "/seguridad",
