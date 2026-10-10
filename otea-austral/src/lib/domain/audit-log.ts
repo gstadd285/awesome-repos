@@ -4,9 +4,10 @@ import { AlertAuditSchema, type AlertAudit } from "./schemas";
  * Registro de auditoría de solo agregar, en memoria. No expone métodos para
  * editar ni borrar, y las filas que entrega están congeladas.
  *
- * La versión persistente (tercio 3) debe mantener el mismo contrato y además
- * bloquearlo en la base de datos: permisos solo de INSERT/SELECT y un
- * disparador que rechace UPDATE y DELETE.
+ * Es el modelo de referencia en memoria. La versión persistente es la tabla
+ * `alerta_auditoria` (`src/lib/alertas/repositorio.ts`, migración 0001): mantiene
+ * el mismo contrato y además lo bloquea en la base de datos, con permisos solo de
+ * INSERT/SELECT y un disparador que rechaza UPDATE y DELETE.
  */
 export class AppendOnlyAuditLog {
   readonly #filas: Readonly<AlertAudit>[] = [];

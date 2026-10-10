@@ -5,7 +5,8 @@ y bajo qué condición, con nivel de confianza y fuentes.
 
 > Información y análisis. No constituye asesoría financiera.
 
-Estado: MVP en construcción, **tercios 1 y 2 de 3** terminados. Ver [`docs/plan.md`](docs/plan.md).
+Estado: MVP **terminado en código** (tercios 1, 2 y 3 de 3). Falta ponerlo en producción: ver
+[`docs/despliegue.md`](docs/despliegue.md) y la lista «Falta para abrir al público» de [`docs/plan.md`](docs/plan.md).
 
 ## Requisitos
 
@@ -26,11 +27,15 @@ npm run dev                  # http://localhost:3000
 | Comando | Qué hace |
 |---|---|
 | `npm run dev` | Servidor de desarrollo |
-| `npm run build` / `npm start` | Build de producción y servidor |
+| `npm run build` / `npm start` | Build de producción y servidor (`output: "standalone"`) |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Genera tipos de rutas y ejecuta `tsc` |
 | `npm test` | Pruebas con Vitest |
-| `npm run test:e2e` | Pruebas de navegador con Playwright (después de `npm run build`) |
+| `npm run test:e2e` | Pruebas de navegador con Playwright (después de `npm run build`; con `DATABASE_URL` también prueba el panel) |
+| `npm run db:migrar` | Aplica las migraciones y la semilla de fuentes (`DATABASE_URL_ADMIN`, rol dueño) |
+| `npm run db:rol-app` | Crea el usuario de mínimos privilegios de la aplicación |
+| `npm run admin:credenciales` | Genera la frase, el secreto TOTP y los secretos de sesión del panel |
+| `docker build -t otea-austral .` | Imagen para Cloud Run (sin privilegios, sin secretos) |
 
 ## Qué hay hoy
 
@@ -44,6 +49,11 @@ npm run dev                  # http://localhost:3000
 - Página `/seguridad` con el perfil según el NIST CSF 2.0 y `/.well-known/security.txt`.
 - CSP estricta con nonce, reportes de violación y cabeceras de seguridad.
 - Animaciones solo en CSS, desactivadas si el sistema pide reducir el movimiento.
+- Postgres con migraciones, permisos mínimos y auditoría de solo agregar; lista de espera con doble
+  opt-in por correo (cerrada por defecto, `WAITLIST_MODE`).
+- Panel interno `/admin` (frase + código TOTP, sesión revocable) para crear, revisar, aprobar, publicar,
+  corregir y retractar alertas, y página pública `/alertas`. Sin configuración, el panel no existe (404).
+- Imagen de contenedor y guía de despliegue en Google Cloud Run; revisión OWASP Top 10:2025.
 
 Todo el contenido visible es **de ejemplo** y está marcado así.
 
@@ -52,6 +62,9 @@ Todo el contenido visible es **de ejemplo** y está marcado así.
 - [`CLAUDE.md`](CLAUDE.md): reglas del proyecto, marca, sistema de diseño, modelo de datos y reglas
   de negocio.
 - [`SECURITY.md`](SECURITY.md): controles y pendientes de seguridad.
+- [`docs/despliegue.md`](docs/despliegue.md): Cloud Run, Neon, Resend, secretos y operación.
+- [`docs/seguridad/auditoria-owasp-2025.md`](docs/seguridad/auditoria-owasp-2025.md): hallazgos y
+  correcciones de la revisión OWASP.
 - [`docs/plan.md`](docs/plan.md): plan por tercios y decisiones abiertas.
 - [`docs/referencia-estilo.md`](docs/referencia-estilo.md): referencia visual (solo principios; no
   se usa su marca).

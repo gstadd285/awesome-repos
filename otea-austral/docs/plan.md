@@ -69,20 +69,33 @@ El botón "Recibir alertas" ya lleva a la lista de espera (tercio 2).
 - [x] Pruebas e2e con Playwright (teclado, CSP sin violaciones, movimiento reducido, lista de
       espera, páginas) y job en la CI.
 
-## Tercio 3 · Persistencia y panel interno
+## Tercio 3 · Persistencia, panel interno y despliegue ✅
 
-- [ ] Postgres gratuito (Neon o Supabase) con migraciones y usuario de mínimos privilegios;
-      implementar `WaitlistStore` sobre la base y abrir la lista de espera.
-- [ ] Proveedor de correo para el doble opt-in (enviar el enlace de confirmación).
-- [ ] Repositorios: alertas, fuentes, enlaces, correcciones y auditoría (solo `INSERT`/`SELECT`,
-      disparador que bloquea `UPDATE`/`DELETE`).
-- [ ] Panel `/admin/alertas`: crear alerta, adjuntar fuentes, ver confianza calculada, enviar a
-      revisión, aprobar, publicar, corregir y retractar.
-- [ ] Protección del panel: secreto en variable de entorno, comparación en tiempo constante, límite
-      de intentos, cookie firmada y CSRF.
-- [ ] Cambios de fuentes en alertas publicadas por el flujo de corrección.
-- [ ] Revisión OWASP Top 10:2025 y cierre de pendientes de `SECURITY.md`.
-- [ ] Actualizar `CLAUDE.md` con lo aprendido.
+- [x] Postgres (Neon) con migraciones idempotentes y usuario de mínimos privilegios; `WaitlistStore`
+      sobre la base y lista de espera lista para abrir (`WAITLIST_MODE=abierta`).
+- [x] Correo de doble opt-in con Resend, con tope diario de envíos guardado en la base.
+- [x] Repositorios: alertas, fuentes, enlaces, correcciones y auditoría (solo `INSERT`/`SELECT`,
+      disparadores que bloquean `UPDATE`/`DELETE`).
+- [x] Panel `/admin/alertas`: crear alerta, adjuntar fuentes, ver confianza calculada, enviar a
+      revisión, aprobar, publicar, corregir y retractar. Página pública `/alertas`.
+- [x] Protección del panel: frase (PBKDF2) y código TOTP de un solo uso, límite de intentos, cookie
+      firmada con sesión revocable en la base, y CSRF.
+- [x] Cambios de fuentes en alertas publicadas por el flujo de corrección.
+- [x] Imagen de contenedor, sonda de salud que valida la configuración y guía de despliegue en Cloud
+      Run (`docs/despliegue.md`, `despliegue/cloud-run.yaml`), con job de CI que la construye y prueba.
+- [x] Revisión OWASP Top 10:2025 y cierre de sus hallazgos
+      (`docs/seguridad/auditoria-owasp-2025.md`).
+- [x] `CLAUDE.md` actualizado con lo aprendido.
+
+## Falta para abrir al público (no es código)
+
+- [ ] Crear los proyectos en Google Cloud, Neon y Resend y desplegar siguiendo `docs/despliegue.md`.
+- [ ] Verificación en dos pasos en todas las cuentas (R6) y presupuesto con alertas de 40 USD.
+- [ ] Comprar el dominio y actualizar `NEXT_PUBLIC_SITE_URL`.
+- [ ] Revisión legal de privacidad, términos, aviso legal y metodología.
+- [ ] Alerta de accesos fallidos al panel y retención de registros de 30 días.
+- [ ] Prueba de seguridad independiente antes de manejar datos reales de personas.
+- [ ] Cargar alertas reales (hoy todo el contenido es de ejemplo) con su revisión editorial.
 
 ## Decisiones que necesito de ti
 
@@ -90,11 +103,12 @@ Tomé valores por defecto razonables para no bloquear el avance; confírmalos o 
 
 1. **Ubicación del código.** Está en la carpeta `otea-austral/` dentro de este repositorio
    (`awesome-repos`), para no mezclarlo con la lista existente. ¿Lo movemos a un repositorio propio?
-2. **Despliegue.** Vercel Hobby **no permite uso comercial**; Cloudflare (Workers/Pages) sí en su
-   plan gratuito, con el adaptador OpenNext. Propongo Cloudflare. ¿De acuerdo?
-3. **Correo para el doble opt-in** (tercio 2). Opciones con plan gratuito: Resend o Brevo. Hasta
-   decidir, la lista de espera guardaría solicitudes sin confirmar y no enviaría correos.
-4. **Base de datos** (tercio 3): Neon o Supabase, ambos gratuitos. Propongo Neon (solo Postgres).
+2. **Despliegue.** ✅ Implementado para **Google Cloud Run** (Vercel Hobby no permite uso comercial).
+   Cloud Run exige una cuenta de facturación aunque haya cuota gratuita: la guía fija un presupuesto de
+   40 USD con alertas y `maxScale: 3`. Si prefieres otro alojamiento sin facturación, hay que adaptar
+   `Dockerfile` y `docs/despliegue.md`.
+3. **Correo para el doble opt-in.** ✅ Resend (plan gratuito, 100 al día; la aplicación se limita a 80).
+4. **Base de datos.** ✅ Neon (solo Postgres), con usuario de mínimos privilegios.
 5. **Confianza por fila.** Cada fila guarda la confianza que declara el analista, pero se muestra
    acotada a la que respaldan las fuentes (nunca la supera). ¿Te sirve así?
 6. **Regla de confianza intermedia.** Implementé: sin fuentes → baja; alguna primaria → alta;

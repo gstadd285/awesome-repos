@@ -80,10 +80,10 @@ revisión de cada pull request, auditoría inmutable y este programa versionado.
 | GitHub | Código, CI, reporte privado de vulnerabilidades | Alta | Código (público) | En uso |
 | Registro npm | Dependencias | Alta | Ninguno | En uso |
 | Google Fonts | Descarga de tipografías **durante el build**; los visitantes no se conectan a Google | Baja | Ninguno | En uso |
-| Alojamiento (Cloudflare, propuesto) | Servir el sitio | Alta | IP y registros de acceso de visitantes | Por decidir |
+| Google Cloud (Cloud Run, Artifact Registry, Secret Manager, Cloud Logging) | Servir el sitio, imagen y secretos | Alta | IP y navegador de los visitantes en los registros de solicitudes (retención de 30 días) | Elegido; por crear |
 | Registrador del dominio | oteaustral.com | Alta | Datos de la persona titular | Por comprar |
-| Correo (Resend o Brevo) | Doble opt-in | Media | Correos de la lista de espera | Por decidir |
-| Base de datos (Neon, propuesto) | Alertas, fuentes, lista de espera | Alta | Correos de la lista de espera | Por decidir |
+| Resend | Correo de doble opt-in | Media | Correos de la lista de espera | Elegido; por crear |
+| Neon | Base de datos: alertas, fuentes, lista de espera, sesiones del panel | Alta | Correos de la lista de espera | Elegido; por crear |
 
 Para aceptar un proveedor: plan gratuito suficiente, verificación en dos pasos, cifrado en tránsito
 y en reposo, condiciones de tratamiento de datos legibles y posibilidad de exportar los datos.
@@ -92,14 +92,16 @@ y en reposo, condiciones de tratamiento de datos legibles y posibilidad de expor
 
 | Dato | Origen | Dónde queda | Notas |
 |---|---|---|---|
-| Ningún dato personal hoy | — | — | El sitio no usa cookies, analítica ni formularios. |
-| Reportes de violación de la CSP | Navegadores | Registros de la plataforma | Sin IP, agente de usuario ni parámetros de URL. |
-| Correo de la lista de espera (tercio 2) | Persona interesada | Base de datos | Con consentimiento y doble opt-in; se borra al darse de baja. |
-| Alias internos en la auditoría (tercio 3) | Equipo | Base de datos | Inmutable; sin datos personales. |
+| Visitas al sitio | Navegadores | Registros de solicitudes de Cloud Run | IP y agente de usuario, 30 días, solo seguridad y diagnóstico. Sin cookies de seguimiento ni analítica. |
+| Reportes de violación de la CSP | Navegadores | Registros de la plataforma | Sin IP, agente de usuario ni parámetros de URL en lo que registra la aplicación. |
+| Correo de la lista de espera | Persona interesada | Base de datos | Con consentimiento y doble opt-in; las inscripciones sin confirmar se borran a los 30 días; se borra al darse de baja. |
+| Enlace de confirmación | Aplicación | Correo de la persona; URL en los registros | Token de un solo uso (72 h); en la base solo su hash. |
+| Alias internos en la auditoría | Equipo | Base de datos | Inmutable; sin datos personales. |
+| Sesiones del panel | Equipo | Base de datos | Identificador aleatorio y fechas; sin datos personales. |
 
-Conexiones permitidas: el navegador solo habla con el propio sitio (`connect-src 'self'`). Durante
-el build se contacta npm y Google Fonts; la CI corre en GitHub. La plataforma de alojamiento puede
-registrar IP de visitantes por su cuenta: revisarlo al elegirla.
+Conexiones permitidas: el navegador solo habla con el propio sitio (`connect-src 'self'`). El servidor
+solo hace una petición saliente automática: `https://api.resend.com/emails`. Durante el build se
+contacta npm y Google Fonts; la CI corre en GitHub.
 
 ## 7. Registro de riesgos (ID.RA-03, ID.RA-04, ID.RA-06)
 
@@ -107,9 +109,9 @@ registrar IP de visitantes por su cuenta: revisarlo al elegirla.
 |---|---|---|---|---|---|
 | R1 | Dependencia comprometida (cadena de suministro) | Media | Alto | Versiones exactas, lockfile con hashes, firmas npm, SBOM, Dependabot | Mitigado en parte |
 | R2 | Inyección de scripts (XSS) | Baja | Alto | CSP con nonce, escapado de React, reportes de violación | Mitigado |
-| R3 | Publicar como confirmada información sin respaldo | Media | Alto | Confianza calculada, reglas de publicación, auditoría y correcciones públicas | Mitigado en la lógica; panel en tercio 3 |
-| R4 | Acceso no autorizado al panel interno | Media | Alto | Autenticación SP 800-63B, límite de intentos, CSRF | Pendiente (tercio 3) |
-| R5 | Fuga de correos de la lista de espera | Baja | Alto | Minimización, cifrado del proveedor, registros sin datos personales | Pendiente (tercio 2) |
+| R3 | Publicar como confirmada información sin respaldo | Media | Alto | Confianza calculada, reglas de publicación (lógica y base de datos), auditoría y correcciones públicas | Mitigado |
+| R4 | Acceso no autorizado al panel interno | Media | Alto | Frase + TOTP de un solo uso, sesión revocable, límite de intentos, CSRF, permisos mínimos; revisión OWASP | Mitigado; falta la alerta de accesos fallidos y una prueba independiente |
+| R5 | Fuga de correos de la lista de espera | Baja | Alto | Minimización, permisos mínimos de la base, TLS verificado, registros sin datos personales, tope diario de correos | Mitigado en parte; pendiente revisión legal y abrir con proveedores reales |
 | R6 | Toma de cuentas de proveedores | Media | Alto | Verificación en dos pasos y códigos de respaldo | **Pendiente: acción de la persona responsable** |
 | R7 | Secreto expuesto (token de despliegue o de base de datos) | Baja | Alto | Solo variables de entorno, rotación, procedimiento de contención | Mitigado en parte |
 | R8 | Indisponibilidad (ataque de volumen o caída del proveedor) | Media | Medio | CDN del alojamiento, límites de solicitudes, vuelta a versión sana | Mitigado en parte |
@@ -120,5 +122,6 @@ registrar IP de visitantes por su cuenta: revisarlo al elegirla.
 - Cada tres meses y después de cada incidente: actualizar `src/lib/security/nist-csf.ts`, este
   documento y `SECURITY.md`.
 - Renovar `Expires` de `/.well-known/security.txt` antes del 2027-04-01 (una prueba falla si vence).
-- **Objetivo:** auditoría OWASP Top 10:2025 al cerrar el tercio 3 y un ejercicio de mesa anual del
-  plan de incidentes.
+- Auditoría OWASP Top 10:2025 hecha al cerrar el tercio 3 (`auditoria-owasp-2025.md`); repetirla ante
+  cambios grandes de autenticación, datos o alojamiento. **Objetivo:** una prueba de seguridad
+  independiente y un ejercicio de mesa anual del plan de incidentes.

@@ -30,7 +30,12 @@ export default function PrivacidadPage() {
           </li>
           <li>
             <strong>Lista de espera (cuando abra):</strong> tu correo, la fecha y la versión del
-            consentimiento que aceptaste. Nada más: ni tu IP ni datos de tu navegador.
+            consentimiento que aceptaste. Otea no guarda tu IP ni datos de tu navegador en su base de datos.
+          </li>
+          <li>
+            <strong>Registros del servidor:</strong> el proveedor de alojamiento registra cada solicitud al
+            sitio, incluidas tu dirección IP y tu navegador, por un máximo de 30 días y solo para seguridad y
+            diagnóstico. Otea no los usa para identificarte ni los une a tu correo.
           </li>
           <li>
             <strong>Reportes técnicos de seguridad:</strong> si el navegador bloquea un script no

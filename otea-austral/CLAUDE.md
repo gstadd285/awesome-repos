@@ -14,7 +14,7 @@ fuentes. El usuario elige los temas que sigue.
 - Público inicial: inversionistas minoristas y traders de Chile y Latinoamérica.
 - Dominio previsto: oteaustral.com (no comprado). La URL base sale de `NEXT_PUBLIC_SITE_URL`.
 
-Estado y próximos pasos: [`docs/plan.md`](docs/plan.md).
+Estado y próximos pasos: [`docs/plan.md`](docs/plan.md). Despliegue: [`docs/despliegue.md`](docs/despliegue.md).
 
 ## Reglas que no se negocian
 
@@ -141,9 +141,9 @@ Reglas (las vigila `src/lib/design/motion.test.ts`):
 
 - `Alert` **no tiene** `confianza` ni `nivel_verificacion` como campos editables: se calculan
   (`AlertView` en `view.ts`). Los esquemas son estrictos: un objeto que los traiga se rechaza.
-- Cuando haya base de datos (tercio 3) podrán guardarse como columnas derivadas, recalculadas en
-  cada escritura y nunca editables.
-- Las migraciones llegan con la base de datos (tercio 3).
+- La base **no tiene** columnas de confianza ni de nivel de verificación: se calculan al leer, desde
+  las fuentes activas. Las migraciones están en `db/migraciones/` (`npm run db:migrar`); **una
+  migración aplicada no se edita** (se registra su hash): los cambios van en un archivo nuevo.
 
 ## Reglas de negocio (`src/lib/domain/rules.ts`, funciones puras con pruebas)
 
@@ -188,8 +188,26 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
   IP (cifrada con SHA-256, solo en memoria) y doble opt-in con token cuyo hash se guarda. Con
   `WAITLIST_MODE=cerrada` (por defecto) no guarda correos; `memoria` solo para desarrollo y e2e (el
   esquema de entorno la rechaza en producción salvo `OTEA_E2E=1`).
+- **Panel `/admin`** (`src/app/admin/`, `src/lib/admin/`): sin `ADMIN_*` y `DATABASE_URL` responde 404.
+  Acceso con frase (PBKDF2) y código TOTP; la sesión es una cookie `__Host-` firmada **y registrada en
+  la base** (`admin_sesiones`), así que «Salir» la revoca de verdad. Toda página privada llama a
+  `exigirSesion()` y toda Server Action a `exigirAccionAdmin(formData)` (sesión + token CSRF). Una
+  acción o página nueva del panel que no lo haga es un fallo de seguridad.
+- **Base de datos:** la aplicación entra con un usuario de mínimos privilegios (`otea_app`), nunca con
+  el dueño. Cada tabla nueva necesita sus `grant` por columna y, si es de solo agregar, un disparador
+  `otea_rechazar` (ver `0001` y `0002`). Consultas siempre parametrizadas (`$1`); el texto SQL nunca
+  lleva datos de entrada. `returning` necesita `select`: con permisos por columna usa `returning 1`.
+- **Lo que no puede depender de la memoria de una instancia vive en la base:** códigos TOTP gastados,
+  sesiones revocadas y el tope diario de correos. Los límites por IP en memoria son solo una primera
+  barrera (Cloud Run puede tener varias instancias).
+- **Configuración inválida = revisión sin tráfico:** `env.ts` valida al importarse y `/api/salud`
+  (sonda de Cloud Run) lo importa. Una variable nueva con reglas de seguridad va en `EnvSchema`.
+  `next build` también corre con `NODE_ENV=production`; lo que solo existe al ejecutar se exime con
+  `NEXT_PHASE === "phase-production-build"` (ver `construyendo` en `env.ts`).
+- Revisión OWASP y sus hallazgos: `docs/seguridad/auditoria-owasp-2025.md`.
 - Al agregar o cambiar un control, actualizar `nist-csf.ts` con su evidencia; la prueba falla si un
-  archivo citado no existe. Nunca presentarlo como certificación.
+  archivo citado no existe (y cada descripción admite 280 caracteres). Nunca presentarlo como
+  certificación.
 - `security.txt` vence el 2027-04-01 (`SECURITY_TXT_EXPIRES`): renovarlo antes.
 
 ## Comandos
@@ -200,11 +218,22 @@ npm run dev          # servidor de desarrollo en http://localhost:3000
 npm run lint
 npm run typecheck    # next typegen + tsc
 npm test             # Vitest (una pasada); npm run test:watch para modo observación
-npm run build && npm start
-npm run test:e2e     # Playwright sobre el build (levanta `next start` en el puerto 3200)
+npm run build && npm start   # `output: "standalone"`: start corre `node .next/standalone/server.js`
+npm run test:e2e     # Playwright sobre el build (levanta ese servidor en el puerto 3200)
+npm run db:migrar    # DATABASE_URL_ADMIN (rol dueño): aplica db/migraciones y la semilla de fuentes
+npm run db:rol-app   # crea el usuario de la aplicación e imprime su URL una sola vez
+npm run admin:credenciales   # frase, TOTP y secretos de sesión del panel
+docker build -t otea-austral .
 ```
 
-Node ≥ 22.12 (`.nvmrc`). La CI está en `../.github/workflows/otea-austral.yml`.
+Node ≥ 22.12 (`.nvmrc`). La CI está en `../.github/workflows/otea-austral.yml` (jobs `verificar`,
+`e2e` y `contenedor`, los tres con Postgres o Docker reales).
+
+Pruebas con base de datos: sin `PRUEBAS_DATABASE_URL` (Postgres con un rol que cree bases y roles) las
+de integración se **omiten**; con `PRUEBAS_DB_OBLIGATORIAS=1` fallan si falta. Para e2e del panel exporta
+además `DATABASE_URL` (usuario de la aplicación de una base migrada); sin ella se omiten. Cada corrida
+de Playwright genera credenciales al azar. Los códigos TOTP gastados quedan en la base: dos corridas
+contra la misma base dentro de los mismos 30 segundos pueden chocar (en la CI la base es nueva).
 
 ## Convenciones
 
@@ -225,7 +254,8 @@ Node ≥ 22.12 (`.nvmrc`). La CI está en `../.github/workflows/otea-austral.yml
 src/
   app/                 rutas: portada, metodologia, fuentes, seguridad, legales, 404,
                        lista-de-espera/confirmar, acciones/ (Server Actions), api/csp-report,
-                       .well-known/security.txt, sitemap, robots, manifest, íconos, imagen OG
+                       api/salud, error y global-error, admin/, alertas/, .well-known/security.txt,
+                       sitemap, robots, manifest, íconos, imagen OG
   components/
     alert-card/        AlertCard y sus insignias
     brand/             Emblem y Logo
@@ -240,12 +270,43 @@ src/
     design/            contraste
     security/          CSP, cabeceras, reportes CSP, registro, límites, security.txt, perfil NIST
     sources/           registro de fuentes (semilla validada)
-    waitlist/          lista de espera: esquema, almacenamiento, servicio
+    waitlist/          lista de espera: esquema, almacenamiento (memoria y Postgres), correo, servicio
+    admin/             sesión firmada, TOTP, frase, almacén de sesiones en la base
+    alertas/           repositorio Postgres de alertas, fuentes, correcciones y auditoría; formularios
+    db/                cliente de Postgres (pool, transacciones) y ayudante de pruebas
+  app/admin/           panel interno (acceso, listado, alta, detalle y acciones)
+  app/alertas/         alertas publicadas; app/api/salud: sonda de Cloud Run
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
+db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel)
+scripts/               migrar, crear rol de la aplicación, credenciales del panel, preparar standalone
+despliegue/            plantilla del servicio de Cloud Run
+Dockerfile             imagen multi-etapa sin privilegios
 e2e/                   pruebas de navegador (Playwright)
-docs/                  plan, fuentes pendientes, seguridad/, referencia de estilo anterior
+docs/                  plan, despliegue, fuentes pendientes, seguridad/ (programa, incidentes,
+                       auditoría OWASP), referencia de estilo anterior
 ```
+
+## Lo aprendido (tercio 3)
+
+- **Next.js 16.4 no es el de los ejemplos:** los errores se reintentan con `retry()` (no `reset`); el
+  middleware es `proxy.ts`; `next start` **no** sirve con `output: "standalone"` (`npm start` corre
+  `node .next/standalone/server.js` y `npm run build` copia `public/` y `.next/static` con
+  `scripts/preparar-standalone.mjs`). Antes de usar una API de Next, leer `node_modules/next/dist/docs/`.
+- **`robots.ts` y `sitemap.ts` se prerenderizan al construir** y fijan la URL del momento: llevan
+  `export const dynamic = "force-dynamic"` para que una imagen sirva a cualquier dominio. Cualquier ruta
+  nueva que lea `env` y sea estática tiene el mismo problema.
+- **El contenedor no se puede probar solo con `docker build` si hay un proxy que re-firma TLS** (entornos
+  de desarrollo en la nube): el build necesita la CA del proxy y `next/font/google` baja fuentes durante
+  el build. En la CI de GitHub no hay problema.
+- **Pruebas e2e y sesión compartida:** todas las pruebas con sesión comparten la cookie guardada por
+  `admin.setup.ts`. Como «Salir» ahora la revoca en la base, una prueba que cierre sesión debe crear su
+  propia sesión (ver «sesiones del panel» en `e2e/admin.spec.ts`), nunca usar `SESION_ADMIN`.
+- **Pruebas con Postgres:** cada archivo crea su propia base (`crearBaseDePrueba`); dentro de un archivo
+  las pruebas comparten datos y corren en orden, así que usa claves únicas (hashes, correos) y fechas
+  lejanas cuando cuentes filas.
+- **`tsconfig` incluye `**/*.ts`:** `e2e/` y los `*.test.ts` se comprueban en `npm run typecheck` y en el
+  build; por eso no se excluyen del contexto de Docker.
 
 ## Notas de Next.js
 

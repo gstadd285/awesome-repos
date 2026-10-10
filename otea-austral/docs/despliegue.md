@@ -126,7 +126,8 @@ gcloud run services add-iam-policy-binding otea-austral --region $REGION \
 
 La plantilla define las sondas de arranque y de vida sobre `/api/salud`, que responde 200 **solo si
 la configuración es válida**: una revisión con configuración insegura (por ejemplo
-`WAITLIST_MODE=memoria`, una URL de base de datos sin `verify-full`, o un panel a medio configurar)
+`WAITLIST_MODE=memoria`, una URL de base de datos sin `verify-full`, un panel a medio configurar o
+sin `NEXT_PUBLIC_SITE_URL` https)
 no recibe tráfico y la revisión anterior sigue sirviendo.
 
 Empieza con `WAITLIST_MODE=cerrada` (la lista no guarda correos). Cuando la base, el correo y el
@@ -135,6 +136,8 @@ dominio estén verificados, cambia a `abierta` y vuelve a aplicar.
 ## 7. Comprobaciones después de desplegar
 
 ```bash
+# Para probar localmente la misma salida que corre en el contenedor:
+#   npm run build && NEXT_PUBLIC_SITE_URL=https://oteaustral.example.org npm start   (puerto 3000 por omisión; PORT lo cambia)
 URL=$(gcloud run services describe otea-austral --region $REGION --format='value(status.url)')
 curl -s  $URL/api/salud                     # {"estado":"ok"}
 curl -sI $URL/ | grep -i -E 'content-security-policy|strict-transport'
@@ -167,6 +170,26 @@ mantenla coherente con `/privacidad`:
 gcloud logging buckets update _Default --location=global --retention-days=30
 ```
 
+La URL de cada solicitud queda en esos registros, y la del enlace de confirmación de la lista de espera
+lleva un token de un solo uso (vence en 72 horas; en la base solo se guarda su hash). Ver
+`docs/seguridad/auditoria-owasp-2025.md` (A09-002).
+
+### Alerta ante intentos de acceso al panel
+
+La aplicación registra cada intento en `/admin` como un evento JSON sin datos personales
+(`"tipo":"acceso_admin"` con `"resultado"` `correcto`, `rechazado`, `limite` o `cierre`). Crea una métrica y
+una alerta para enterarte de una racha de rechazos:
+
+```bash
+gcloud logging metrics create otea_acceso_admin_rechazado \
+  --description="Intentos rechazados o bloqueados en /admin" \
+  --log-filter='resource.type="cloud_run_revision" AND resource.labels.service_name="otea-austral" AND jsonPayload.tipo="acceso_admin" AND jsonPayload.resultado=("rechazado" OR "limite")'
+```
+
+Después, en la consola: *Monitoring → Alertas → Crear política*, con la métrica
+`logging.googleapis.com/user/otea_acceso_admin_rechazado`, umbral «más de 5 en 10 minutos» y un canal de
+notificación a tu correo o teléfono. Es el objetivo `DE-04` del perfil de seguridad.
+
 ## 10. Operación
 
 - **Migraciones nuevas.** Aplícalas **antes** de desplegar la imagen que las usa, con
@@ -180,6 +203,16 @@ gcloud logging buckets update _Default --location=global --retention-days=30
   gcloud run services update-traffic otea-austral --region $REGION --to-revisions=REVISION=100
   ```
 
+- **Tope diario de correos.** La lista de espera envía como máximo `WAITLIST_ENVIOS_DIARIOS` enlaces de
+  confirmación cada 24 horas (80 por defecto, bajo el límite de 100 al día del plan gratuito de Resend); al
+  alcanzarlo responde «vuelve mañana». Súbelo solo si cambias de plan.
+- **Cerrar todas las sesiones del panel:** rota `ADMIN_SESION_SECRETO` (las cookies existentes dejan de
+  firmar bien). Cerrar una sola sesión basta con «Salir», que la revoca en la base.
+- **Respaldos de la base de datos.** Neon ofrece restauración a un punto anterior en el tiempo, pero la
+  ventana depende del plan: **confírmala en tu proyecto**, porque en el plan gratuito es corta. Si la
+  lista de espera o las alertas importan, haz además una exportación periódica con el rol dueño desde tu
+  computador (`pg_dump`), guárdala cifrada fuera del proyecto y prueba restaurarla en una base vacía antes
+  de necesitarla.
 - **Cerrar la lista de espera de inmediato:**
   `gcloud run services update otea-austral --region $REGION --update-env-vars WAITLIST_MODE=cerrada`.
 - **Rotar un secreto:** crea una versión nueva (`gcloud secrets versions add …`), vuelve a desplegar

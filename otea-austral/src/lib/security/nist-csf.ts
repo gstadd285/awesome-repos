@@ -111,8 +111,8 @@ export type Control = z.infer<typeof ControlSchema>;
 export const PERFIL = {
   marco: "NIST Cybersecurity Framework (CSF) 2.0",
   alcance: "Sitio web, código y servicios de Otea Austral",
-  revisado: "2026-10-09",
-  proximaRevision: "2027-01-09",
+  revisado: "2026-10-10",
+  proximaRevision: "2027-01-10",
   nivelActual: 1,
   nivelObjetivo: 2,
 } as const;
@@ -301,11 +301,14 @@ export const CONTROLES: Control[] = [
     id: "PR-08",
     titulo: "Límite de solicitudes",
     descripcion:
-      "Los puntos que reciben datos limitan cuántas solicitudes aceptan por minuto. Hoy cubre los reportes de seguridad; la lista de espera lo tendrá al abrir.",
+      "Reportes de seguridad, acceso al panel y lista de espera limitan solicitudes por IP y en total, y la lista tiene un tope diario de correos en la base. Los límites por IP viven en cada instancia: son una primera barrera, no un tope global.",
     estado: "parcial",
     subcategorias: ["PR.IR-04"],
-    evidencia: ["src/lib/security/rate-limit.ts"],
-    tercio: 2,
+    evidencia: [
+      "src/lib/security/rate-limit.ts",
+      "src/app/admin/acciones.ts",
+      "src/lib/waitlist/service.ts",
+    ],
   },
   {
     id: "PR-09",
@@ -320,11 +323,18 @@ export const CONTROLES: Control[] = [
     id: "PR-10",
     titulo: "Acceso protegido al panel interno",
     descripcion:
-      "Autenticación según NIST SP 800-63B, límite de intentos, mínimo privilegio y protección contra falsificación de solicitudes.",
-    estado: "objetivo",
+      "Frase con PBKDF2 y código TOTP de un solo uso; sesión de 8 horas que se revoca de verdad al salir, cookie __Host- HttpOnly y SameSite=Strict, token anti-CSRF, límite de intentos y base de datos con permisos mínimos.",
+    estado: "implementado",
     subcategorias: ["PR.AA-01", "PR.AA-03", "PR.AA-05"],
-    evidencia: [],
-    tercio: 3,
+    evidencia: [
+      "src/app/admin/acciones.ts",
+      "src/lib/admin/acceso.ts",
+      "src/lib/admin/almacen.ts",
+      "src/lib/admin/clave.ts",
+      "src/lib/admin/sesion.ts",
+      "src/lib/admin/totp.ts",
+      "db/migraciones/0002_sesiones_admin.sql",
+    ],
   },
   {
     id: "PR-11",
@@ -356,6 +366,15 @@ export const CONTROLES: Control[] = [
     evidencia: [INCIDENTES],
   },
   {
+    id: "DE-04",
+    titulo: "Alerta ante intentos de acceso al panel",
+    descripcion:
+      "Cada intento fallido o bloqueado queda en el registro como evento de seguridad. La alerta sobre esos eventos está descrita en la guía de despliegue; falta crearla en el proyecto real.",
+    estado: "objetivo",
+    subcategorias: ["DE.CM-01", "DE.AE-06"],
+    evidencia: [],
+  },
+  {
     id: "DE-03",
     titulo: "Revisión semanal de eventos",
     descripcion:
@@ -379,10 +398,10 @@ export const CONTROLES: Control[] = [
     id: "RS-02",
     titulo: "Contención rápida",
     descripcion:
-      "Procedimientos para revertir un despliegue, rotar secretos y desactivar formularios. Se completarán al elegir el alojamiento.",
+      "Documentados en la guía de despliegue: volver a la revisión anterior, cerrar la lista de espera, rotar secretos y cerrar las sesiones del panel. Falta ensayarlos en el entorno real.",
     estado: "parcial",
     subcategorias: ["RS.MI-01", "RS.MI-02"],
-    evidencia: [INCIDENTES],
+    evidencia: [INCIDENTES, "docs/despliegue.md"],
   },
   {
     id: "RS-03",
