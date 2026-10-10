@@ -111,6 +111,12 @@ publiques detalles en issues abiertos.
 
 ### Decisiones y riesgos conocidos
 
+- **El repositorio es público** (`gstadd285/awesome-repos`, un fork de una lista pública): cualquiera puede leer el
+  código, las migraciones y estos documentos. Por eso no hay secretos en él (el escáner revisa también el
+  historial) y la seguridad no se apoya en ocultar el código. _Secret scanning_ y _Push protection_ son gratis en
+  repositorios públicos pero hay que activarlos (hoy la API responde que no están habilitados); si el
+  repositorio pasara a privado, requerirían GitHub Secret Protection (de pago, a decidir): el escáner de la CI es
+  la alternativa gratuita.
 - **CSP con nonce ⇒ renderizado dinámico.** Cada página se genera por solicitud
   (`cacheComponents: false`, `connection()` en el layout). Más costo de servidor que una página
   estática, pero dentro de los planes gratuitos para el tráfico esperado. Alternativa futura: SRI

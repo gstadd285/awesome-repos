@@ -207,7 +207,7 @@ asistida por IA, no una prueba de intrusión.
   `unrs-resolver`) y ninguno hace falta.
 - **CWE:** [CWE-829 · Inclusion of Functionality from Untrusted Control Sphere](https://cwe.mitre.org/data/definitions/829.html).
 - **Corrección:** `ignore-scripts=true` en `.npmrc` (los scripts `npm run …` siguen funcionando); lint, tipos,
-  448 pruebas y build verificados con una instalación limpia.
+  448 pruebas (hoy 450) y build verificados con una instalación limpia.
 
 #### OWASP-A02-002 · Sin redirección de http a https dentro de la aplicación
 

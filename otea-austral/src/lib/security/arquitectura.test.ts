@@ -9,6 +9,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import nextConfig from "../../../next.config";
 
 const RAIZ = path.resolve(__dirname, "../../..");
 const SRC = path.join(RAIZ, "src");
@@ -180,6 +181,20 @@ describe("inventario de la superficie expuesta", () => {
       "src/app/api/csp-report/route.ts",
       "src/app/api/salud/route.ts",
     ]);
+  });
+});
+
+describe("tamaño de lo que recibe el servidor (control 14)", () => {
+  it("los cuerpos de las Server Actions están limitados a 100 KB como máximo (el tope de Next.js es 1 MB)", () => {
+    const limite = nextConfig.experimental?.serverActions?.bodySizeLimit;
+    expect(limite, "falta experimental.serverActions.bodySizeLimit en next.config.ts").toBeDefined();
+    const kb = typeof limite === "number" ? limite / 1024 : Number(/^(\d+)\s*kb$/i.exec(String(limite))?.[1]);
+    expect(kb).toBeGreaterThan(0);
+    expect(kb).toBeLessThanOrEqual(100);
+  });
+
+  it("el único endpoint HTTP que recibe un cuerpo (reportes de la CSP) limita su tamaño", () => {
+    expect(leer(path.join(SRC, "lib/security/csp-report.ts"))).toMatch(/16 \* 1024|16_384|MAX_BYTES/);
   });
 });
 

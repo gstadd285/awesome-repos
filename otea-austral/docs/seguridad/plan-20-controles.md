@@ -234,7 +234,7 @@ Una fase no se da por cerrada si rompe pruebas anteriores.
 ## Resultado
 
 Fase A (`c9b88e5`), B1 (`9352bf3`), B2 (`5d7c4c3`), B3 (`2c701ff`) y B4 (`522da0c`) están integradas en el
-[PR #2](https://github.com/gstadd285/awesome-repos/pull/2). Pruebas: de 296 a **448** unitarias y de
+[PR #2](https://github.com/gstadd285/awesome-repos/pull/2). Pruebas: de 296 a **450** unitarias y de
 integración (con Postgres real) y de 53 a **74** de navegador, todas en verde, con lint, tipos y build.
 
 | # | Control | Resultado | Evidencia principal |
