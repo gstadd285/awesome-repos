@@ -101,6 +101,22 @@ Plan, estado de cada control y evidencia en [`docs/seguridad/plan-20-controles.m
 - [x] Auditoría de todas las dependencias con avisos aceptados evaluados, escaneo de la imagen con Trivy, imagen
       sin gestores de paquetes y sin scripts de instalación.
 
+## Rediseño · claridad y texto en movimiento ✅
+
+Plan, revisión crítica, mediciones y decisiones por confirmar en
+[`rediseno-claridad-y-movimiento.md`](rediseno-claridad-y-movimiento.md).
+
+- [x] Texto que aparece «como en un video», solo con CSS (`TextoEnMovimiento`): H1 letra a letra al cargar, titulares
+      de sección y textos de entrada ligados al scroll, y texto de la historia fija al ritmo de la animación.
+- [x] Héroe que dice qué es, con una acción principal; cabecera de cuatro enlaces y botón «Recibir alertas»;
+      página actual marcada; ruta de navegación en las páginas interiores.
+- [x] Una sola numeración (la de los pasos y los apartados legales); sin corchetes ni rótulos de 11 px en la
+      navegación y los botones.
+- [x] «Temas» y «Tus temas» unidos en un selector; «Así se ve una alerta» sube; el resumen matutino nombra los
+      sectores afectados en lugar de repetir tres etiquetas.
+- [x] Pruebas nuevas: guardas de CSS del movimiento, componente de texto, zona de lectura sin texto a medias,
+      clic en los botones del héroe, cabecera y movimiento reducido.
+
 ## Falta para abrir al público (no es código)
 
 - [ ] Crear los proyectos en Google Cloud, Neon y Resend y desplegar siguiendo `docs/despliegue.md`.

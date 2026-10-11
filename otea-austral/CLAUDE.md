@@ -51,10 +51,14 @@ Estado y próximos pasos: [`docs/plan.md`](docs/plan.md). Despliegue: [`docs/des
 ## Sistema de diseño (editorial claro, referencia "TIDY")
 
 Por pedido de la persona responsable, el sitio adopta el estilo de la web "TIDY" del short de
-referencia: lienzo perla con luz de día, tipografía grotesca en mayúsculas, rótulos técnicos
-(`001 — 004`), cabecera con `[ RECIBIR ALERTAS ]`, piezas 3D y una historia ligada al scroll. Se
-conservan el logo y la paleta de Otea (la referencia usa morado y rosa). El estilo anterior (vidrio
-oscuro, `docs/referencia-estilo.md`) queda como antecedente.
+referencia: lienzo perla con luz de día, titulares grotescos en mayúsculas, piezas 3D y una historia
+ligada al scroll. Se conservan el logo y la paleta de Otea (la referencia usa morado y rosa). El estilo
+anterior (vidrio oscuro, `docs/referencia-estilo.md`) queda como antecedente.
+
+**Rediseño de claridad y texto en movimiento** (`docs/rediseno-claridad-y-movimiento.md`, a pedido de la
+persona responsable): el héroe dice qué es y ofrece una acción; la navegación se reduce a lo esencial; se
+quitan la numeración de secciones, los corchetes y los rótulos de 11 px; el texto aparece «como en un video»
+(ver «Texto en movimiento»). Las decisiones de gusto y los archivos que tocan están en ese documento.
 
 Tokens en `src/app/globals.css` (`@theme`, con la paleta de Tailwind reiniciada):
 
@@ -72,17 +76,22 @@ Tokens en `src/app/globals.css` (`@theme`, con la paleta de Tailwind reiniciada)
 
 Utilidades propias: `superficie` (porcelana con borde fino y sombra suave),
 `superficie-interactiva`, `vidrio` (cabecera, con respaldo opaco sin `backdrop-filter`),
-`linea-fina`, `titular`, `micro` (rótulos en mayúsculas), `contador`, `corchetes`
-(`[ … ]`), `fondo-luz`, `luz-ventana` (sombras de persiana), `reticula-puntos`.
+`linea-fina`, `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
+pantalla de error), `fondo-luz`,
+`luz-ventana` (sombras de persiana), `reticula-puntos`, y el tamaño `text-lede` (18 a 22 px) para el texto
+que explica el producto.
 
 Reglas:
 
-- Contenedor de 1440 px con 24 px de margen; 120 px entre secciones; cada sección abre con
-  `<SectionEyebrow numero="01">Nombre</SectionEyebrow>`.
+- Contenedor de 1440 px con 24 px de margen; 96 px (móvil) a 120 px entre secciones; cada sección abre con
+  `<SectionEyebrow>Nombre</SectionEyebrow>` (punto de latón y nombre). **Sin número**: la numeración solo se
+  usa donde hay una secuencia real (los tres pasos de la historia y los apartados legales).
 - Radios: botones `rounded-pill`, tarjetas `rounded-card` (16 px), insignias y campos
   `rounded-badge` (6 px), íconos circulares.
-- Botones: `buttonClasses("primary")` (latón, texto tinta), `"outline"` (borde fino, como "HOW IT
-  WORKS" de la referencia) y `"ghost"`.
+- Botones: `buttonClasses("primary" | "outline" | "ghost", extra, "md" | "sm")`: píldoras de 14 px con
+  inicial mayúscula (no versalitas) y 44 px de alto (`md`), cómodas al tacto; `primary` es latón con texto tinta.
+- Cabecera: logo, cuatro enlaces (`NAV_CABECERA`) y «Recibir alertas»; la página actual lleva `aria-current`
+  (`<SiteHeader actual="/ruta" />`). Las páginas interiores usan `ContentPage` (ruta de navegación `Migas`).
 - Contraste mínimo AA: lo verifica `src/lib/design/contrast.test.ts` leyendo `globals.css`. El
   latón y la bruma no sirven para texto chico sobre el fondo claro.
 - Página inicial objetivo < 1 MB.
@@ -92,9 +101,9 @@ Reglas:
 
 ### Portada: la historia en 3D (`src/components/home/Story.tsx`)
 
-Cuatro pasos (`001 — 004`): la **cinta** de láminas (`Ribbon`), el **plano técnico** con metal
-líquido (`Blueprint`), el **tablero** con alertas que caen (`Board`, datos de ejemplo) y el
-**panel** en perspectiva. Todo es CSS 3D:
+El héroe (titular H1, texto de entrada y dos botones) y tres pasos (`01 — 03`): la **cinta** de láminas
+(`Ribbon`) que se pliega sobre el **plano técnico** con metal líquido (`Blueprint`), el **tablero** con alertas
+que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 3D:
 
 - En escritorio (≥ 1024 px), con `animation-timeline` y sin movimiento reducido, el escenario
   queda fijo (`position: sticky`) durante `470vh` y cada pieza usa la línea de tiempo `--historia`
@@ -104,6 +113,9 @@ líquido (`Blueprint`), el **tablero** con alertas que caen (`Board`, datos de e
 - Las piezas 3D son decorativas (`aria-hidden`); los textos de cada paso son secciones con `h2`.
   Lo que recibe foco se muestra aunque su paso no esté en pantalla.
 - Las láminas de la cinta giran sobre el eje vertical entre 28° y 152° para no atravesarse.
+- Los bloques de la historia son absolutos y se apilan: **lo que se desvanece debe dejar de interceptar clics**.
+  `pointer-events` se anima en `h-hero`, `h-paso` y `h-paso-final`, y las piezas decorativas llevan
+  `pointer-events: none` (`e2e/portada.spec.ts` lo comprueba con `elementFromPoint`).
 
 ### Movimiento
 
@@ -117,13 +129,35 @@ Todo en CSS dentro de `globals.css`, sin librerías ni JavaScript de animación:
 | `otea-ola`, `otea-flotar`, `otea-metal` | La cinta ondea, los rótulos flotan, el metal se deforma |
 | `superficie-interactiva` | El borde se marca y la sombra crece al pasar el cursor |
 | `<PageTransition>` | Transición entre páginas (React `ViewTransition`); la cabecera queda fija |
+| `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
+
+### Texto en movimiento (`src/components/motion/TextoEnMovimiento.tsx`)
+
+Componente de servidor que parte un texto y el CSS (`kx-*` en `globals.css`) lo anima. Dos copias del texto:
+una `sr-only` para lectores de pantalla y otra `aria-hidden` partida, así que el nombre accesible no cambia.
+
+| `efecto` / `disparo` | Dónde | Qué hace |
+|---|---|---|
+| `letras` + `carga` | H1 de cada página | Cada letra sube desde una máscara (< 1,5 s) |
+| `palabras` + `scroll` | H2 de sección | Cada palabra sube desde una máscara al bajar (reversible) |
+| `lectura` + `scroll` / `carga` | Textos de entrada | Cada tramo de 3 palabras pasa de tenue a pleno |
+| En la historia fija | Pasos 01 a 03 | El texto se escribe al ritmo de `--historia` (reglas `.historia .h-paso-N …`) |
+
+- Letras **solo en los H1**: partir en letras pierde el kerning (medido +0,74 % de ancho en el titular).
+- La CSP prohíbe `style`: el índice de cada unidad va en una clase `kx-i-N` (0 a 79, `MAX_INDICE`); pasado el
+  tope se satura. Nunca uses `style` ni `animation-delay` en línea.
+- Cada bloque de scroll define **una** línea de tiempo (`view-timeline: --kx`) que comparten sus unidades:
+  una por unidad costaba mucho más. Rangos en `vh`; terminan antes de la zona de lectura (≈ 60 % de la pantalla):
+  `e2e/portada.spec.ts` lo comprueba. No lo uses en alertas, tablas, formularios ni textos legales.
+- Si sumas un texto: `texto` es un `string` (para frases con enlaces o negritas, usa `anim-aparecer`).
 
 Reglas (las vigila `src/lib/design/motion.test.ts`):
 
 - Toda animación va dentro de `@media (prefers-reduced-motion: no-preference)`; con movimiento
   reducido el contenido se ve completo y quieto. Al imprimir, las entradas se desactivan.
 - Lo ligado al scroll va además dentro de `@supports (animation-timeline: …)`.
-- Las entradas usan `backwards`: al terminar no queda filtro ni transformación residual.
+- Las entradas usan `backwards`: al terminar no queda filtro ni transformación residual. Nada de
+  `filter: blur` en las entradas (caro y ensucia el texto).
 - Las piezas 3D no deben tener `overflow` distinto de `visible`, `opacity` menor que 1 ni `filter`
   mientras se espera que conserven la profundidad (aplanan el 3D).
 - Un elemento `sr-only` dentro de un contenedor con scroll necesita que ese contenedor sea
@@ -282,9 +316,10 @@ src/
   components/
     alert-card/        AlertCard y sus insignias
     brand/             Emblem y Logo
-    home/              Story (cinta, plano, tablero), temas, tus temas, pre-apertura,
-                       ejemplos, lista de espera
-    layout/            cabecera, pie, ContentPage, transición entre páginas
+    home/              Story (héroe, cinta, plano, tablero), Temas (selector), ejemplos de alertas,
+                       pre-apertura, lista de espera
+    layout/            cabecera, pie, ContentPage, Migas (ruta de navegación), transición entre páginas
+    motion/            TextoEnMovimiento (texto que aparece como en un video)
     security/          perfil NIST, estado de controles, íconos de funciones
     ui/                botones, rótulo de sección
   data/ejemplo.ts      DATOS DE EJEMPLO validados con los esquemas

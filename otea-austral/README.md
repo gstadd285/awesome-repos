@@ -45,8 +45,9 @@ npm run dev                  # http://localhost:3000
 
 ## Qué hay hoy
 
-- Portada en estilo editorial claro con una historia 3D ligada al scroll (cinta, plano técnico,
-  tablero con alertas y panel), temas, "Tus temas", Pre-apertura, ejemplos y lista de espera.
+- Portada en estilo editorial claro: héroe con el titular entrando letra a letra, historia 3D ligada al
+  scroll (cinta, plano técnico, tablero con alertas y panel) con el texto escribiéndose al ritmo de la
+  animación, ejemplos de alertas, selector de temas, resumen matutino y lista de espera.
 - Páginas `/metodologia`, `/fuentes` (17 fuentes primarias), `/seguridad` y textos legales
   provisionales; SEO con imagen para redes, sitemap, robots y manifiesto.
 - `AlertCard`: filas gana/condicionado/pierde, confianza calculada desde las fuentes, fuentes
@@ -54,7 +55,7 @@ npm run dev                  # http://localhost:3000
 - Modelo de datos y reglas de verificación con pruebas (`src/lib/domain/`).
 - Página `/seguridad` con el perfil según el NIST CSF 2.0 y `/.well-known/security.txt`.
 - CSP estricta con nonce, reportes de violación y cabeceras de seguridad.
-- Animaciones solo en CSS, desactivadas si el sistema pide reducir el movimiento.
+- Animaciones y texto en movimiento solo en CSS, desactivados si el sistema pide reducir el movimiento.
 - Postgres con migraciones, permisos mínimos y auditoría de solo agregar; lista de espera con doble
   opt-in por correo (cerrada por defecto, `WAITLIST_MODE`).
 - Panel interno `/admin` (frase + código TOTP, sesión revocable) para crear, revisar, aprobar, publicar,
@@ -72,5 +73,7 @@ Todo el contenido visible es **de ejemplo** y está marcado así.
 - [`docs/seguridad/auditoria-owasp-2025.md`](docs/seguridad/auditoria-owasp-2025.md): hallazgos y
   correcciones de la revisión OWASP.
 - [`docs/plan.md`](docs/plan.md): plan por tercios y decisiones abiertas.
+- [`docs/rediseno-claridad-y-movimiento.md`](docs/rediseno-claridad-y-movimiento.md): plan, revisión crítica y
+  resultado del rediseño de claridad y texto en movimiento.
 - [`docs/referencia-estilo.md`](docs/referencia-estilo.md): referencia visual (solo principios; no
   se usa su marca).
