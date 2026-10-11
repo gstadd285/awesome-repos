@@ -2,7 +2,8 @@ import { pbkdf2Sync, randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
 import { CLAVE_FALSA } from "./scripts/lib/anthropic-falso.mjs";
 import { base32 } from "./scripts/lib/credenciales.mjs";
-import { PUERTO_API_FALSA, PUERTO_IA } from "./e2e/puertos";
+import { CLAVE_RESEND_FALSA } from "./scripts/lib/resend-falso.mjs";
+import { PUERTO_API_FALSA, PUERTO_CORREO, PUERTO_IA, URL_CORREO } from "./e2e/puertos";
 
 const PUERTO = 3200;
 const chromium = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
@@ -26,6 +27,22 @@ if (hayBase && !process.env.E2E_ADMIN_HASH) {
   process.env.E2E_ADMIN_TOTP = base32(randomBytes(20));
   process.env.E2E_ADMIN_SESION = randomBytes(32).toString("base64url");
 }
+
+/**
+ * Con base de datos, la aplicación principal también abre las cuentas de personas usuarias: con Postgres de verdad y el
+ * correo yendo a un servidor que imita a Resend (nada sale a internet). El secreto se genera al azar en cada corrida.
+ * El tope diario de correos se sube al máximo: las pruebas envían muchos más de los 20 de la configuración normal.
+ */
+if (hayBase && !process.env.E2E_CUENTAS_SECRETO) process.env.E2E_CUENTAS_SECRETO = randomBytes(32).toString("base64url");
+const cuentas: Record<string, string> = hayBase
+  ? {
+      CUENTAS_MODO: "abiertas",
+      CUENTAS_SECRETO: process.env.E2E_CUENTAS_SECRETO!,
+      CUENTAS_ENVIOS_DIARIOS: "5000",
+      RESEND_API_KEY: CLAVE_RESEND_FALSA,
+      RESEND_URL_API_PRUEBA: `${URL_CORREO}/emails`,
+    }
+  : {};
 
 const panel: Record<string, string> = hayBase
   ? {
@@ -69,7 +86,15 @@ export default defineConfig({
       url: `http://localhost:${PUERTO}`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
-      env: { PORT: String(PUERTO), HOSTNAME: "127.0.0.1", WAITLIST_MODE: "memoria", OTEA_E2E: "1", ...panel },
+      env: { PORT: String(PUERTO), HOSTNAME: "127.0.0.1", WAITLIST_MODE: "memoria", OTEA_E2E: "1", ...panel, ...cuentas },
+    },
+    {
+      // Imita la API de Resend: los correos de las cuentas «llegan» aquí y las pruebas leen el enlace que traen.
+      command: "node scripts/resend-falso.mjs",
+      port: PUERTO_CORREO,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+      env: { PORT: String(PUERTO_CORREO) },
     },
     {
       // Imita la API de Anthropic (solo lo que usa el asistente): el asistente con IA se prueba sin red y sin gasto.

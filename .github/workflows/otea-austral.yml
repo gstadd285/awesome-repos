@@ -116,7 +116,8 @@ jobs:
   # Pruebas de navegador (Playwright) sobre el build de producción.
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Con las pruebas de las cuentas (Postgres real y un servidor que imita a Resend) el trabajo dura más: 25 minutos.
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: otea-austral
