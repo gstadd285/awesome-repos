@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
 import { buttonClasses } from "@/components/ui/button";
+import { EnlaceCuenta } from "./EnlaceCuenta";
 import { NAV_CABECERA, NAV_PRINCIPAL } from "./navigation";
 
 const ENLACE =
@@ -35,6 +36,7 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
         </nav>
 
         <div className="ml-auto flex items-center gap-3 lg:ml-0">
+          <EnlaceCuenta variante="cabecera" actual={actual} className={`${ENLACE} hidden px-2 py-1 lg:inline-block`} />
           <Link href="/#lista-de-espera" className={buttonClasses("primary", "whitespace-nowrap", "sm")}>
             <span className="sm:hidden">Alertas</span>
             <span className="hidden sm:inline">Recibir alertas</span>
@@ -59,6 +61,7 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
                   {e.texto}
                 </Link>
               ))}
+              <EnlaceCuenta variante="menu" actual={actual} className={`${ENLACE} px-3 py-2.5 text-base hover:bg-fondo aria-[current=page]:bg-fondo`} />
             </nav>
           </details>
         </div>

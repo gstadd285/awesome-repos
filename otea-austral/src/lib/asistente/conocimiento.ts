@@ -251,7 +251,7 @@ const curadas: Entrada[] = [
     id: "datos-personales",
     pregunta: "¿Qué datos guardan de mí?",
     respuesta:
-      "El sitio no usa cookies de seguimiento ni analítica. De la lista de espera guardaríamos tu correo (cifrado), la fecha y la versión del consentimiento. Otea no guarda tu IP ni datos de tu navegador en su base de datos, aunque el proveedor de alojamiento registra cada solicitud, con tu IP, hasta 30 días y solo para seguridad y diagnóstico. No vendemos ni cedemos tus datos. Los proveedores previstos —Google Cloud Run, Neon y Resend— solo reciben lo necesario y tienen servidores en Estados Unidos. La política de privacidad es un texto provisional, pendiente de revisión legal.",
+      "El sitio no usa cookies de seguimiento ni analítica; solo hay una cookie técnica de sesión si entras a tu cuenta. De la lista de espera guardaríamos tu correo (cifrado), la fecha y la versión del consentimiento. Si creas una cuenta, guardaríamos además tu contraseña (solo como un hash que no se puede revertir), tus preferencias y, si activas la verificación en dos pasos, el secreto de tu app (cifrado); desde tu perfil puedes descargar todo o eliminar la cuenta. Otea no guarda tu IP ni datos de tu navegador en su base de datos, aunque el proveedor de alojamiento registra cada solicitud, con tu IP, hasta 30 días y solo para seguridad y diagnóstico. No vendemos ni cedemos tus datos. Los proveedores previstos —Google Cloud Run, Neon y Resend— solo reciben lo necesario y tienen servidores en Estados Unidos. La política de privacidad es un texto provisional, pendiente de revisión legal.",
     etiquetas: [
       "datos", "privacidad", "personales", "guardan", "guardar", "cookies", "seguimiento", "analitica", "ip",
       "proteccion de datos", "borrar mis datos", "eliminar mis datos", "borrar mi correo", "derechos",
@@ -274,13 +274,37 @@ const curadas: Entrada[] = [
     id: "dos-pasos",
     pregunta: "¿Hay verificación en dos pasos?",
     respuesta:
-      "Sí. Inscribirte en la lista de espera lleva dos pasos: primero dejas tu correo y aceptas los textos y, cuando la lista esté abierta, te enviamos un mensaje con un enlace para confirmarlo (vence a las 72 horas). Sin ese segundo paso no quedas inscrito, y así nadie puede inscribir tu correo sin que lo sepas. El panel interno que usa el equipo de Otea también pide dos factores: una frase de acceso y un código temporal de una app de autenticación. Hoy el sitio no tiene cuentas de personas usuarias.",
+      "Sí, en tres lugares. Inscribirte en la lista de espera lleva dos pasos: primero dejas tu correo y aceptas los textos y, cuando la lista esté abierta, te enviamos un mensaje con un enlace para confirmarlo (vence a las 72 horas); sin ese segundo paso no quedas inscrito, y así nadie puede inscribir tu correo sin que lo sepas. Crear una cuenta también se hace en dos pasos (confirmas el correo con un enlace y desde ahí eliges tu contraseña), y una vez creada puedes activar, de forma opcional, la verificación en dos pasos al entrar: una app de autenticación genera un código de seis dígitos que cambia cada 30 segundos y te entregamos códigos de recuperación para el día que pierdas el teléfono. Por último, el panel interno del equipo pide una frase de acceso y un código temporal. Si aún no ves la opción «Entrar» en el sitio, las cuentas todavía no están abiertas.",
     etiquetas: [
       "dos pasos", "dos factores", "2fa", "doble confirmacion", "doble verificacion", "verificar mi correo",
       "verificar mi inscripcion", "confirmar mi correo", "confirmar mi inscripcion", "autenticacion", "autenticador",
-      "codigo de verificacion", "iniciar sesion", "inicio de sesion", "login", "crear una cuenta", "crear cuenta",
+      "codigo de verificacion", "app de autenticacion", "activar dos pasos", "proteger mi cuenta",
     ],
     fuentes: [LISTA, SEGURIDAD, TERMINOS],
+  },
+  {
+    id: "cuenta",
+    pregunta: "¿Puedo crear una cuenta?",
+    respuesta:
+      "Con una cuenta eliges los temas que sigues y guardas tus preferencias. Se crea en dos pasos: dejas tu correo y aceptas las condiciones de uso y el consentimiento para guardar los datos de tu cuenta, y con el enlace que te enviamos (vence a las 72 horas) eliges tu contraseña; sin ese enlace no se crea la cuenta. Desde tu perfil puedes cambiar la contraseña, activar la verificación en dos pasos, ver y cerrar tus sesiones, descargar tus datos y eliminar la cuenta cuando quieras. Por ahora el correo de una cuenta no se puede cambiar. Si todavía no ves «Entrar» en la cabecera, las cuentas no están abiertas: puedes unirte a la lista de espera.",
+    etiquetas: [
+      "cuenta", "cuentas", "mi cuenta", "perfil", "mi perfil", "crear cuenta", "crear una cuenta", "abrir una cuenta",
+      "iniciar sesion", "inicio de sesion", "login", "ingresar a mi cuenta", "usuario", "registrarse", "cerrar sesion",
+      "eliminar mi cuenta", "borrar mi cuenta", "descargar mis datos", "cambiar mi correo",
+    ],
+    fuentes: [LISTA, TERMINOS, PRIVACIDAD],
+  },
+  {
+    id: "olvide-contrasena",
+    pregunta: "¿Qué hago si olvidé mi contraseña?",
+    respuesta:
+      "En la página «Entrar» elige «¿Olvidaste tu contraseña?», escribe tu correo y, si hay una cuenta con él, te enviamos un enlace para elegir una contraseña nueva. El enlace vale 1 hora y sirve una sola vez, y al cambiar la contraseña se cierran todas tus sesiones. Si activaste la verificación en dos pasos y perdiste tu teléfono, entra con uno de tus códigos de recuperación. Sin la app ni los códigos, esta versión no puede recuperar la cuenta ni cambiar su correo.",
+    etiquetas: [
+      "olvide mi contrasena", "olvide la contrasena", "olvidaste", "recuperar contrasena", "recuperar mi contrasena",
+      "restablecer contrasena", "cambiar contrasena", "cambiar mi contrasena", "perdi mi contrasena", "contrasena olvidada",
+      "no recuerdo mi contrasena", "perdi mi telefono", "codigos de recuperacion", "recuperar mi cuenta", "no puedo entrar",
+    ],
+    fuentes: [SEGURIDAD, PRIVACIDAD],
   },
   {
     id: "seguridad",

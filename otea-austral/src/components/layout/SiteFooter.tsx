@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
 import { ConmutadorMovimiento } from "@/components/motion/ControlesMovimiento";
+import { EnlaceCuenta } from "./EnlaceCuenta";
 import { NAV_CONFIANZA, NAV_PRINCIPAL } from "./navigation";
 
 const ENLACE = "text-sm text-texto-suave transition-colors hover:text-texto";
@@ -28,6 +29,7 @@ export function SiteFooter() {
                 Recibir alertas
               </Link>
             </li>
+            <EnlaceCuenta variante="pie" className={ENLACE} />
           </ul>
         </nav>
         <nav aria-label="Confianza">

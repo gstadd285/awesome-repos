@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { frasesProhibidas } from "@/lib/domain/lenguaje";
+import { VIGENCIA_ALTA_MS } from "@/lib/cuentas/constantes";
+import { VERSION_TEXTOS } from "@/lib/cuentas/schema";
 import { VIGENCIA_ENLACE_MS } from "@/lib/waitlist/service";
 import { VERSION_CONSENTIMIENTO } from "@/lib/waitlist/schema";
 import TerminosPage, { metadata } from "./page";
+
+// La cabecera y el pie leen la sesión de la cuenta (un componente asíncrono de servidor): aquí no hay servidor.
+vi.mock("@/components/layout/EnlaceCuenta", () => ({ EnlaceCuenta: () => null }));
 
 describe("página de condiciones de uso", () => {
   it("se llama «Condiciones de uso» en el título, la ruta de navegación y el titular", () => {
@@ -20,7 +25,7 @@ describe("página de condiciones de uso", () => {
     expect(screen.getByRole("note")).toHaveTextContent("Texto provisional · pendiente de revisión legal");
   });
 
-  it("tiene sus doce apartados numerados, en orden y sin repetir", () => {
+  it("tiene sus trece apartados numerados, en orden y sin repetir", () => {
     render(<TerminosPage />);
     const titulos = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(titulos).toEqual([
@@ -31,6 +36,7 @@ describe("página de condiciones de uso", () => {
       "Contenido de terceros",
       "Asistente de preguntas",
       "Lista de espera y verificación en dos pasos",
+      "Tu cuenta",
       "Uso aceptable",
       "Marca y textos",
       "Disponibilidad y responsabilidad",
@@ -38,7 +44,7 @@ describe("página de condiciones de uso", () => {
       "Cambios",
     ]);
     const numeros = [...document.querySelectorAll("section .contador")].map((n) => n.textContent).filter((t) => /^\d\d$/.test(t ?? ""));
-    expect(numeros).toEqual(Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")));
+    expect(numeros).toEqual(Array.from({ length: 13 }, (_, i) => String(i + 1).padStart(2, "0")));
   });
 
   it("deja claro que no es asesoría financiera", () => {
@@ -68,6 +74,23 @@ describe("página de condiciones de uso", () => {
     expect(lista).toHaveTextContent("Sin esa confirmación no quedas inscrito");
   });
 
+  it("describe la cuenta tal como funciona: dos pasos con enlace de 72 horas, cuidado de la contraseña, descarga y eliminación", () => {
+    render(<TerminosPage />);
+    const cuenta = screen.getByRole("region", { name: "Tu cuenta" });
+    expect(cuenta).toHaveTextContent("La cuenta se crea en dos pasos");
+    expect(cuenta).toHaveTextContent("vence a las 72 horas");
+    expect(VIGENCIA_ALTA_MS).toBe(72 * 60 * 60_000);
+    expect(cuenta).toHaveTextContent("Sin esa confirmación no se crea la cuenta");
+    expect(cuenta).toHaveTextContent("Activar la verificación en dos pasos es opcional");
+    expect(cuenta).toHaveTextContent("Puedes descargar tus datos y eliminar tu cuenta");
+    expect(within(cuenta).getByRole("link", { name: "política de privacidad" })).toHaveAttribute("href", "/privacidad");
+    expect(cuenta).toHaveTextContent("Una cuenta no es un servicio financiero");
+  });
+
+  it("la versión que se muestra es la que queda registrada con la lista de espera y con las cuentas", () => {
+    expect(VERSION_TEXTOS).toBe(VERSION_CONSENTIMIENTO);
+  });
+
   it("muestra la versión que queda registrada con el consentimiento", () => {
     render(<TerminosPage />);
     const cambios = screen.getByRole("region", { name: "Cambios" });
@@ -76,7 +99,7 @@ describe("página de condiciones de uso", () => {
 
   it("los apartados nuevos no usan lenguaje de recomendación ni prometen rentabilidad", () => {
     render(<TerminosPage />);
-    for (const nombre of ["Asistente de preguntas", "Lista de espera y verificación en dos pasos", "Uso aceptable", "Marca y textos", "Disponibilidad y responsabilidad", "Ley aplicable y contacto", "Cambios"]) {
+    for (const nombre of ["Asistente de preguntas", "Lista de espera y verificación en dos pasos", "Tu cuenta", "Uso aceptable", "Marca y textos", "Disponibilidad y responsabilidad", "Ley aplicable y contacto", "Cambios"]) {
       const texto = screen.getByRole("region", { name: nombre }).textContent ?? "";
       expect(frasesProhibidas(texto), nombre).toEqual([]);
     }

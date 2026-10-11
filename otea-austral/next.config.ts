@@ -31,6 +31,13 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: securityHeaders },
       // El panel interno no se indexa (Next.js ya lo sirve con `no-store`: es dinámico).
       { source: "/admin/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      // Lo mismo para las cuentas de personas usuarias. Las dos páginas a las que se llega con un enlace de correo (el
+      // token va en la dirección) solo entregan su origen como referente, nunca la dirección con el token. No es
+      // `no-referrer`: con esa política el navegador manda `Origin: null` en el envío de un formulario sin JavaScript y
+      // Next.js lo rechaza (500) en vez de procesarlo.
+      { source: "/cuenta/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/cuenta/activar", headers: [{ key: "Referrer-Policy", value: "strict-origin" }] },
+      { source: "/cuenta/restablecer", headers: [{ key: "Referrer-Policy", value: "strict-origin" }] },
     ];
   },
 };

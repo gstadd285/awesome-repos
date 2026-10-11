@@ -10,6 +10,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../../next.config";
+import { TEMAS } from "@/lib/domain/temas";
 import { buildCsp } from "./csp";
 
 const RAIZ = path.resolve(__dirname, "../../..");
@@ -29,6 +30,25 @@ const relativa = (ruta: string) => path.relative(RAIZ, ruta).split(path.sep).joi
 const leer = (ruta: string) => readFileSync(ruta, "utf8");
 const esPrueba = (ruta: string) => /\.(test|spec)\.[tj]sx?$/.test(ruta);
 const fuentes = archivos(SRC, (r) => /\.(ts|tsx)$/.test(r) && !esPrueba(r));
+
+/** Cuerpo de cada función asíncrona exportada, hasta la llave que la cierra. */
+function funcionesExportadas(texto: string): { nombre: string; cuerpo: string }[] {
+  const salida: { nombre: string; cuerpo: string }[] = [];
+  for (const m of texto.matchAll(/export async function (\w+)\s*\(/g)) {
+    const inicio = texto.indexOf("{", texto.indexOf(")", m.index) + 1);
+    let nivel = 0;
+    let fin = inicio;
+    for (let i = inicio; i < texto.length; i++) {
+      if (texto[i] === "{") nivel++;
+      if (texto[i] === "}" && --nivel === 0) {
+        fin = i;
+        break;
+      }
+    }
+    salida.push({ nombre: m[1], cuerpo: texto.slice(inicio, fin) });
+  }
+  return salida;
+}
 
 describe("consultas SQL (control 13: parametrizar)", () => {
   /** Plantillas con `${…}` que además parecen SQL. */
@@ -72,7 +92,7 @@ describe("consultas SQL (control 13: parametrizar)", () => {
 
 describe("frontera entre el servidor y el navegador (controles 1 y 3)", () => {
   const PROHIBIDO_EN_CLIENTE =
-    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+)$/;
+    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+|@\/lib\/cuentas\/(?!formato-secreto$).+|@\/lib\/correo\/.+)$/;
 
   const clientes = fuentes.filter((r) => /^\s*["']use client["'];?/.test(leer(r)));
 
@@ -167,25 +187,6 @@ describe("autenticación del panel (control 6)", () => {
   /** El inicio de sesión es la única acción que, por definición, se ejecuta sin sesión. */
   const SIN_SESION = new Set(["iniciarSesion"]);
 
-  /** Cuerpo de cada función exportada, hasta la llave que la cierra. */
-  function funcionesExportadas(texto: string): { nombre: string; cuerpo: string }[] {
-    const salida: { nombre: string; cuerpo: string }[] = [];
-    for (const m of texto.matchAll(/export async function (\w+)\s*\(/g)) {
-      const inicio = texto.indexOf("{", texto.indexOf(")", m.index) + 1);
-      let nivel = 0;
-      let fin = inicio;
-      for (let i = inicio; i < texto.length; i++) {
-        if (texto[i] === "{") nivel++;
-        if (texto[i] === "}" && --nivel === 0) {
-          fin = i;
-          break;
-        }
-      }
-      salida.push({ nombre: m[1], cuerpo: texto.slice(inicio, fin) });
-    }
-    return salida;
-  }
-
   it("hay acciones y páginas del panel (la prueba vigila algo)", () => {
     expect(acciones.length).toBeGreaterThanOrEqual(2);
     expect(paginas.length).toBeGreaterThanOrEqual(4);
@@ -220,10 +221,124 @@ describe("autenticación del panel (control 6)", () => {
   });
 });
 
+describe("cuentas de personas usuarias", () => {
+  const delaCuenta = fuentes.filter((r) => /^src\/lib\/(cuentas|correo)\//.test(relativa(r)));
+  const paginasCuenta = fuentes.filter((r) => relativa(r).startsWith("src/app/cuenta/") && /\/(page|route)\.tsx?$/.test(r));
+  const acciones = leer(path.join(SRC, "app/acciones/cuenta.ts"));
+
+  /** Las únicas acciones que, por definición, se ejecutan sin una sesión completa: la crean, la piden o la recuperan. */
+  const SIN_SESION = [
+    "activarCuentaAccion",
+    "crearCuentaAccion",
+    "entrarAccion",
+    "olvideAccion",
+    "restablecerAccion",
+    "verificarSegundoPasoAccion",
+  ];
+  /** Páginas que se ven sin sesión (formularios de entrada, enlaces de correo y la despedida). */
+  const PAGINAS_SIN_SESION = [
+    "src/app/cuenta/activar/page.tsx",
+    "src/app/cuenta/crear/page.tsx",
+    "src/app/cuenta/eliminada/page.tsx",
+    "src/app/cuenta/entrar/page.tsx",
+    "src/app/cuenta/olvide/page.tsx",
+    "src/app/cuenta/restablecer/page.tsx",
+    "src/app/cuenta/verificar/page.tsx",
+  ];
+
+  it("hay código de cuentas y páginas de cuenta (la prueba vigila algo)", () => {
+    expect(delaCuenta.length).toBeGreaterThan(15);
+    expect(paginasCuenta.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it("toda Server Action de la cuenta exige sesión y token CSRF, salvo las que la crean o la piden (lista cerrada)", () => {
+    const sinExigir = funcionesExportadas(acciones)
+      .filter(({ cuerpo }) => !/\b(conSesion|exigirAccionCuenta)\(/.test(cuerpo))
+      .map(({ nombre }) => nombre)
+      .sort();
+    expect(sinExigir).toEqual(SIN_SESION);
+    // `conSesion` es el que exige: sesión vigente y token anti-CSRF del formulario.
+    expect(/async function conSesion\([\s\S]*?\n}\n/.exec(acciones)?.[0] ?? "").toMatch(/exigirAccionCuenta\(/);
+  });
+
+  it("toda página y ruta privada de la cuenta exige la sesión en el servidor; las públicas son una lista cerrada", () => {
+    const sinSesion = paginasCuenta.filter((r) => !/\bexigirSesionCuenta\(/.test(leer(r))).map(relativa);
+    expect(sinSesion).toEqual(PAGINAS_SIN_SESION);
+    expect(relativa(paginasCuenta.find((r) => r.endsWith("exportar/route.ts"))!)).toBe("src/app/cuenta/exportar/route.ts");
+  });
+
+  it("ninguna página de la cuenta se indexa", () => {
+    const infractores = paginasCuenta
+      .filter((r) => r.endsWith("page.tsx") && !/robots:\s*\{\s*index:\s*false/.test(leer(r)))
+      .map(relativa);
+    expect(infractores).toEqual([]);
+  });
+
+  it("la descarga de datos solo responde a GET, rechaza lo iniciado desde otro sitio y nunca se guarda en cachés", () => {
+    const ruta = leer(path.join(SRC, "app/cuenta/exportar/route.ts"));
+    expect([...ruta.matchAll(/export (?:async )?function ([A-Z]+)/g)].map((m) => m[1])).toEqual(["GET"]);
+    expect(ruta).toMatch(/sec-fetch-site/);
+    expect(ruta).toMatch(/"Cache-Control": "no-store"/);
+    expect(ruta).toMatch(/attachment/);
+  });
+
+  it("ningún valor secreto vuelve al navegador: las acciones solo devuelven lo que no es secreto", () => {
+    const infractores = [...acciones.matchAll(/\bvalores\s*=\s*\{([^}]*)\}/g)]
+      .filter((m) => /\b(clave|actual|nueva|repetir|codigo|token)\b/.test(m[1]))
+      .map((m) => m[0]);
+    expect(infractores).toEqual([]);
+  });
+
+  it("nada de cuentas hace peticiones por su cuenta, lee el entorno o escribe en la consola, salvo lo previsto", () => {
+    const infractores: string[] = [];
+    for (const ruta of delaCuenta) {
+      const texto = leer(ruta);
+      const rel = relativa(ruta);
+      // El único lugar que sale a internet: el envío de correo a Resend (y la lista de espera lo reutiliza).
+      if (/\bfetch\b/.test(texto) && rel !== "src/lib/correo/resend.ts") infractores.push(`${rel}: peticiones`);
+      if (/XMLHttpRequest|\bWebSocket\b|node:(http|https|net|child_process)/.test(texto)) infractores.push(`${rel}: red`);
+      if (/process\.env/.test(texto)) infractores.push(`${rel}: process.env`);
+      // En modo de prueba (sin correo real) el enlace queda en el registro del servidor: una sola línea, en `instancia.ts`.
+      const consolas = (texto.match(/\bconsole\./g) ?? []).length;
+      if (consolas > (rel === "src/lib/cuentas/instancia.ts" ? 1 : 0)) infractores.push(`${rel}: console`);
+    }
+    expect(infractores).toEqual([]);
+  });
+
+  it("el navegador no guarda nada de la sesión: sin localStorage, sessionStorage ni document.cookie en las cuentas", () => {
+    const infractores = fuentes
+      .filter((r) => /^src\/(components\/cuenta|lib\/cuentas|app\/cuenta)\//.test(relativa(r)))
+      .filter((r) => /localStorage|sessionStorage|document\.cookie|indexedDB/.test(leer(r)))
+      .map(relativa);
+    expect(infractores).toEqual([]);
+  });
+
+  it("los módulos que leen cookies y cabeceras o arman el servicio con la base dicen `server-only`", () => {
+    for (const modulo of ["lib/cuentas/acceso.ts", "lib/cuentas/instancia.ts"]) {
+      expect(leer(path.join(SRC, modulo)), modulo).toMatch(/^import "server-only";/m);
+    }
+  });
+
+  it("la cookie de sesión es `__Host-`, HttpOnly, Secure y SameSite, y se fija solo desde `acceso.ts`", () => {
+    const usuarios = fuentes.filter((r) => /COOKIE_SESION_CUENTA/.test(leer(r)) && !r.endsWith("constantes.ts")).map(relativa);
+    expect(usuarios).toEqual(["src/lib/cuentas/acceso.ts"]);
+    const acceso = leer(path.join(SRC, "lib/cuentas/acceso.ts"));
+    expect(acceso.match(/\.set\(/g)).toHaveLength(2); // fijar y borrar, nada más
+    expect(acceso).toMatch(/\.\.\.OPCIONES_COOKIE_CUENTA/);
+  });
+
+  it("los temas que admite la base (migración 0006) son los del sitio", () => {
+    const sql = leer(path.join(RAIZ, "db/migraciones/0006_cuentas.sql"));
+    const enBase = /temas <@ array\[([^\]]*)\]/.exec(sql)?.[1].match(/'([a-z_]+)'/g)?.map((t) => t.replaceAll("'", "")) ?? [];
+    expect(enBase.sort()).toEqual([...TEMAS].sort());
+  });
+});
+
 describe("inventario de la superficie expuesta", () => {
   it("las Server Actions son estas (una nueva exige revisar su autenticación y su validación)", () => {
     const conAcciones = fuentes.filter((r) => /^\s*["']use server["'];?/.test(leer(r))).map(relativa);
     expect(conAcciones).toEqual([
+      "src/app/acciones/cuenta.ts",
       "src/app/acciones/lista-de-espera.ts",
       "src/app/admin/acciones.ts",
       "src/app/admin/alertas/acciones.ts",
@@ -237,6 +352,7 @@ describe("inventario de la superficie expuesta", () => {
       "src/app/api/asistente/route.ts",
       "src/app/api/csp-report/route.ts",
       "src/app/api/salud/route.ts",
+      "src/app/cuenta/exportar/route.ts",
     ]);
   });
 });
