@@ -503,6 +503,40 @@
   transform: rotateX(30deg) rotateZ(-12deg) scale(0.86);
 }
 
+/* ── Texto en movimiento: estructura ──────────────────────────────────────
+ * `TextoEnMovimiento` parte el texto en unidades (letras o palabras). La CSP no admite `style`
+ * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 79; `MAX_INDICE`).
+ * La máscara `.kx-m` recorta lo que sube desde debajo de la línea; su relleno negativo deja
+ * espacio a las tildes de las mayúsculas sin alterar el interlineado.
+ */
+.kx-visual {
+  display: inline;
+}
+
+.kx-m {
+  display: inline-block;
+  overflow: clip;
+  padding: 0.14em 0.05em;
+  margin: -0.14em -0.05em;
+  vertical-align: top;
+}
+
+.kx-p,
+.kx-l {
+  display: inline-block;
+}
+
+.kx-i-0 { --i: 0; } .kx-i-1 { --i: 1; } .kx-i-2 { --i: 2; } .kx-i-3 { --i: 3; } .kx-i-4 { --i: 4; } .kx-i-5 { --i: 5; } .kx-i-6 { --i: 6; } .kx-i-7 { --i: 7; }
+.kx-i-8 { --i: 8; } .kx-i-9 { --i: 9; } .kx-i-10 { --i: 10; } .kx-i-11 { --i: 11; } .kx-i-12 { --i: 12; } .kx-i-13 { --i: 13; } .kx-i-14 { --i: 14; } .kx-i-15 { --i: 15; }
+.kx-i-16 { --i: 16; } .kx-i-17 { --i: 17; } .kx-i-18 { --i: 18; } .kx-i-19 { --i: 19; } .kx-i-20 { --i: 20; } .kx-i-21 { --i: 21; } .kx-i-22 { --i: 22; } .kx-i-23 { --i: 23; }
+.kx-i-24 { --i: 24; } .kx-i-25 { --i: 25; } .kx-i-26 { --i: 26; } .kx-i-27 { --i: 27; } .kx-i-28 { --i: 28; } .kx-i-29 { --i: 29; } .kx-i-30 { --i: 30; } .kx-i-31 { --i: 31; }
+.kx-i-32 { --i: 32; } .kx-i-33 { --i: 33; } .kx-i-34 { --i: 34; } .kx-i-35 { --i: 35; } .kx-i-36 { --i: 36; } .kx-i-37 { --i: 37; } .kx-i-38 { --i: 38; } .kx-i-39 { --i: 39; }
+.kx-i-40 { --i: 40; } .kx-i-41 { --i: 41; } .kx-i-42 { --i: 42; } .kx-i-43 { --i: 43; } .kx-i-44 { --i: 44; } .kx-i-45 { --i: 45; } .kx-i-46 { --i: 46; } .kx-i-47 { --i: 47; }
+.kx-i-48 { --i: 48; } .kx-i-49 { --i: 49; } .kx-i-50 { --i: 50; } .kx-i-51 { --i: 51; } .kx-i-52 { --i: 52; } .kx-i-53 { --i: 53; } .kx-i-54 { --i: 54; } .kx-i-55 { --i: 55; }
+.kx-i-56 { --i: 56; } .kx-i-57 { --i: 57; } .kx-i-58 { --i: 58; } .kx-i-59 { --i: 59; } .kx-i-60 { --i: 60; } .kx-i-61 { --i: 61; } .kx-i-62 { --i: 62; } .kx-i-63 { --i: 63; }
+.kx-i-64 { --i: 64; } .kx-i-65 { --i: 65; } .kx-i-66 { --i: 66; } .kx-i-67 { --i: 67; } .kx-i-68 { --i: 68; } .kx-i-69 { --i: 69; } .kx-i-70 { --i: 70; } .kx-i-71 { --i: 71; }
+.kx-i-72 { --i: 72; } .kx-i-73 { --i: 73; } .kx-i-74 { --i: 74; } .kx-i-75 { --i: 75; } .kx-i-76 { --i: 76; } .kx-i-77 { --i: 77; } .kx-i-78 { --i: 78; } .kx-i-79 { --i: 79; }
+
 /* ── Movimiento ────────────────────────────────────────────────────────────
  * Todo es CSS (sin JavaScript), solo con `prefers-reduced-motion:
  * no-preference`; lo ligado al scroll, además, donde el navegador lo
@@ -512,20 +546,18 @@
 @keyframes otea-aparecer {
   from {
     opacity: 0;
-    transform: translateY(28px);
-    filter: blur(8px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
     transform: none;
-    filter: none;
   }
 }
 
 @keyframes otea-revelar {
   from {
     opacity: 0;
-    transform: translateY(56px) scale(0.97);
+    transform: translateY(32px);
   }
   to {
     opacity: 1;
@@ -725,6 +757,19 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/* Texto en movimiento: la unidad sube desde la máscara; la palabra pasa de tenue a plena. */
+@keyframes kx-subir {
+  from {
+    transform: translateY(1.35em);
+  }
+}
+
+@keyframes kx-palabra {
+  from {
+    opacity: 0.16;
   }
 }
 
@@ -964,7 +1009,10 @@
   @media print {
     .anim-revelar,
     .anim-aparecer,
-    .anim-escalonado > * {
+    .anim-escalonado > *,
+    .kx-l,
+    .kx-p,
+    .kx-w {
       animation: none !important;
     }
   }
@@ -976,6 +1024,40 @@
       animation: otea-revelar linear both;
       animation-timeline: view();
       animation-range: entry 0px entry 280px;
+    }
+  }
+
+  /* Texto en movimiento al cargar: los H1 entran letra a letra y los textos de entrada se iluminan
+     palabra a palabra justo después. `backwards`: al terminar no queda transformación residual. */
+  .kx-carga.kx-letras .kx-l {
+    animation: kx-subir 750ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(100ms + var(--i, 0) * 24ms);
+  }
+
+  .kx-carga.kx-palabras .kx-p {
+    animation: kx-subir 800ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(100ms + var(--i, 0) * 70ms);
+  }
+
+  .kx-carga.kx-lectura .kx-w {
+    animation: kx-palabra 700ms ease-out backwards;
+    animation-delay: calc(650ms + var(--i, 0) * 14ms);
+  }
+
+  /* Texto en movimiento al bajar: ligado al scroll, así que se revierte al subir. Los rangos van en
+     `vh` y terminan antes de que el bloque llegue a la zona de lectura (≈ 60 % de la pantalla), para
+     que nada quede a medio aparecer; `motion.test.ts` y las pruebas e2e lo vigilan. */
+  @supports (animation-timeline: view()) {
+    .kx-scroll.kx-palabras .kx-p {
+      animation: kx-subir linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 1.8vh) entry calc(16vh + var(--i, 0) * 1.8vh);
+    }
+
+    .kx-scroll.kx-lectura .kx-w {
+      animation: kx-palabra linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 0.5vh) entry calc(10vh + var(--i, 0) * 0.5vh);
     }
   }
 
@@ -1176,6 +1258,41 @@
     .h-paso-4 {
       animation-name: h-paso-final;
       animation-range: contain 76% contain 86%;
+    }
+
+    /* Texto de cada paso: el titular sube y el texto se ilumina durante la primera parte de su tramo,
+       antes de que el paso empiece a salir. Más específico que `.kx-scroll …` para ganarle sin depender
+       del orden. */
+    .historia .h-paso-2 .kx-palabras .kx-p,
+    .historia .h-paso-3 .kx-palabras .kx-p,
+    .historia .h-paso-4 .kx-palabras .kx-p {
+      animation: kx-subir linear both;
+      animation-timeline: --historia;
+    }
+    .historia .h-paso-2 .kx-palabras .kx-p {
+      animation-range: contain calc(24.4% + var(--i, 0) * 0.5%) contain calc(28.4% + var(--i, 0) * 0.5%);
+    }
+    .historia .h-paso-3 .kx-palabras .kx-p {
+      animation-range: contain calc(50.4% + var(--i, 0) * 0.5%) contain calc(54.4% + var(--i, 0) * 0.5%);
+    }
+    .historia .h-paso-4 .kx-palabras .kx-p {
+      animation-range: contain calc(76.4% + var(--i, 0) * 0.5%) contain calc(80.4% + var(--i, 0) * 0.5%);
+    }
+
+    .historia .h-paso-2 .kx-lectura .kx-w,
+    .historia .h-paso-3 .kx-lectura .kx-w,
+    .historia .h-paso-4 .kx-lectura .kx-w {
+      animation: kx-palabra linear both;
+      animation-timeline: --historia;
+    }
+    .historia .h-paso-2 .kx-lectura .kx-w {
+      animation-range: contain calc(26% + var(--i, 0) * 0.28%) contain calc(28% + var(--i, 0) * 0.28%);
+    }
+    .historia .h-paso-3 .kx-lectura .kx-w {
+      animation-range: contain calc(52% + var(--i, 0) * 0.28%) contain calc(54% + var(--i, 0) * 0.28%);
+    }
+    .historia .h-paso-4 .kx-lectura .kx-w {
+      animation-range: contain calc(78% + var(--i, 0) * 0.28%) contain calc(80% + var(--i, 0) * 0.28%);
     }
 
     /* Lo que recibe foco siempre se ve, aunque su paso no esté en pantalla. */

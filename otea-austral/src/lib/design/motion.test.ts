@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { MAX_INDICE } from "@/components/motion/TextoEnMovimiento";
 
 const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8").replace(
   /\/\*[\s\S]*?\*\//g,
@@ -54,6 +55,32 @@ describe("movimiento", () => {
     for (const bloque of css.split("@supports").slice(1)) {
       expect(bloque.trimStart()).toMatch(/^\(animation-timeline|^not \(\(backdrop-filter/);
     }
+  });
+
+  it("ninguna línea de tiempo ligada al scroll queda fuera de un @supports", () => {
+    const fuera = quitarBloques(css, /@supports \(animation-timeline: view\(\)\)/);
+    expect(fuera).not.toMatch(/animation-timeline\s*:/);
+  });
+
+  it("el texto en movimiento no anima nada fuera de prefers-reduced-motion: no-preference", () => {
+    const fuera = quitarBloques(css, /@media \(prefers-reduced-motion: no-preference\)/);
+    expect(fuera).not.toMatch(/\.kx-[^{]*\{[^}]*animation/);
+  });
+
+  it("las clases de índice kx-i-0 … kx-i-MAX_INDICE están todas definidas, sin huecos ni sobrantes", () => {
+    const definidas = [...css.matchAll(/\.kx-i-(\d+)\s*\{/g)].map((m) => Number(m[1]));
+    expect(definidas).toEqual(Array.from({ length: MAX_INDICE + 1 }, (_, i) => i));
+  });
+
+  it("cada clase kx-* usada en componentes está definida en el CSS", () => {
+    const usadas = new Set(
+      archivos(join(process.cwd(), "src")).flatMap((ruta) =>
+        [...readFileSync(ruta, "utf8").matchAll(/\bkx-[a-z]+\b/g)].map((m) => m[0]),
+      ),
+    );
+    expect(usadas.size).toBeGreaterThan(0);
+    const faltantes = [...usadas].filter((clase) => !css.includes(`.${clase}`));
+    expect(faltantes).toEqual([]);
   });
 
   it("cada clase anim-* usada en componentes está definida en el CSS", () => {
