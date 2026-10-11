@@ -105,11 +105,19 @@ El héroe (titular H1, texto de entrada y dos botones) y tres pasos (`01 — 03`
 (`Ribbon`) que se pliega sobre el **plano técnico** con metal líquido (`Blueprint`), el **tablero** con alertas
 que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 3D:
 
-- En escritorio (≥ 1024 px), con `animation-timeline` y sin movimiento reducido, el escenario
-  queda fijo (`position: sticky`) durante `470vh` y cada pieza usa la línea de tiempo `--historia`
+- **Historia fija**: en escritorio (≥ 1024 px), con `animation-timeline` y con el movimiento activado, el
+  escenario queda fijo (`position: sticky`) durante `470vh` y cada pieza usa la línea de tiempo `--historia`
   (claves `h-*` en `globals.css`).
-- En otros casos las mismas piezas se apilan en orden de lectura: el DOM es plano y sirve para
-  ambos modos.
+- **Piezas que se arman al entrar** (< 1024 px, p. ej. un panel lateral o un teléfono): las mismas piezas se
+  apilan en orden de lectura y cada una se arma al entrar en pantalla (claves `m-*`; las piezas llevan la
+  clase `escena`): ligadas al scroll donde hay `animation-timeline` y, donde no (Firefox, Safari anterior al
+  26), disparadas una vez por el motor al entrar en pantalla.
+- **Quieta** (movimiento reducido sin activar, o sin JavaScript): las piezas apiladas se ven completas y
+  quietas. El DOM es plano y sirve para los tres modos.
+- *Lección:* antes de esta corrección la animación existía solo con las tres condiciones a la vez (≥ 1024 px,
+  `animation-timeline` y sin «reducir movimiento»); en un panel lateral, Firefox o un sistema con animaciones
+  desactivadas se veían «modelos estáticos». Toda pieza nueva debe animarse en los tres modos y probarse así
+  (`e2e/movimiento.spec.ts`).
 - Las piezas 3D son decorativas (`aria-hidden`); los textos de cada paso son secciones con `h2`.
   Lo que recibe foco se muestra aunque su paso no esté en pantalla.
 - Las láminas de la cinta giran sobre el eje vertical entre 28° y 152° para no atravesarse.
@@ -119,7 +127,9 @@ que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 
 
 ### Movimiento
 
-Todo en CSS dentro de `globals.css`, sin librerías ni JavaScript de animación:
+Las animaciones son CSS en `globals.css`, sin librerías de animación. Un motor mínimo
+(`src/lib/movimiento/motor.ts`) decide **si** se anima y cubre lo que el CSS solo no alcanza (ver «Motor de
+movimiento»):
 
 | Clase / componente | Efecto |
 |---|---|
@@ -151,10 +161,38 @@ una `sr-only` para lectores de pantalla y otra `aria-hidden` partida, así que e
   `e2e/portada.spec.ts` lo comprueba. No lo uses en alertas, tablas, formularios ni textos legales.
 - Si sumas un texto: `texto` es un `string` (para frases con enlaces o negritas, usa `anim-aparecer`).
 
+### Motor de movimiento (`src/lib/movimiento/motor.ts`)
+
+Un script de cabecera (`<ScriptMovimiento nonce>`, en línea, con el nonce de la CSP) corre antes del primer
+pintado y escribe en `<html>`:
+
+| Atributo | Valores | Para qué |
+|---|---|---|
+| `data-movimiento` | `completo` · `reducido` | **La puerta**: todo el movimiento del CSS cuelga de `html[data-movimiento="completo"]` |
+| `data-sistema` | `reduce` · `normal` | Qué pide el sistema (`prefers-reduced-motion`) |
+| `data-timeline` | `no` (si falta) | El navegador no soporta `animation-timeline` |
+| `data-mov-ui` | `1` | Hay algo que elegir: se muestra el conmutador del pie |
+| `data-motor` | `listo` | El respaldo está en marcha; solo entonces el CSS oculta algo |
+
+- **Por defecto manda el sistema**; la persona puede activar el movimiento (aviso de la portada y conmutador del
+  pie, `data-mov-conmutar`) y la elección se recuerda en `localStorage` (`otea-movimiento`). Sin JavaScript no
+  hay puerta: la página queda quieta y completa.
+- **Respaldo sin `animation-timeline`**: el motor observa los bloques `kx-scroll` y las piezas `escena` y les añade
+  `kx-visto` / `escena-vista` al entrar en pantalla; el CSS (`html[…][data-timeline="no"][data-motor]`) corre
+  entonces la misma animación una vez, con el tiempo. Lo que ya está a la vista al empezar lleva `mov-quieto`
+  (sin parpadeo). **Todo lo que oculta algo cuelga de `[data-motor]`**: si el motor no arranca, el contenido se ve
+  completo (`motion.test.ts` lo vigila).
+- El motor debe ser **autocontenido** (se serializa con `toString()`): sin importaciones ni nada fuera de su
+  cuerpo; `motor.test.ts` lo ejecuta aislado. La copia interactiva reutiliza el mismo código (con
+  `ignorarSistema: true`: parte animada aunque el sistema pida reducir).
+- `dangerouslySetInnerHTML` aparece solo dos veces (JSON-LD y este script, ambos constantes de compilación);
+  `src/lib/security/arquitectura.test.ts` lo vigila.
+
 Reglas (las vigila `src/lib/design/motion.test.ts`):
 
-- Toda animación va dentro de `@media (prefers-reduced-motion: no-preference)`; con movimiento
-  reducido el contenido se ve completo y quieto. Al imprimir, las entradas se desactivan.
+- Toda animación va detrás de la puerta `html[data-movimiento="completo"]`; con movimiento reducido (y sin
+  activarlo) el contenido se ve completo y quieto, y las transiciones se anulan. Al imprimir, las entradas se
+  desactivan.
 - Lo ligado al scroll va además dentro de `@supports (animation-timeline: …)`.
 - Las entradas usan `backwards`: al terminar no queda filtro ni transformación residual. Nada de
   `filter: blur` en las entradas (caro y ensucia el texto).
@@ -319,13 +357,15 @@ src/
     home/              Story (héroe, cinta, plano, tablero), Temas (selector), ejemplos de alertas,
                        pre-apertura, lista de espera
     layout/            cabecera, pie, ContentPage, Migas (ruta de navegación), transición entre páginas
-    motion/            TextoEnMovimiento (texto que aparece como en un video)
+    motion/            TextoEnMovimiento (texto que aparece como en un video), ScriptMovimiento y
+                       MovimientoSync (puerta de movimiento), ControlesMovimiento (aviso y conmutador)
     security/          perfil NIST, estado de controles, íconos de funciones
     ui/                botones, rótulo de sección
   data/ejemplo.ts      DATOS DE EJEMPLO validados con los esquemas
   lib/
     domain/            esquemas, reglas, vista, auditoría, URLs, temas
-    design/            contraste
+    design/            contraste y guardas del CSS de movimiento
+    movimiento/        motor de movimiento (script de cabecera: puerta, respaldo y conmutador)
     security/          CSP, cabeceras, reportes CSP, registro, límites, security.txt, perfil NIST
     sources/           registro de fuentes (semilla validada)
     waitlist/          lista de espera: esquema, almacenamiento (memoria y Postgres cifrado), correo, servicio,

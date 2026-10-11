@@ -168,3 +168,50 @@ y la comprensión de personas del público objetivo (conviene la prueba de 5 seg
 
 **Sigue abierto:** las decisiones de arriba, la revisión legal de los textos, y todo lo de «Falta para abrir al
 público» en `plan.md`.
+
+## Corrección posterior: la portada se veía quieta fuera de escritorio con Chrome
+
+**Lo que se vio:** en un PC, «el diseño no tiene las animaciones y solo se ve como modelos estáticos».
+
+**Causa (medida, no supuesta).** La historia fija y el movimiento de las piezas 3D dependían de tres condiciones a
+la vez: ancho ≥ 1024 px, `animation-timeline` y ningún «reducir movimiento». Fuera de ellas, las piezas se apilaban
+quietas. Medido con Chromium sobre el sitio y sobre la copia interactiva (la misma conducta):
+
+| Situación | Antes | Qué ve la persona |
+|---|---|---|
+| Ventana de 1440 y 1100 px, Chrome | historia fija, 172 animaciones | todo bien |
+| **Ventana de 800 o 420 px** (panel lateral, teléfono) | 0 animaciones de las piezas 3D (solo texto) | **modelos estáticos** |
+| **Sistema con «reducir movimiento»** | 0 animaciones | **todo quieto** |
+| **Navegador sin `animation-timeline`** (Firefox, Safari anterior al 26) | solo la ola de la cinta | **modelos estáticos** |
+
+La causa más probable en un PC que ve la portada dentro de un panel o con las animaciones del sistema apagadas es
+una de las tres filas de abajo; no hay forma de saber cuál sin verlo, así que se cubren las tres.
+
+**Qué se hizo** (detalle y reglas en `CLAUDE.md`, «Motor de movimiento»):
+
+| Decisión | Por qué |
+|---|---|
+| Las piezas 3D se arman al entrar en pantalla en ventanas < 1024 px (claves `m-*`, líneas de tiempo propias) | La historia fija no cabe en un panel o un teléfono; las mismas piezas, otra coreografía |
+| Un motor mínimo en la cabecera escribe `data-movimiento`; todo el CSS de movimiento cuelga de esa puerta | Permite elegir sin tocar el CSS dos veces; antes la puerta era la consulta de medios y no admitía excepción |
+| Con «reducir movimiento» se **respeta por defecto**, pero la portada lo explica y deja activarlo | Quien lo tiene encendido sin saberlo entiende por qué ve todo quieto; quien lo necesita no recibe movimiento sin pedirlo |
+| Sin `animation-timeline`, el motor dispara una vez la animación al entrar en pantalla (`IntersectionObserver`) | Firefox y Safari antiguos también ven texto y piezas que cobran vida |
+| Lo que oculta algo depende de `data-motor` (el motor listo) | Si el motor falla, nada queda oculto: se ve completo y quieto |
+| Sin JavaScript no hay puerta: todo queda quieto y completo | Seguro por defecto; `e2e/movimiento.spec.ts` lo comprueba |
+| Segundo `dangerouslySetInnerHTML` (script de cabecera con nonce, constante de compilación) | Debe correr antes del primer pintado; la guía de Next.js lo recomienda; la prueba de arquitectura exige que no lleve datos de la solicitud |
+
+**Crítica de esta corrección** (lo que se puede decir en contra):
+
+- La historia fija cinematográfica sigue siendo solo de Chrome, Edge y Safari 26 en pantallas anchas; Firefox ve las
+  mismas piezas animarse al entrar, no ligadas al scroll. Un respaldo con JavaScript que reproduzca la historia fija
+  costaría mantener dos coreografías: no se hizo.
+- El script de cabecera añade ~2,4 KB en línea a cada página y la puerta de movimiento depende de él: sin JavaScript
+  la portada queda quieta (antes tenía movimiento CSS sin JavaScript). Es un cambio consciente a favor de poder elegir.
+- El conmutador solo aparece cuando hay algo que elegir (el sistema pide reducir, o ya hubo una elección): no suma
+  ruido a quien no lo necesita.
+
+**Resultado.** Medido en el sitio y en la copia: en 800 y 420 px, la cinta se pliega al salir, el plano y el tablero se
+arman y las nueve alertas caen una tras otra; con el sistema pidiendo reducir, la copia parte animada y el sitio muestra
+el aviso (se activa, se recuerda al recargar y se revierte desde el pie); sin `animation-timeline` (emulado), texto y
+piezas se animan una vez al llegar y lo que ya estaba a la vista no parpadea. La historia fija de 1440 y 1100 px quedó
+idéntica (mismos valores de opacidad en seis puntos del recorrido). Pruebas: 486 unitarias y de integración (con
+Postgres) y 91 e2e pasan (y 6 omitidas), ESLint y `tsc` limpios; axe-core sin hallazgos nuevos.

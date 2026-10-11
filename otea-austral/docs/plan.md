@@ -117,6 +117,23 @@ Plan, revisión crítica, mediciones y decisiones por confirmar en
 - [x] Pruebas nuevas: guardas de CSS del movimiento, componente de texto, zona de lectura sin texto a medias,
       clic en los botones del héroe, cabecera y movimiento reducido.
 
+## Corrección · la portada se animaba solo en escritorio con Chrome ✅
+
+Una persona vio «solo modelos estáticos» en su PC. Causa medida (ver la sección «Corrección posterior» de
+[`rediseno-claridad-y-movimiento.md`](rediseno-claridad-y-movimiento.md)): la historia animada exigía tres condiciones
+a la vez (ancho ≥ 1024 px, `animation-timeline` y sin «reducir movimiento»); fuera de ellas no había ninguna animación
+de las piezas 3D.
+
+- [x] Ventanas estrechas (< 1024 px, p. ej. un panel lateral o un teléfono): las piezas se arman al entrar en
+      pantalla (plano, tablero y alertas que caen, cinta que se pliega al salir), ligadas al scroll.
+- [x] Navegadores sin `animation-timeline` (Firefox, Safari anterior al 26): el motor dispara las mismas animaciones una
+      vez al entrar en pantalla; todo lo que oculta algo depende de `data-motor`, así que sin motor se ve completo.
+- [x] Sistemas con «reducir movimiento»: se respeta por defecto; la portada explica por qué se ve quieta y deja activar
+      el movimiento (aviso y conmutador del pie, con la elección recordada).
+- [x] Pruebas: `motor.test.ts`, guardas de CSS actualizadas, `e2e/movimiento.spec.ts` (ancho estrecho, teléfono,
+      reducir movimiento con activar/recordar/revertir, sin `animation-timeline`, sin JavaScript).
+- [x] Copia interactiva con el mismo motor (parte animada aunque el sistema pida reducir).
+
 ## Falta para abrir al público (no es código)
 
 - [ ] Crear los proyectos en Google Cloud, Neon y Resend y desplegar siguiendo `docs/despliegue.md`.

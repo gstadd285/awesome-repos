@@ -55,7 +55,9 @@ npm run dev                  # http://localhost:3000
 - Modelo de datos y reglas de verificación con pruebas (`src/lib/domain/`).
 - Página `/seguridad` con el perfil según el NIST CSF 2.0 y `/.well-known/security.txt`.
 - CSP estricta con nonce, reportes de violación y cabeceras de seguridad.
-- Animaciones y texto en movimiento solo en CSS, desactivados si el sistema pide reducir el movimiento.
+- Animaciones y texto en movimiento en CSS, en cualquier pantalla: historia fija en escritorio y piezas que se arman
+  al entrar en ventanas estrechas; un motor mínimo cubre los navegadores sin `animation-timeline` y deja activar el
+  movimiento a quien tiene «reducir movimiento» en su sistema (que se respeta por defecto).
 - Postgres con migraciones, permisos mínimos y auditoría de solo agregar; lista de espera con doble
   opt-in por correo (cerrada por defecto, `WAITLIST_MODE`).
 - Panel interno `/admin` (frase + código TOTP, sesión revocable) para crear, revisar, aprobar, publicar,
