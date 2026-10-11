@@ -33,13 +33,58 @@ function archivos(dir: string): string[] {
   });
 }
 
+/** Todo el movimiento cuelga de esta puerta, que escribe el motor (src/lib/movimiento/motor.ts). */
+const PUERTA = /html\[data-movimiento="completo"\]/;
+
 describe("movimiento", () => {
-  it("toda animación vive dentro de prefers-reduced-motion: no-preference", () => {
-    let fuera = quitarBloques(css, /@media \(prefers-reduced-motion: no-preference\)/);
+  it("toda animación vive detrás de la puerta html[data-movimiento=\"completo\"]", () => {
+    let fuera = quitarBloques(css, PUERTA);
     fuera = quitarBloques(fuera, /@media \(prefers-reduced-motion: reduce\)/);
     fuera = quitarBloques(fuera, /@keyframes [\w-]+/);
     expect(fuera).not.toMatch(/\banimation(-name|-timeline)?\s*:/);
     expect(fuera).not.toMatch(/scroll-behavior:\s*smooth/);
+  });
+
+  it("nada oculta ni desplaza contenido fuera de la puerta (sin motor, todo se ve completo y quieto)", () => {
+    let fuera = quitarBloques(css, PUERTA);
+    fuera = quitarBloques(fuera, /@keyframes [\w-]+/);
+    expect(fuera).not.toMatch(/opacity:\s*0\.16/);
+    expect(fuera).not.toMatch(/translateY\(1\.35em\)/);
+    expect(fuera).not.toMatch(/\.escena[^{]*\{[^}]*opacity:\s*0\b/);
+  });
+
+  it("el respaldo sin líneas de tiempo solo actúa con el motor listo ([data-motor]) y no usa timelines", () => {
+    expect(css).toContain('[data-timeline="no"]');
+    expect(css).not.toMatch(/\[data-timeline="no"\](?!\[data-motor\])/);
+    const respaldo = css.slice(css.indexOf('html[data-movimiento="completo"][data-timeline="no"]'));
+    const bloque = respaldo.slice(0, respaldo.indexOf("\n}\n") + 3);
+    expect(bloque).not.toMatch(/animation-timeline|animation-range|view-timeline/);
+  });
+
+  it("el motor y el CSS hablan el mismo idioma: cada clase y atributo que el motor usa está en el CSS", () => {
+    const motor = readFileSync(join(process.cwd(), "src/lib/movimiento/motor.ts"), "utf8");
+    const fichas = [
+      "kx-visto",
+      "escena-vista",
+      "mov-quieto",
+      "data-motor",
+      "data-movimiento",
+      "data-timeline",
+      "data-sistema",
+      "data-mov-ui",
+      "kx-scroll",
+      ".escena",
+    ];
+    for (const ficha of fichas) {
+      expect(motor, `el motor no menciona ${ficha}`).toContain(ficha);
+      expect(css, `el CSS no menciona ${ficha}`).toContain(ficha.replace(/^\./, ""));
+    }
+  });
+
+  it("las piezas 3D que el motor observa llevan la clase «escena» en la portada", () => {
+    const historia = readFileSync(join(process.cwd(), "src/components/home/Story.tsx"), "utf8");
+    expect(historia).toContain('className="h-plano escena"');
+    expect(historia).toContain('className="h-tablero escena"');
   });
 
   it("con movimiento reducido se anulan animaciones, transiciones y view transitions", () => {
@@ -62,8 +107,8 @@ describe("movimiento", () => {
     expect(fuera).not.toMatch(/animation-timeline\s*:/);
   });
 
-  it("el texto en movimiento no anima nada fuera de prefers-reduced-motion: no-preference", () => {
-    const fuera = quitarBloques(css, /@media \(prefers-reduced-motion: no-preference\)/);
+  it("el texto en movimiento no anima nada fuera de la puerta de movimiento", () => {
+    const fuera = quitarBloques(css, PUERTA);
     expect(fuera).not.toMatch(/\.kx-[^{]*\{[^}]*animation/);
   });
 

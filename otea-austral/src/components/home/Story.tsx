@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AvisoMovimiento } from "@/components/motion/ControlesMovimiento";
 import { TextoEnMovimiento } from "@/components/motion/TextoEnMovimiento";
 import { buttonClasses } from "@/components/ui/button";
 import { Blueprint } from "./Blueprint";
@@ -6,13 +7,14 @@ import { Board } from "./Board";
 import { Ribbon } from "./Ribbon";
 
 /**
- * Portada: héroe y tres pasos (01 — 03). En escritorio, con soporte de
- * animaciones ligadas al scroll y sin movimiento reducido, el escenario queda
+ * Portada: héroe y tres pasos (01 — 03). En escritorio (≥ 1024 px), con soporte de
+ * animaciones ligadas al scroll y con el movimiento activado, el escenario queda
  * fijo y las piezas se transforman al bajar: la cinta de eventos se pliega
  * sobre un plano técnico, del plano surge un tablero y las alertas caen
- * sobre él; el texto de cada paso se escribe al ritmo de su tramo. En otros
- * casos las piezas se apilan en orden de lectura.
- * Coreografía en globals.css (`h-*` y `kx-*`).
+ * sobre él; el texto de cada paso se escribe al ritmo de su tramo. En el resto
+ * de pantallas las piezas se apilan en orden de lectura y se arman al entrar
+ * (`escena`: ligadas al scroll o, sin soporte, disparadas por el motor); con el
+ * movimiento reducido se ven quietas. Coreografía en globals.css (`h-*`, `m-*`, `kx-*`).
  */
 export function Story() {
   return (
@@ -34,6 +36,7 @@ export function Story() {
               texto="Del horizonte al mercado."
               className="titular mt-5 text-display text-texto"
             />
+            <AvisoMovimiento />
           </div>
           <TextoEnMovimiento
             como="p"
@@ -78,7 +81,7 @@ export function Story() {
           </ul>
         </section>
 
-        <Blueprint className="h-plano" />
+        <Blueprint className="h-plano escena" />
 
         <section aria-labelledby="paso-3-titulo" className="h-paso h-paso-3">
           <p className="contador text-apoyo">02 — Impacto</p>
@@ -99,7 +102,7 @@ export function Story() {
           />
         </section>
 
-        <Board className="h-tablero" />
+        <Board className="h-tablero escena" />
 
         <section aria-labelledby="paso-4-titulo" className="h-paso h-paso-4">
           <p className="contador text-apoyo">03 — Tu panel</p>

@@ -576,9 +576,12 @@
 .kx-i-72 { --i: 72; } .kx-i-73 { --i: 73; } .kx-i-74 { --i: 74; } .kx-i-75 { --i: 75; } .kx-i-76 { --i: 76; } .kx-i-77 { --i: 77; } .kx-i-78 { --i: 78; } .kx-i-79 { --i: 79; }
 
 /* ── Movimiento ────────────────────────────────────────────────────────────
- * Todo es CSS (sin JavaScript), solo con `prefers-reduced-motion:
- * no-preference`; lo ligado al scroll, además, donde el navegador lo
- * soporta. `src/lib/design/motion.test.ts` vigila estas reglas.
+ * Las animaciones son CSS; las enciende la puerta `html[data-movimiento="completo"]`, que escribe el motor
+ * (`src/lib/movimiento/motor.ts`) antes del primer pintado: por defecto manda `prefers-reduced-motion`, y
+ * la persona puede elegir lo contrario. Sin JavaScript no hay puerta y la página queda quieta y completa.
+ * Lo ligado al scroll, además, solo donde el navegador lo soporta (`@supports (animation-timeline: view())`);
+ * donde no, el motor marca `data-timeline="no"` y las mismas piezas se animan una vez al entrar en pantalla.
+ * `src/lib/design/motion.test.ts` vigila estas reglas.
  */
 
 @keyframes otea-aparecer {
@@ -781,6 +784,37 @@
   }
 }
 
+/* Pantallas estrechas (< 1024 px): no hay historia fija; cada pieza se arma al entrar en pantalla. Parten del
+   estado «armándose» y terminan en el diseño base de la pieza (el `to` implícito), así que sin animación
+   quedan exactamente como en la disposición apilada. */
+@keyframes m-cinta-salir {
+  to {
+    opacity: 0.4;
+    transform: translateY(6%) rotateX(54deg) scale(0.82);
+  }
+}
+
+@keyframes m-plano {
+  from {
+    opacity: 0;
+    transform: rotateX(8deg) rotateZ(-6deg) scale(0.55);
+  }
+}
+
+@keyframes m-gota {
+  from {
+    opacity: 0;
+    transform: translateZ(0) scale(0.3);
+  }
+}
+
+@keyframes m-tablero {
+  from {
+    opacity: 0;
+    transform: rotateX(62deg) rotateZ(-28deg) translateZ(-140px) scale(0.7);
+  }
+}
+
 /* Texto en movimiento: la unidad sube desde la máscara; la palabra pasa de tenue a plena. */
 @keyframes kx-subir {
   from {
@@ -808,10 +842,10 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
+html[data-movimiento="completo"] {
+  scroll-behavior: smooth;
+  /* Desplegables que se abren con suavidad (donde hay soporte). */
+  interpolate-size: allow-keywords;
 
   /* Entrada al cargar, escalonada. `backwards`: al terminar no queda
      filtro ni transformación residual. */
@@ -1088,11 +1122,7 @@
   }
 
   /* Desplegables que se abren con suavidad (donde hay soporte). */
-  :root {
-    interpolate-size: allow-keywords;
-  }
-
-  details::details-content {
+  & details::details-content {
     block-size: 0;
     overflow-y: clip;
     transition:
@@ -1100,192 +1130,335 @@
       block-size 450ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  details[open]::details-content {
+  & details[open]::details-content {
     block-size: auto;
   }
 
   /* Transición entre páginas (React <ViewTransition>); la cabecera queda fija. */
-  ::view-transition-old(.otea-pagina) {
+  &::view-transition-old(.otea-pagina) {
     animation: otea-vt-salir 200ms cubic-bezier(0.4, 0, 1, 1) both;
   }
 
-  ::view-transition-new(.otea-pagina) {
+  &::view-transition-new(.otea-pagina) {
     animation: otea-vt-entrar 500ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
   }
 
-  ::view-transition-group(site-header) {
+  &::view-transition-group(site-header) {
     animation: none;
+  }
+}
+
+/* Pantallas estrechas (< 1024 px) con soporte de líneas de tiempo: la historia fija no cabe, así que cada
+   pieza 3D se arma al entrar en pantalla, ligada al scroll (y se desarma al subir). Mismo lenguaje que la
+   historia fija, con la línea de tiempo de cada pieza. Sin soporte, lo mismo lo dispara el motor (abajo). */
+html[data-movimiento="completo"] {
+  @media (max-width: 1023.98px) {
+    @supports (animation-timeline: view()) {
+      /* Conserva su entrada al cargar y, al salir por arriba, se pliega hacia atrás. */
+      .h-cinta {
+        animation:
+          otea-aparecer 1000ms cubic-bezier(0.16, 1, 0.3, 1) 300ms backwards,
+          m-cinta-salir linear both;
+        animation-timeline: auto, view();
+        animation-range: normal, exit 0% exit 100%;
+      }
+
+      .h-plano {
+        view-timeline: --plano block;
+        animation: m-plano linear both;
+        animation-timeline: view();
+        animation-range: entry 5% entry 80%;
+      }
+
+      .h-plano .gota {
+        animation:
+          otea-metal 9s ease-in-out infinite alternate,
+          m-gota linear both;
+        animation-timeline: auto, --plano;
+        animation-range: normal, entry 35% entry 90%;
+      }
+
+      .h-tablero {
+        view-timeline: --tablero block;
+        animation: m-tablero linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 75%;
+      }
+
+      /* Las alertas caen sobre el tablero una tras otra, antes de que esté entero a la vista. */
+      .h-tablero .tablero-tarjeta {
+        animation: h-tarjeta linear both;
+        animation-timeline: --tablero;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: entry 30% entry 60%;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: entry 34% entry 64%;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: entry 38% entry 68%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: entry 42% entry 72%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: entry 46% entry 76%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: entry 50% entry 80%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: entry 54% entry 84%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: entry 58% entry 88%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: entry 62% entry 92%;
+      }
+    }
+  }
+}
+
+/* Respaldo sin líneas de tiempo (Firefox, Safari anterior al 26): el motor anota `data-timeline="no"`, observa
+   los bloques de texto (`kx-scroll`) y las piezas 3D (`escena`) y les añade `kx-visto` / `escena-vista` al
+   entrar en pantalla; entonces corre la animación una vez, con el tiempo. Todo lo que oculta algo cuelga
+   de `[data-motor]`, que el motor escribe solo cuando está listo para revelarlo: si el motor no arranca, el
+   contenido se queda completo y quieto. Lo que ya estaba a la vista al empezar lleva `mov-quieto` (sin animar). */
+html[data-movimiento="completo"][data-timeline="no"][data-motor] {
+  .kx-scroll.kx-palabras:not(.kx-visto) .kx-p {
+    transform: translateY(1.35em);
+  }
+  .kx-scroll.kx-lectura:not(.kx-visto) .kx-w {
+    opacity: 0.16;
+  }
+  .kx-scroll.kx-palabras.kx-visto:not(.mov-quieto) .kx-p {
+    animation: kx-subir 800ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  .kx-scroll.kx-lectura.kx-visto:not(.mov-quieto) .kx-w {
+    animation: kx-palabra 700ms ease-out backwards;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+
+  .escena:not(.escena-vista) {
+    opacity: 0;
+  }
+  .h-plano.escena-vista:not(.mov-quieto) {
+    animation: m-plano 1100ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .h-plano.escena-vista:not(.mov-quieto) .gota {
+    animation:
+      otea-metal 9s ease-in-out infinite alternate,
+      m-gota 900ms ease-out 500ms backwards;
+  }
+  .h-tablero.escena-vista:not(.mov-quieto) {
+    animation: m-tablero 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .h-tablero.escena-vista:not(.mov-quieto) .tablero-tarjeta {
+    animation: h-tarjeta 600ms ease-out backwards;
+    animation-delay: calc(450ms + var(--k, 0) * 90ms);
+  }
+  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
+    --k: 0;
+  }
+  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
+    --k: 1;
+  }
+  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
+    --k: 2;
+  }
+  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
+    --k: 3;
+  }
+  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
+    --k: 4;
+  }
+  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
+    --k: 5;
+  }
+  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
+    --k: 6;
+  }
+  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
+    --k: 7;
+  }
+  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
+    --k: 8;
   }
 }
 
 /* Historia fija en pantalla (escritorio): la cinta se pliega sobre un plano
    técnico, del plano surge un tablero y las alertas caen sobre él. */
-@media (prefers-reduced-motion: no-preference) and (min-width: 1024px) {
-  @supports (animation-timeline: view()) {
-    .historia {
-      height: 470vh;
-      view-timeline-name: --historia;
-    }
+html[data-movimiento="completo"] {
+  @media (min-width: 1024px) {
+    @supports (animation-timeline: view()) {
+      .historia {
+        height: 470vh;
+        view-timeline-name: --historia;
+      }
 
-    .historia-escenario {
-      position: sticky;
-      top: 72px;
-      display: block;
-      height: calc(100svh - 72px);
-      padding: 0;
-      overflow: hidden;
-    }
+      .historia-escenario {
+        position: sticky;
+        top: 72px;
+        display: block;
+        height: calc(100svh - 72px);
+        padding: 0;
+        overflow: hidden;
+      }
 
-    .h-luz {
-      display: block;
-      position: absolute;
-      inset: -10%;
-      pointer-events: none;
-      animation: h-encender linear both;
-      animation-timeline: --historia;
-      animation-range: contain 42% contain 62%;
-    }
+      .h-luz {
+        display: block;
+        position: absolute;
+        inset: -10%;
+        pointer-events: none;
+        animation: h-encender linear both;
+        animation-timeline: --historia;
+        animation-range: contain 42% contain 62%;
+      }
 
-    .h-hero {
-      position: absolute;
-      inset: 56px 24px auto;
-      animation: h-hero linear both;
-      animation-timeline: --historia;
-      animation-range: contain 0% contain 100%;
-    }
+      .h-hero {
+        position: absolute;
+        inset: 56px 24px auto;
+        animation: h-hero linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
 
-    .h-cinta {
-      pointer-events: none;
-      position: absolute;
-      inset: max(43%, 316px) 0 auto;
-      animation: h-cinta linear both;
-      animation-timeline: --historia;
-      animation-range: contain 0% contain 100%;
-    }
+      .h-cinta {
+        pointer-events: none;
+        position: absolute;
+        inset: max(43%, 316px) 0 auto;
+        animation: h-cinta linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
 
-    .h-plano {
-      pointer-events: none;
-      position: absolute;
-      left: 63%;
-      top: 54%;
-      width: min(560px, 40vw);
-      margin: 0;
-      animation: h-plano linear both;
-      animation-timeline: --historia;
-      animation-range: contain 0% contain 100%;
-    }
+      .h-plano {
+        pointer-events: none;
+        position: absolute;
+        left: 63%;
+        top: 54%;
+        width: min(560px, 40vw);
+        margin: 0;
+        animation: h-plano linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
 
-    .h-plano .gota {
-      animation:
-        otea-metal 9s ease-in-out infinite alternate,
-        h-gota linear both;
-      animation-timeline: auto, --historia;
-      animation-range: normal, contain 0% contain 100%;
-    }
+      .h-plano .gota {
+        animation:
+          otea-metal 9s ease-in-out infinite alternate,
+          h-gota linear both;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 0% contain 100%;
+      }
 
-    .h-tablero {
-      pointer-events: none;
-      position: absolute;
-      left: 66%;
-      top: 52%;
-      width: min(820px, 56vw);
-      animation: h-tablero linear both;
-      animation-timeline: --historia;
-      animation-range: contain 0% contain 100%;
-    }
+      .h-tablero {
+        pointer-events: none;
+        position: absolute;
+        left: 66%;
+        top: 52%;
+        width: min(820px, 56vw);
+        animation: h-tablero linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
 
-    .h-tablero .tablero-tarjeta {
-      animation: h-tarjeta linear both;
-      animation-timeline: --historia;
-    }
-    .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
-      animation-range: contain 50.0% contain 57.0%;
-    }
-    .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
-      animation-range: contain 51.4% contain 58.4%;
-    }
-    .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
-      animation-range: contain 52.8% contain 59.8%;
-    }
-    .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
-      animation-range: contain 54.2% contain 61.2%;
-    }
-    .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
-      animation-range: contain 55.6% contain 62.6%;
-    }
-    .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
-      animation-range: contain 57.0% contain 64.0%;
-    }
-    .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
-      animation-range: contain 58.4% contain 65.4%;
-    }
-    .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
-      animation-range: contain 59.8% contain 66.8%;
-    }
-    .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
-      animation-range: contain 61.2% contain 68.2%;
-    }
+      .h-tablero .tablero-tarjeta {
+        animation: h-tarjeta linear both;
+        animation-timeline: --historia;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: contain 50.0% contain 57.0%;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: contain 51.4% contain 58.4%;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: contain 52.8% contain 59.8%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: contain 54.2% contain 61.2%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: contain 55.6% contain 62.6%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: contain 57.0% contain 64.0%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: contain 58.4% contain 65.4%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: contain 59.8% contain 66.8%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: contain 61.2% contain 68.2%;
+      }
 
-    .h-paso {
-      position: absolute;
-      left: 24px;
-      top: 50%;
-      width: min(440px, 31vw);
-      translate: 0 -50%;
-      animation: h-paso linear both;
-      animation-timeline: --historia;
-    }
-    .h-paso-2 {
-      animation-range: contain 24% contain 50%;
-    }
-    .h-paso-3 {
-      animation-range: contain 50% contain 76%;
-    }
-    .h-paso-4 {
-      animation-name: h-paso-final;
-      animation-range: contain 76% contain 86%;
-    }
+      .h-paso {
+        position: absolute;
+        left: 24px;
+        top: 50%;
+        width: min(440px, 31vw);
+        translate: 0 -50%;
+        animation: h-paso linear both;
+        animation-timeline: --historia;
+      }
+      .h-paso-2 {
+        animation-range: contain 24% contain 50%;
+      }
+      .h-paso-3 {
+        animation-range: contain 50% contain 76%;
+      }
+      .h-paso-4 {
+        animation-name: h-paso-final;
+        animation-range: contain 76% contain 86%;
+      }
 
-    /* Texto de cada paso: el titular sube y el texto se ilumina durante la primera parte de su tramo,
-       antes de que el paso empiece a salir. Más específico que `.kx-scroll …` para ganarle sin depender
-       del orden. */
-    .historia .h-paso-2 .kx-palabras .kx-p,
-    .historia .h-paso-3 .kx-palabras .kx-p,
-    .historia .h-paso-4 .kx-palabras .kx-p {
-      animation: kx-subir linear both;
-      animation-timeline: --historia;
-    }
-    .historia .h-paso-2 .kx-palabras .kx-p {
-      animation-range: contain calc(24.4% + var(--i, 0) * 0.5%) contain calc(28.4% + var(--i, 0) * 0.5%);
-    }
-    .historia .h-paso-3 .kx-palabras .kx-p {
-      animation-range: contain calc(50.4% + var(--i, 0) * 0.5%) contain calc(54.4% + var(--i, 0) * 0.5%);
-    }
-    .historia .h-paso-4 .kx-palabras .kx-p {
-      animation-range: contain calc(76.4% + var(--i, 0) * 0.5%) contain calc(80.4% + var(--i, 0) * 0.5%);
-    }
+      /* Texto de cada paso: el titular sube y el texto se ilumina durante la primera parte de su tramo,
+         antes de que el paso empiece a salir. Más específico que `.kx-scroll …` para ganarle sin depender
+         del orden. */
+      .historia .h-paso-2 .kx-palabras .kx-p,
+      .historia .h-paso-3 .kx-palabras .kx-p,
+      .historia .h-paso-4 .kx-palabras .kx-p {
+        animation: kx-subir linear both;
+        animation-timeline: --historia;
+      }
+      .historia .h-paso-2 .kx-palabras .kx-p {
+        animation-range: contain calc(24.4% + var(--i, 0) * 0.5%) contain calc(28.4% + var(--i, 0) * 0.5%);
+      }
+      .historia .h-paso-3 .kx-palabras .kx-p {
+        animation-range: contain calc(50.4% + var(--i, 0) * 0.5%) contain calc(54.4% + var(--i, 0) * 0.5%);
+      }
+      .historia .h-paso-4 .kx-palabras .kx-p {
+        animation-range: contain calc(76.4% + var(--i, 0) * 0.5%) contain calc(80.4% + var(--i, 0) * 0.5%);
+      }
 
-    .historia .h-paso-2 .kx-lectura .kx-w,
-    .historia .h-paso-3 .kx-lectura .kx-w,
-    .historia .h-paso-4 .kx-lectura .kx-w {
-      animation: kx-palabra linear both;
-      animation-timeline: --historia;
-    }
-    .historia .h-paso-2 .kx-lectura .kx-w {
-      animation-range: contain calc(26% + var(--i, 0) * 0.28%) contain calc(28% + var(--i, 0) * 0.28%);
-    }
-    .historia .h-paso-3 .kx-lectura .kx-w {
-      animation-range: contain calc(52% + var(--i, 0) * 0.28%) contain calc(54% + var(--i, 0) * 0.28%);
-    }
-    .historia .h-paso-4 .kx-lectura .kx-w {
-      animation-range: contain calc(78% + var(--i, 0) * 0.28%) contain calc(80% + var(--i, 0) * 0.28%);
-    }
+      .historia .h-paso-2 .kx-lectura .kx-w,
+      .historia .h-paso-3 .kx-lectura .kx-w,
+      .historia .h-paso-4 .kx-lectura .kx-w {
+        animation: kx-palabra linear both;
+        animation-timeline: --historia;
+      }
+      .historia .h-paso-2 .kx-lectura .kx-w {
+        animation-range: contain calc(26% + var(--i, 0) * 0.28%) contain calc(28% + var(--i, 0) * 0.28%);
+      }
+      .historia .h-paso-3 .kx-lectura .kx-w {
+        animation-range: contain calc(52% + var(--i, 0) * 0.28%) contain calc(54% + var(--i, 0) * 0.28%);
+      }
+      .historia .h-paso-4 .kx-lectura .kx-w {
+        animation-range: contain calc(78% + var(--i, 0) * 0.28%) contain calc(80% + var(--i, 0) * 0.28%);
+      }
 
-    /* Lo que recibe foco siempre se ve, aunque su paso no esté en pantalla. */
-    .h-paso:focus-within,
-    .h-hero:focus-within {
-      opacity: 1 !important;
-      transform: none !important;
+      /* Lo que recibe foco siempre se ve, aunque su paso no esté en pantalla. */
+      .h-paso:focus-within,
+      .h-hero:focus-within {
+        opacity: 1 !important;
+        transform: none !important;
+      }
     }
   }
 }
@@ -1294,19 +1467,40 @@
   view-transition-name: site-header;
 }
 
+/* Control de movimiento. El motor escribe en <html> `data-sistema` («reduce» si el sistema pide menos
+   movimiento) y `data-mov-ui` (hay algo que elegir): el aviso de la portada solo se ve cuando el sistema pide
+   reducir y la persona no ha activado el movimiento; el conmutador del pie, cuando hay algo que elegir. */
+.aviso-mov {
+  display: none;
+}
+
+html[data-sistema="reduce"]:not([data-movimiento="completo"]) .aviso-mov {
+  display: flex;
+}
+
+.mov-conmutador {
+  display: none;
+}
+
+html[data-mov-ui] .mov-conmutador {
+  display: inline-flex;
+}
+
+/* Un sistema con «reducir movimiento» no anima ni transiciona nada, salvo que la persona haya activado el
+   movimiento en esta página (`data-movimiento="completo"`). Sin JavaScript no hay atributo: queda reducido. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  html:not([data-movimiento="completo"]) *,
+  html:not([data-movimiento="completo"]) *::before,
+  html:not([data-movimiento="completo"]) *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
+  html:not([data-movimiento="completo"])::view-transition-group(*),
+  html:not([data-movimiento="completo"])::view-transition-old(*),
+  html:not([data-movimiento="completo"])::view-transition-new(*) {
     animation: none !important;
   }
 }

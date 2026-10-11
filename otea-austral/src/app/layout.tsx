@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import { headers } from "next/headers";
 import { connection } from "next/server";
+import { MovimientoSync } from "@/components/motion/MovimientoSync";
+import { ScriptMovimiento } from "@/components/motion/ScriptMovimiento";
 import { env } from "@/lib/env";
 import { SITIO } from "@/lib/site";
 import "./globals.css";
@@ -53,15 +56,22 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // La CSP lleva un nonce por solicitud: todas las páginas se renderizan al pedirse.
   await connection();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     // data-scroll-behavior: al navegar entre páginas el salto es inmediato; el scroll suave
     // (globals.css) queda para los enlaces dentro de la misma página.
+    // suppressHydrationWarning: el script de cabecera añade `data-movimiento` y compañía antes de hidratar.
     <html
       lang="es-CL"
       data-scroll-behavior="smooth"
       className={`${serif.variable} ${sans.variable} ${mono.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <ScriptMovimiento nonce={nonce} />
+      </head>
       <body className="flex min-h-dvh flex-col">
+        <MovimientoSync />
         <a
           href="#contenido"
           className="sr-only rounded-pill bg-acento px-4 py-2 text-sm font-medium text-ink focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[60]"

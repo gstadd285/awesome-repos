@@ -56,8 +56,9 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
       dependencies: hayBase ? ["preparar-admin"] : [],
     },
-    // El panel es una herramienta interna de escritorio: se prueba una vez.
-    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin/ },
+    // El panel es una herramienta interna de escritorio: se prueba una vez. Las pruebas de movimiento abren
+    // sus propias ventanas (estrecha, teléfono, sin soporte…): tampoco se repiten en el móvil.
+    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec/ },
   ],
   webServer: {
     // El mismo servidor que corre en el contenedor: `node .next/standalone/server.js`.

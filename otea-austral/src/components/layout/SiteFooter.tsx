@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
+import { ConmutadorMovimiento } from "@/components/motion/ControlesMovimiento";
 import { NAV_CONFIANZA, NAV_PRINCIPAL } from "./navigation";
 
 const ENLACE = "text-sm text-texto-suave transition-colors hover:text-texto";
@@ -44,7 +45,10 @@ export function SiteFooter() {
       </div>
       <div className="mx-auto flex max-w-[1440px] flex-col gap-3 border-t border-linea px-6 py-6 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="font-medium text-texto">Información y análisis. No constituye asesoría financiera.</p>
-        <p className="text-apoyo">© {new Date().getFullYear()} Otea Austral</p>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <ConmutadorMovimiento />
+          <p className="text-apoyo">© {new Date().getFullYear()} Otea Austral</p>
+        </div>
       </div>
       <p
         aria-hidden="true"

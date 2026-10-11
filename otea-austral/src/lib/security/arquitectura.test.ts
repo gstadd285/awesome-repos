@@ -10,6 +10,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../../next.config";
+import { buildCsp } from "./csp";
 
 const RAIZ = path.resolve(__dirname, "../../..");
 const SRC = path.join(RAIZ, "src");
@@ -199,10 +200,21 @@ describe("tamaño de lo que recibe el servidor (control 14)", () => {
 });
 
 describe("contenido y archivos (controles 15 y 16)", () => {
-  it("`dangerouslySetInnerHTML` aparece una sola vez: el JSON-LD fijo de la portada, con `<` escapado", () => {
+  it("`dangerouslySetInnerHTML` aparece solo dos veces: el JSON-LD fijo de la portada y el script de movimiento", () => {
     const usos = fuentes.flatMap((r) => (leer(r).match(/dangerouslySetInnerHTML/g) ?? []).map(() => relativa(r)));
-    expect(usos).toEqual(["src/app/page.tsx"]);
+    expect([...usos].sort()).toEqual(["src/app/page.tsx", "src/components/motion/ScriptMovimiento.tsx"]);
+    // JSON-LD: contenido fijo, con `<` escapado para que no pueda cerrar la etiqueta.
     expect(leer(path.join(SRC, "app/page.tsx"))).toContain('.replace(/</g, "\\\\u003c")');
+  });
+
+  it("el script de movimiento es una constante de la compilación: sin datos de la solicitud y con el nonce de la CSP", () => {
+    const script = leer(path.join(SRC, "components/motion/ScriptMovimiento.tsx"));
+    // Todo el código sale de `codigoMotor(OPCIONES_SITIO)`; de la solicitud solo llega el nonce, como atributo.
+    expect(script).toContain("__html: codigoMotor(OPCIONES_SITIO)");
+    expect(script).toContain("nonce={nonce}");
+    expect(script).not.toMatch(/headers\(|cookies\(|searchParams|params|request|process\.env/);
+    // Y la CSP sigue sin admitir scripts en línea sin nonce.
+    expect(buildCsp("n", { dev: false })).not.toMatch(/script-src[^;]*'unsafe-inline'/);
   });
 
   it("el sitio no recibe archivos: sin campos de archivo ni manejo de subidas", () => {
