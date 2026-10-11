@@ -21,6 +21,19 @@ export const CANARIOS = {
   ADMIN_CLAVE_HASH: `pbkdf2-sha256$600000$${"CANARIOsal".padEnd(22, "x")}$${"CANARIOhash".padEnd(43, "y")}`,
   ADMIN_TOTP_SECRETO: "CANARIO".repeat(5).slice(0, 32),
   ADMIN_SESION_SECRETO: "CANARIO_sesion_".padEnd(48, "z"),
+  ANTHROPIC_API_KEY: "sk-ant-api03-CANARIO-clave-del-build-0123456789", // escaner:ignorar valor falso a propósito (canario)
+};
+
+/**
+ * Ajustes que no son secretos, pero que el build necesita junto a los canarios para recorrer el camino de la IA
+ * (el asistente en modo `ia`): así la clave de Anthropic pasa por el mismo código que usa en producción.
+ */
+export const AJUSTES = {
+  ASISTENTE_MODO: "ia",
+  ASISTENTE_MODELO: "claude-haiku-5-5",
+  ASISTENTE_PRECIO_ENTRADA: "0.1",
+  ASISTENTE_PRECIO_SALIDA: "0.5",
+  ASISTENTE_TOPE_DIARIO_USD: "1",
 };
 
 const MAX_BYTES = 100_000_000;

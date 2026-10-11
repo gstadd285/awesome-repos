@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CANARIOS, buscarArchivosProhibidos, buscarCanarios } from "./lib/canarios.mjs";
+import { AJUSTES, CANARIOS, buscarArchivosProhibidos, buscarCanarios } from "./lib/canarios.mjs";
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const salida = path.join(raiz, ".next");
@@ -19,7 +19,7 @@ console.log("Construyendo con secretos falsos…");
 const build = spawnSync("npm", ["run", "build"], {
   cwd: raiz,
   stdio: "inherit",
-  env: { ...process.env, ...CANARIOS, NEXT_TELEMETRY_DISABLED: "1" },
+  env: { ...process.env, ...CANARIOS, ...AJUSTES, NEXT_TELEMETRY_DISABLED: "1" },
 });
 if (build.status !== 0 || !existsSync(salida)) {
   console.error("El build falló: no se pudo hacer la comprobación.");

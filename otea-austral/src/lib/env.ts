@@ -19,6 +19,12 @@ export const CONTACTO_SEGURIDAD_POR_DEFECTO =
 
 export const REMITENTE_POR_DEFECTO = "Otea Austral <alertas@oteaustral.com>";
 
+/**
+ * Modelos con los que se probó el asistente (ver `docs/asistente-ia.md`). Lista cerrada a propósito: un identificador
+ * mal escrito, o un modelo anterior que rechaza los parámetros que se le envían, fallaría en cada pregunta.
+ */
+export const MODELOS_ASISTENTE = ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"] as const;
+
 /** Iteraciones mínimas de PBKDF2-SHA256 (recomendación OWASP 2023). */
 export const ITERACIONES_MINIMAS = 600_000;
 
@@ -28,6 +34,9 @@ const contactoSeguridad = z
     (v) => /^mailto:[^@\s/]+@[^@\s/]+\.[a-z]{2,}$/i.test(v) || parseHttpsUrl(v) !== null,
     "Debe ser mailto:correo o una URL https",
   );
+
+/** Precio en dólares por millón de tokens, tal como lo publica Anthropic. */
+const precioPorMillon = z.coerce.number().positive().max(100);
 
 const urlPostgres = z.string().regex(/^postgres(ql)?:\/\/\S+$/, "Debe ser una URL postgres:// o postgresql://");
 
@@ -94,6 +103,24 @@ export const EnvSchema = z
      * para probar la imagen en local por http.
      */
     HTTPS_FORZADO: z.enum(["0", "1"]).default("1"),
+    /**
+     * Asistente de preguntas. `base` (por omisión): responde con las preguntas frecuentes del sitio, sin IA, sin
+     * clave y sin costo. `ia`: un modelo de Anthropic redacta la respuesta con ese mismo contenido. Es un servicio de
+     * pago (CLAUDE.md, regla 1): se activa solo con la clave, el modelo, los precios y el tope de gasto diario que
+     * decida la persona responsable, sin valores por omisión (ver `docs/asistente-ia.md`).
+     */
+    ASISTENTE_MODO: z.enum(["base", "ia"]).default("base"),
+    ANTHROPIC_API_KEY: z.string().regex(/^sk-ant-[A-Za-z0-9_-]{16,}$/, "Clave de Anthropic inválida").optional(),
+    ASISTENTE_MODELO: z.enum(MODELOS_ASISTENTE).optional(),
+    ASISTENTE_PRECIO_ENTRADA: precioPorMillon.optional(),
+    ASISTENTE_PRECIO_SALIDA: precioPorMillon.optional(),
+    /** Gasto máximo de IA por día (hora de Chile), en dólares. */
+    ASISTENTE_TOPE_DIARIO_USD: z.coerce.number().positive().max(50).optional(),
+    ASISTENTE_LLAMADAS_DIARIAS: z.coerce.number().int().min(1).max(10_000).default(300),
+    /** Respuestas con IA por persona y día; pasado el cupo recibe la respuesta de la base. */
+    ASISTENTE_IA_POR_PERSONA_DIA: z.coerce.number().int().min(1).max(500).default(30),
+    /** Solo pruebas e2e: dirección de un servidor que imita la API de Anthropic. */
+    ASISTENTE_URL_API_PRUEBA: z.string().url().optional(),
   })
   .superRefine((e, ctx) => {
     // `next build` también corre con NODE_ENV=production, pero la configuración del servidor llega al
@@ -125,6 +152,33 @@ export const EnvSchema = z
       problema("ADMIN_CLAVE_HASH", "El panel necesita ADMIN_CLAVE_HASH, ADMIN_TOTP_SECRETO y ADMIN_SESION_SECRETO juntas.");
     }
     if (admin === 3 && !e.DATABASE_URL) problema("DATABASE_URL", "El panel necesita DATABASE_URL.");
+
+    if (e.ASISTENTE_MODO === "ia") {
+      if (!e.ANTHROPIC_API_KEY) problema("ANTHROPIC_API_KEY", "El modo ia necesita ANTHROPIC_API_KEY (en Secret Manager).");
+      if (!e.ASISTENTE_MODELO) {
+        problema("ASISTENTE_MODELO", `El modo ia necesita ASISTENTE_MODELO: ${MODELOS_ASISTENTE.join(", ")}.`);
+      }
+      for (const precio of ["ASISTENTE_PRECIO_ENTRADA", "ASISTENTE_PRECIO_SALIDA"] as const) {
+        if (e[precio] === undefined) {
+          problema(precio, `El modo ia necesita ${precio}: dólares por millón de tokens, de la página de precios de Anthropic.`);
+        }
+      }
+      if (e.ASISTENTE_TOPE_DIARIO_USD === undefined) {
+        problema("ASISTENTE_TOPE_DIARIO_USD", "El modo ia necesita ASISTENTE_TOPE_DIARIO_USD: el gasto máximo por día, en dólares.");
+      }
+      if (produccion && !e.DATABASE_URL) {
+        problema(
+          "DATABASE_URL",
+          "El modo ia necesita DATABASE_URL en producción: el tope diario se cuenta en la base, que comparten todas las instancias.",
+        );
+      }
+    }
+    if (e.ASISTENTE_URL_API_PRUEBA && e.OTEA_E2E !== "1") {
+      problema(
+        "ASISTENTE_URL_API_PRUEBA",
+        "Solo se admite con OTEA_E2E=1: en cualquier otro caso la clave de Anthropic podría viajar a un servidor ajeno.",
+      );
+    }
   });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -148,6 +202,15 @@ export const env: Env = EnvSchema.parse({
   ADMIN_ALIAS: leer("ADMIN_ALIAS"),
   IP_PROXIES_CONFIABLES: leer("IP_PROXIES_CONFIABLES"),
   HTTPS_FORZADO: leer("HTTPS_FORZADO"),
+  ASISTENTE_MODO: leer("ASISTENTE_MODO"),
+  ANTHROPIC_API_KEY: leer("ANTHROPIC_API_KEY"),
+  ASISTENTE_MODELO: leer("ASISTENTE_MODELO"),
+  ASISTENTE_PRECIO_ENTRADA: leer("ASISTENTE_PRECIO_ENTRADA"),
+  ASISTENTE_PRECIO_SALIDA: leer("ASISTENTE_PRECIO_SALIDA"),
+  ASISTENTE_TOPE_DIARIO_USD: leer("ASISTENTE_TOPE_DIARIO_USD"),
+  ASISTENTE_LLAMADAS_DIARIAS: leer("ASISTENTE_LLAMADAS_DIARIAS"),
+  ASISTENTE_IA_POR_PERSONA_DIA: leer("ASISTENTE_IA_POR_PERSONA_DIA"),
+  ASISTENTE_URL_API_PRUEBA: leer("ASISTENTE_URL_API_PRUEBA"),
 });
 
 /** El panel interno existe solo si está configurado por completo; si no, responde 404. */

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CANARIOS, MARCAS, buscarArchivosProhibidos, buscarCanarios } from "../../../scripts/lib/canarios.mjs";
+import { AJUSTES, CANARIOS, MARCAS, buscarArchivosProhibidos, buscarCanarios } from "../../../scripts/lib/canarios.mjs";
 import { EnvSchema } from "@/lib/env";
 
 describe("canarios del build", () => {
@@ -10,7 +10,7 @@ describe("canarios del build", () => {
     for (const valor of Object.values(CANARIOS).filter((v) => v !== "abierta")) {
       expect(MARCAS.some((m) => valor.includes(m)), valor).toBe(true);
     }
-    expect(EnvSchema.safeParse({ ...CANARIOS, NODE_ENV: "development" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ ...CANARIOS, ...AJUSTES, NODE_ENV: "development" }).success).toBe(true);
   });
 
   it("cubre todos los secretos del servidor que define el esquema", () => {

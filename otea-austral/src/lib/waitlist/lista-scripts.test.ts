@@ -128,7 +128,8 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("migración 0004 sobre datos que ya exist�
       expect(await base.propietario.consulta("select nombre from otea_migraciones where nombre like '0004%'")).toEqual([]);
 
       await base.propietario.consulta("delete from lista_espera");
-      expect(await base.migrarTodo()).toEqual(["0004_correos_cifrados.sql"]);
+      // La 0004 es la primera pendiente; las migraciones posteriores (0005…) se aplican a continuación.
+      expect((await base.migrarTodo())[0]).toBe("0004_correos_cifrados.sql");
       const columnas = await base.propietario.consulta<{ column_name: string }>(
         "select column_name from information_schema.columns where table_name = 'lista_espera' order by 1",
       );

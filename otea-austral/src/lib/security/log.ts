@@ -19,7 +19,9 @@ export type SecurityEvent =
   /** Falla de un servicio externo; `codigo` es un código técnico, nunca el mensaje. */
   | { tipo: "fallo_servicio"; servicio: "base_de_datos" | "correo"; codigo: string }
   /** Intentos de entrar al panel interno (sin la clave ni el código usados). */
-  | { tipo: "acceso_admin"; resultado: "correcto" | "rechazado" | "limite" | "cierre" };
+  | { tipo: "acceso_admin"; resultado: "correcto" | "rechazado" | "limite" | "cierre" }
+  /** Una pregunta al asistente: solo la categoría del resultado, nunca el texto ni quién preguntó. */
+  | { tipo: "asistente"; resultado: "ia" | "sin_respuesta" | "negativa" | "degradada"; motivo?: string };
 
 const MAX_LARGO = 300;
 

@@ -72,3 +72,11 @@ describe("logSecurityEvent", () => {
     });
   });
 });
+
+describe("evento del asistente", () => {
+  it("lleva solo la categoría del resultado", () => {
+    const linea = JSON.parse(formatSecurityEvent({ tipo: "asistente", resultado: "degradada", motivo: "salida" }));
+    expect(linea).toMatchObject({ nivel: "seguridad", tipo: "asistente", resultado: "degradada", motivo: "salida" });
+    expect(Object.keys(linea).sort()).toEqual(["fecha", "motivo", "nivel", "resultado", "tipo"]);
+  });
+});

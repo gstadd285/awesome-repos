@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { AlertExamples } from "@/components/home/AlertExamples";
+import { Asistente } from "@/components/home/Asistente";
 import { PreOpening } from "@/components/home/PreOpening";
 import { Story } from "@/components/home/Story";
 import { Temas } from "@/components/home/Temas";
@@ -7,6 +8,7 @@ import { Waitlist } from "@/components/home/Waitlist";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { modoAsistente } from "@/lib/asistente/modo";
 import { SITIO } from "@/lib/site";
 
 /** Datos estructurados de la organización (schema.org), con `<` escapado. */
@@ -34,7 +36,7 @@ function DatosEstructurados({ nonce }: { nonce?: string }) {
 
 /**
  * Orden pensado para quien llega por primera vez: qué es y cómo funciona (historia), cómo se ve una
- * alerta, qué temas seguir, qué llega cada mañana y cómo entrar a la lista de espera.
+ * alerta, qué temas seguir, qué llega cada mañana, dónde resolver dudas y cómo entrar a la lista de espera.
  */
 export default async function Home() {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
@@ -48,6 +50,7 @@ export default async function Home() {
           <AlertExamples />
           <Temas />
           <PreOpening />
+          <Asistente modo={modoAsistente()} />
           <Waitlist />
         </PageTransition>
       </main>

@@ -1,6 +1,8 @@
 import { pbkdf2Sync, randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
+import { CLAVE_FALSA } from "./scripts/lib/anthropic-falso.mjs";
 import { base32 } from "./scripts/lib/credenciales.mjs";
+import { PUERTO_API_FALSA, PUERTO_IA } from "./e2e/puertos";
 
 const PUERTO = 3200;
 const chromium = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
@@ -60,12 +62,44 @@ export default defineConfig({
     // sus propias ventanas (estrecha, teléfono, sin soporte…): tampoco se repiten en el móvil.
     { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec/ },
   ],
-  webServer: {
-    // El mismo servidor que corre en el contenedor: `node .next/standalone/server.js`.
-    command: "npm run start",
-    url: `http://localhost:${PUERTO}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-    env: { PORT: String(PUERTO), HOSTNAME: "127.0.0.1", WAITLIST_MODE: "memoria", OTEA_E2E: "1", ...panel },
-  },
+  webServer: [
+    {
+      // El mismo servidor que corre en el contenedor: `node .next/standalone/server.js`.
+      command: "npm run start",
+      url: `http://localhost:${PUERTO}`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+      env: { PORT: String(PUERTO), HOSTNAME: "127.0.0.1", WAITLIST_MODE: "memoria", OTEA_E2E: "1", ...panel },
+    },
+    {
+      // Imita la API de Anthropic (solo lo que usa el asistente): el asistente con IA se prueba sin red y sin gasto.
+      command: "node scripts/anthropic-falso.mjs",
+      port: PUERTO_API_FALSA,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+      env: { PORT: String(PUERTO_API_FALSA) },
+    },
+    {
+      // Segunda instancia, con el asistente en modo IA apuntando al servidor falso (solo se admite con OTEA_E2E=1).
+      // Cada día de tope y de llamadas se deja muy por encima de lo que gastan las pruebas, incluso repetidas.
+      command: "npm run start",
+      url: `http://localhost:${PUERTO_IA}`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+      env: {
+        PORT: String(PUERTO_IA),
+        HOSTNAME: "127.0.0.1",
+        WAITLIST_MODE: "memoria",
+        OTEA_E2E: "1",
+        ASISTENTE_MODO: "ia",
+        ANTHROPIC_API_KEY: CLAVE_FALSA,
+        ASISTENTE_MODELO: "claude-haiku-5-5",
+        ASISTENTE_PRECIO_ENTRADA: "0.1",
+        ASISTENTE_PRECIO_SALIDA: "0.5",
+        ASISTENTE_TOPE_DIARIO_USD: "10",
+        ASISTENTE_LLAMADAS_DIARIAS: "10000",
+        ASISTENTE_URL_API_PRUEBA: `http://127.0.0.1:${PUERTO_API_FALSA}`,
+      },
+    },
+  ],
 });

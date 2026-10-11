@@ -66,6 +66,28 @@ spec:
             - name: ADMIN_SESION_SECRETO
               valueFrom:
                 secretKeyRef: { name: otea-admin-sesion-secreto, key: latest }
+            # ── Asistente de preguntas ───────────────────────────────────────────────────────────────────────
+            # Por omisión responde con las preguntas frecuentes del sitio: sin IA, sin clave y sin costo. No
+            # necesita nada de lo siguiente. La IA es un servicio de PAGO: se activa solo con la decisión de la
+            # persona responsable (docs/asistente-ia.md), descomentando TODO este bloque con sus valores. Si falta
+            # alguno, la sonda de /api/salud falla y la revisión no recibe tráfico. Aplica antes la migración 0005
+            # (tabla del gasto diario) y fija el límite de gasto en la consola de Anthropic.
+            # - name: ASISTENTE_MODO
+            #   value: ia
+            # - name: ASISTENTE_MODELO
+            #   value: ‹claude-haiku-5-5 | claude-sonnet-5-5 | claude-opus-5-5›
+            # # Dólares por millón de tokens (página de precios de Anthropic).
+            # - name: ASISTENTE_PRECIO_ENTRADA
+            #   value: "‹…›"
+            # - name: ASISTENTE_PRECIO_SALIDA
+            #   value: "‹…›"
+            # # Gasto máximo de IA por día, en dólares (hora de Chile). Opcionales: ASISTENTE_LLAMADAS_DIARIAS (300)
+            # # y ASISTENTE_IA_POR_PERSONA_DIA (30).
+            # - name: ASISTENTE_TOPE_DIARIO_USD
+            #   value: "‹…›"
+            # - name: ANTHROPIC_API_KEY
+            #   valueFrom:
+            #     secretKeyRef: { name: otea-anthropic-api-key, key: latest }
           # La sonda valida el proceso y la configuración (no toca la base de datos):
           # una revisión mal configurada no recibe tráfico.
           startupProbe:

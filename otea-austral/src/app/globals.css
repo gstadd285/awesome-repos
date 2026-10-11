@@ -828,6 +828,20 @@
   }
 }
 
+/* Los tres puntos de «buscando la respuesta» del asistente: suben y bajan por turnos. */
+@keyframes otea-pulso {
+  0%,
+  60%,
+  100% {
+    opacity: 0.4;
+    transform: none;
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
 @keyframes otea-vt-salir {
   to {
     opacity: 0;
@@ -1058,6 +1072,16 @@ html[data-movimiento="completo"] {
   .gota {
     background-size: 160% 160%;
     animation: otea-metal 9s ease-in-out infinite alternate;
+  }
+
+  .punto-escribiendo {
+    animation: otea-pulso 1.2s ease-in-out infinite;
+  }
+  .punto-escribiendo:nth-child(2) {
+    animation-delay: 150ms;
+  }
+  .punto-escribiendo:nth-child(3) {
+    animation-delay: 300ms;
   }
 
   /* Al imprimir no hay scroll: todo se muestra completo y quieto. */

@@ -72,7 +72,7 @@ describe("consultas SQL (control 13: parametrizar)", () => {
 
 describe("frontera entre el servidor y el navegador (controles 1 y 3)", () => {
   const PROHIBIDO_EN_CLIENTE =
-    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo))$/;
+    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+)$/;
 
   const clientes = fuentes.filter((r) => /^\s*["']use client["'];?/.test(leer(r)));
 
@@ -103,6 +103,61 @@ describe("frontera entre el servidor y el navegador (controles 1 y 3)", () => {
       for (const m of leer(ruta).matchAll(/\bNEXT_PUBLIC_[A-Z0-9_]+/g)) publicas.add(m[0]);
     }
     expect([...publicas]).toEqual(["NEXT_PUBLIC_SITE_URL"]);
+  });
+});
+
+describe("asistente de preguntas (IA de pago)", () => {
+  const delAsistente = fuentes.filter((r) => relativa(r).startsWith("src/lib/asistente/"));
+  const proveedor = leer(path.join(SRC, "lib/asistente/proveedor-anthropic.ts"));
+
+  it("hay código del asistente (la prueba vigila algo)", () => {
+    expect(delAsistente.length).toBeGreaterThan(10);
+  });
+
+  it("solo el proveedor de Anthropic importa el SDK: un único lugar llama al servicio de pago", () => {
+    const usuarios = fuentes.filter((r) => /["']@anthropic-ai\/sdk/.test(leer(r))).map(relativa);
+    expect(usuarios).toEqual(["src/lib/asistente/proveedor-anthropic.ts"]);
+    expect(proveedor).toMatch(/^import "server-only";/m);
+  });
+
+  it("el cliente del SDK recibe la clave, la URL y el token de forma explícita: no lee nada del entorno por su cuenta", () => {
+    expect(proveedor).toMatch(/apiKey,/);
+    expect(proveedor).toMatch(/authToken: null/);
+    expect(proveedor).toMatch(/webhookKey: null/);
+    expect(proveedor).toMatch(/baseURL = URL_API_ANTHROPIC/); // nunca `undefined`: el SDK lo leería del entorno
+    expect(proveedor).toMatch(/logLevel: "off"/); // ni la pregunta ni la respuesta en los registros del servidor
+    expect(proveedor).toMatch(/maxRetries: 1/); // cada reintento es otra llamada que se paga
+  });
+
+  it("nada del asistente hace peticiones por su cuenta ni lee el entorno ni escribe en la consola", () => {
+    const infractores: string[] = [];
+    for (const ruta of delAsistente) {
+      const texto = leer(ruta);
+      if (/\bfetch\(|XMLHttpRequest|\bWebSocket\b|node:(http|https|net|child_process)/.test(texto)) {
+        infractores.push(`${relativa(ruta)}: peticiones`);
+      }
+      if (/process\.env/.test(texto)) infractores.push(`${relativa(ruta)}: process.env`);
+      if (/\bconsole\./.test(texto)) infractores.push(`${relativa(ruta)}: console`);
+    }
+    expect(infractores).toEqual([]);
+  });
+
+  it("lo único que se anota de una pregunta es su categoría, nunca el texto ni quién la hizo", () => {
+    const instancia = leer(path.join(SRC, "lib/asistente/instancia.ts"));
+    const registro = /function registrar\(registro: Registro\): void \{[\s\S]*?\n\}/.exec(instancia)?.[0] ?? "";
+    expect(registro).toContain("registro.resultado");
+    expect(registro).not.toMatch(/\b(pregunta|anteriores|clave|ip)\b/i);
+    expect(leer(path.join(SRC, "lib/asistente/servicio.ts"))).not.toMatch(/registrar\([^)]*(pregunta|texto|clave)/);
+  });
+
+  it("la ruta del asistente solo acepta POST y no lee ni cookies ni cabeceras por su cuenta", () => {
+    const ruta = leer(path.join(SRC, "app/api/asistente/route.ts"));
+    expect([...ruta.matchAll(/export (?:async )?function ([A-Z]+)/g)].map((m) => m[1])).toEqual(["POST"]);
+    expect(ruta).not.toMatch(/cookies\(|headers\(/);
+  });
+
+  it("el modo base es el de arranque: la IA exige activarse a propósito", () => {
+    expect(leer(path.join(SRC, "lib/env.ts"))).toMatch(/ASISTENTE_MODO: z\.enum\(\["base", "ia"\]\)\.default\("base"\)/);
   });
 });
 
@@ -179,6 +234,7 @@ describe("inventario de la superficie expuesta", () => {
     const rutas = archivos(path.join(SRC, "app"), (r) => /\/route\.ts$/.test(r)).map(relativa);
     expect(rutas).toEqual([
       "src/app/.well-known/security.txt/route.ts",
+      "src/app/api/asistente/route.ts",
       "src/app/api/csp-report/route.ts",
       "src/app/api/salud/route.ts",
     ]);
@@ -194,8 +250,11 @@ describe("tamaño de lo que recibe el servidor (control 14)", () => {
     expect(kb).toBeLessThanOrEqual(100);
   });
 
-  it("el único endpoint HTTP que recibe un cuerpo (reportes de la CSP) limita su tamaño", () => {
+  it("los endpoints HTTP que reciben un cuerpo (reportes de la CSP y preguntas al asistente) limitan su tamaño", () => {
     expect(leer(path.join(SRC, "lib/security/csp-report.ts"))).toMatch(/16 \* 1024|16_384|MAX_BYTES/);
+    const asistente = leer(path.join(SRC, "lib/asistente/manejador.ts"));
+    expect(asistente).toMatch(/leerCuerpoLimitado\(request, MAX_CUERPO_BYTES\)/);
+    expect(leer(path.join(SRC, "lib/asistente/limites.ts"))).toMatch(/MAX_CUERPO_BYTES = 8 \* 1024/);
   });
 });
 

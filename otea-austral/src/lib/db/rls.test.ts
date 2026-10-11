@@ -36,6 +36,7 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("Row-Level Security (Postgres)", () => {
           "alerta_auditoria",
           "alerta_fuentes",
           "alertas",
+          "asistente_uso",
           "correcciones",
           "fuentes",
           "lista_espera",

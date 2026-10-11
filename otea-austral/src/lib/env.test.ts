@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { EnvSchema } from "./env";
+import { EnvSchema, MODELOS_ASISTENTE } from "./env";
 
 describe("EnvSchema", () => {
   it("por defecto la lista de espera está cerrada", () => {
@@ -133,5 +133,82 @@ describe("EnvSchema · tercio 3", () => {
     expect(EnvSchema.safeParse({ EMAIL_REMITENTE: "x\r\nBcc: otro@x.cl" }).success).toBe(false);
     expect(EnvSchema.parse({ IP_PROXIES_CONFIABLES: "2" }).IP_PROXIES_CONFIABLES).toBe(2);
     expect(EnvSchema.safeParse({ IP_PROXIES_CONFIABLES: "9" }).success).toBe(false);
+  });
+});
+
+describe("EnvSchema · asistente de preguntas", () => {
+  const CLAVE = `sk-ant-api03-${"x".repeat(40)}`;
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const ia = {
+    ASISTENTE_MODO: "ia",
+    ANTHROPIC_API_KEY: CLAVE,
+    ASISTENTE_MODELO: "claude-haiku-5-5",
+    ASISTENTE_PRECIO_ENTRADA: "0.1",
+    ASISTENTE_PRECIO_SALIDA: "0.5",
+    ASISTENTE_TOPE_DIARIO_USD: "1",
+  };
+
+  it("por omisión responde con la base de conocimiento: sin IA, sin clave y sin costo", () => {
+    const e = EnvSchema.parse({});
+    expect(e.ASISTENTE_MODO).toBe("base");
+    expect(e.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" }).success).toBe(true);
+  });
+
+  it("el modo ia pide todo de forma explícita: clave, modelo, precios y tope de gasto", () => {
+    expect(EnvSchema.safeParse(ia).success).toBe(true);
+    for (const falta of Object.keys(ia).filter((k) => k !== "ASISTENTE_MODO")) {
+      const { [falta]: _omitida, ...incompleta } = ia as Record<string, string>;
+      void _omitida;
+      const r = EnvSchema.safeParse(incompleta);
+      expect(r.success, falta).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0]), falta).toContain(falta);
+    }
+  });
+
+  it("el modo ia no trae valores por omisión para el gasto", () => {
+    const e = EnvSchema.parse(ia);
+    expect(e.ASISTENTE_TOPE_DIARIO_USD).toBe(1);
+    expect(EnvSchema.parse({}).ASISTENTE_TOPE_DIARIO_USD).toBeUndefined();
+    expect(EnvSchema.parse({}).ASISTENTE_MODELO).toBeUndefined();
+    expect(EnvSchema.parse({}).ASISTENTE_PRECIO_ENTRADA).toBeUndefined();
+  });
+
+  it("solo admite los modelos con los que se probó", () => {
+    for (const ok of MODELOS_ASISTENTE) expect(EnvSchema.safeParse({ ...ia, ASISTENTE_MODELO: ok }).success, ok).toBe(true);
+    for (const malo of ["claude-haiku-4-5", "claude-opus-4-8", "gpt-5", "claude-haiku-5-5 ", "haiku"]) {
+      expect(EnvSchema.safeParse({ ...ia, ASISTENTE_MODELO: malo }).success, malo).toBe(false);
+    }
+  });
+
+  it("valida la clave y las cifras", () => {
+    for (const mala of ["corta", "sk-ant-", "re_1234567890abcdef", ` ${CLAVE}`, `${CLAVE}\n`]) {
+      expect(EnvSchema.safeParse({ ...ia, ANTHROPIC_API_KEY: mala }).success, mala).toBe(false);
+    }
+    for (const campo of ["ASISTENTE_PRECIO_ENTRADA", "ASISTENTE_PRECIO_SALIDA", "ASISTENTE_TOPE_DIARIO_USD"]) {
+      for (const malo of ["0", "-1", "abc", "1000"]) {
+        expect(EnvSchema.safeParse({ ...ia, [campo]: malo }).success, `${campo}=${malo}`).toBe(false);
+      }
+    }
+    expect(EnvSchema.safeParse({ ...ia, ASISTENTE_LLAMADAS_DIARIAS: "0" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...ia, ASISTENTE_IA_POR_PERSONA_DIA: "9999" }).success).toBe(false);
+    expect(EnvSchema.parse(ia).ASISTENTE_LLAMADAS_DIARIAS).toBe(300);
+    expect(EnvSchema.parse(ia).ASISTENTE_IA_POR_PERSONA_DIA).toBe(30);
+  });
+
+  it("en producción el tope diario se cuenta en la base: sin DATABASE_URL no se activa", () => {
+    const produccion = { ...ia, NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" };
+    expect(EnvSchema.safeParse(produccion).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...produccion, DATABASE_URL: DB }).success).toBe(true);
+    // Fuera de producción (desarrollo y pruebas) basta la memoria.
+    expect(EnvSchema.safeParse(ia).success).toBe(true);
+  });
+
+  it("la dirección de pruebas de la API solo se admite en las pruebas e2e", () => {
+    const prueba = { ...ia, ASISTENTE_URL_API_PRUEBA: "http://127.0.0.1:3299" };
+    expect(EnvSchema.safeParse(prueba).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...prueba, OTEA_E2E: "1" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ ...prueba, OTEA_E2E: "1", NODE_ENV: "production" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ ASISTENTE_URL_API_PRUEBA: "http://127.0.0.1:3299" }).success).toBe(false);
   });
 });
