@@ -18,6 +18,7 @@ export const CANARIOS = {
   DATABASE_URL: "postgresql://CANARIO_USUARIO:CANARIO-clave-bd-8f3a1c@localhost:5432/CANARIO_BD",
   RESEND_API_KEY: "re_CANARIO0123456789abcdefCANARIO", // escaner:ignorar valor falso a propósito (canario)
   WAITLIST_SECRETO: "CANARIO_lista_".padEnd(46, "v"),
+  CUENTAS_SECRETO: "CANARIO_cuentas_".padEnd(48, "w"),
   ADMIN_CLAVE_HASH: `pbkdf2-sha256$600000$${"CANARIOsal".padEnd(22, "x")}$${"CANARIOhash".padEnd(43, "y")}`,
   ADMIN_TOTP_SECRETO: "CANARIO".repeat(5).slice(0, 32),
   ADMIN_SESION_SECRETO: "CANARIO_sesion_".padEnd(48, "z"),
@@ -26,9 +27,10 @@ export const CANARIOS = {
 
 /**
  * Ajustes que no son secretos, pero que el build necesita junto a los canarios para recorrer el camino de la IA
- * (el asistente en modo `ia`): así la clave de Anthropic pasa por el mismo código que usa en producción.
+ * (el asistente en modo `ia` y las cuentas abiertas): así las claves pasan por el mismo código que usan en producción.
  */
 export const AJUSTES = {
+  CUENTAS_MODO: "abiertas",
   ASISTENTE_MODO: "ia",
   ASISTENTE_MODELO: "claude-haiku-5-5",
   ASISTENTE_PRECIO_ENTRADA: "0.1",

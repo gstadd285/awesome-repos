@@ -1,7 +1,6 @@
-import { logSecurityEvent } from "@/lib/security/log";
+import { API_RESEND, crearEnviadorResend } from "@/lib/correo/resend";
 
-/** Única dirección a la que el servidor hace peticiones salientes (fija, nunca de un usuario). */
-export const API_RESEND = "https://api.resend.com/emails";
+export { API_RESEND };
 
 export const ASUNTO_CONFIRMACION = "Confirma tu inscripción en Otea Austral";
 
@@ -52,44 +51,18 @@ export function htmlConfirmacion(enlace: string): string {
 }
 
 /**
- * Envía el enlace de confirmación con la API de Resend, con tiempo límite y
- * sin seguir redirecciones. Si falla, registra solo un código técnico (nunca
- * el correo ni el token) y lanza para que se pueda reintentar.
+ * Envía el enlace de confirmación de la lista de espera con la API de Resend (ver `@/lib/correo/resend`): con tiempo
+ * límite, sin seguir redirecciones y registrando solo un código técnico si falla.
  */
-export function crearRemitenteResend({
-  apiKey,
-  remitente,
-  urlSitio,
-  fetchFn = fetch,
-  tiempoLimiteMs = 10_000,
-}: Opciones) {
+export function crearRemitenteResend({ apiKey, remitente, urlSitio, fetchFn, tiempoLimiteMs }: Opciones) {
+  const enviar = crearEnviadorResend({ apiKey, remitente, fetchFn, tiempoLimiteMs });
   return async function enviarConfirmacion(correo: string, token: string): Promise<void> {
     const enlace = enlaceConfirmacion(urlSitio, token);
-    let respuesta: Response;
-    try {
-      respuesta = await fetchFn(API_RESEND, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: remitente,
-          to: [correo],
-          subject: ASUNTO_CONFIRMACION,
-          text: textoConfirmacion(enlace),
-          html: htmlConfirmacion(enlace),
-        }),
-        redirect: "error",
-        signal: AbortSignal.timeout(tiempoLimiteMs),
-      });
-    } catch (error) {
-      const codigo = error instanceof Error && error.name === "TimeoutError" ? "tiempo_agotado" : "red";
-      logSecurityEvent({ tipo: "fallo_servicio", servicio: "correo", codigo });
-      throw new Error("No se pudo enviar el correo de confirmación.");
-    }
-    // La respuesta no se lee ni se registra: puede repetir el correo.
-    await respuesta.body?.cancel().catch(() => {});
-    if (!respuesta.ok) {
-      logSecurityEvent({ tipo: "fallo_servicio", servicio: "correo", codigo: `http_${respuesta.status}` });
-      throw new Error("No se pudo enviar el correo de confirmación.");
-    }
+    await enviar({
+      para: correo,
+      asunto: ASUNTO_CONFIRMACION,
+      texto: textoConfirmacion(enlace),
+      html: htmlConfirmacion(enlace),
+    });
   };
 }

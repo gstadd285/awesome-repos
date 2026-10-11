@@ -2,9 +2,11 @@ import { z } from "zod";
 
 /**
  * Versión de los textos que acepta la persona al inscribirse (el consentimiento para guardar su correo y las
- * condiciones de uso); se guarda con el registro. Cambia cada vez que cambie cualquiera de los dos.
+ * condiciones de uso); se guarda con el registro. Cambia cada vez que cambie cualquiera de los dos, o lo que la
+ * política de privacidad y las condiciones aclaran sobre lo aceptado. Es la misma versión que usan las cuentas
+ * (`VERSION_TEXTOS`): son las mismas dos páginas, y una prueba vigila que no se separen.
  */
-export const VERSION_CONSENTIMIENTO = "2026-10-borrador-2";
+export const VERSION_CONSENTIMIENTO = "2026-10-borrador-3";
 
 export const SolicitudListaSchema = z.object({
   correo: z

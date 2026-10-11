@@ -83,6 +83,25 @@ export const EnvSchema = z
       .string()
       .regex(/^[A-Za-z0-9_-]{43,}$/, "Secreto de la lista demasiado corto (256 bits en base64url)")
       .optional(),
+    /**
+     * Cuentas de personas usuarias. `cerradas` (por omisión): las páginas existen pero no guardan nada. `memoria`: solo
+     * desarrollo y pruebas (se pierde al reiniciar; los enlaces salen en el registro del servidor, no por correo).
+     * `abiertas`: Postgres y correo real; exige DATABASE_URL, RESEND_API_KEY y CUENTAS_SECRETO.
+     */
+    CUENTAS_MODO: z.enum(["cerradas", "memoria", "abiertas"]).default("cerradas"),
+    /**
+     * Secreto maestro de las cuentas: 256 bits en base64url (`npm run cuentas:secreto`). De él se derivan, con HKDF, las
+     * claves que cifran el correo y el secreto de la verificación en dos pasos, el índice ciego del correo y el token
+     * anti-CSRF. Debe ser el mismo en todas las instancias, vivir en Secret Manager y ser distinto de los otros secretos.
+     */
+    CUENTAS_SECRETO: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{43,}$/, "Secreto de las cuentas demasiado corto (256 bits en base64url)")
+      .optional(),
+    /** Tope diario de correos de cuentas (confirmación, restablecimiento y avisos). Con la lista de espera, que sume 100 o menos. */
+    CUENTAS_ENVIOS_DIARIOS: z.coerce.number().int().min(1).max(5000).default(20),
+    /** Solo pruebas e2e: dirección de un servidor que imita la API de Resend (el correo de las cuentas no sale a internet). */
+    RESEND_URL_API_PRUEBA: z.string().url().optional(),
     ADMIN_CLAVE_HASH: hashClave.optional(),
     /** Secreto TOTP en base32: 160 bits. */
     ADMIN_TOTP_SECRETO: z.string().regex(/^[A-Z2-7]{32}$/, "Secreto TOTP inválido (32 caracteres base32)").optional(),
@@ -147,6 +166,23 @@ export const EnvSchema = z
     if (produccion && e.DATABASE_URL && !/[?&]sslmode=verify-full(&|$)/.test(e.DATABASE_URL)) {
       problema("DATABASE_URL", "En producción la conexión debe verificar el certificado: agrega sslmode=verify-full.");
     }
+    if (produccion && e.CUENTAS_MODO === "memoria") {
+      problema("CUENTAS_MODO", "CUENTAS_MODO=memoria no se permite en producción: las cuentas se perderían al reiniciar.");
+    }
+    if (e.CUENTAS_MODO === "abiertas") {
+      if (!e.DATABASE_URL) problema("DATABASE_URL", "Las cuentas abiertas necesitan DATABASE_URL.");
+      if (!e.RESEND_API_KEY) problema("RESEND_API_KEY", "Las cuentas abiertas necesitan RESEND_API_KEY (confirmación y restablecimiento por correo).");
+      if (!e.CUENTAS_SECRETO) problema("CUENTAS_SECRETO", "Las cuentas abiertas necesitan CUENTAS_SECRETO (`npm run cuentas:secreto`).");
+    }
+    if (e.CUENTAS_SECRETO && (e.CUENTAS_SECRETO === e.WAITLIST_SECRETO || e.CUENTAS_SECRETO === e.ADMIN_SESION_SECRETO)) {
+      problema("CUENTAS_SECRETO", "Debe ser distinto de WAITLIST_SECRETO y de ADMIN_SESION_SECRETO: cada secreto protege una sola cosa.");
+    }
+    if (e.RESEND_URL_API_PRUEBA && e.OTEA_E2E !== "1") {
+      problema(
+        "RESEND_URL_API_PRUEBA",
+        "Solo se admite con OTEA_E2E=1: en cualquier otro caso la clave de Resend y los correos podrían viajar a un servidor ajeno.",
+      );
+    }
     const admin = [e.ADMIN_CLAVE_HASH, e.ADMIN_TOTP_SECRETO, e.ADMIN_SESION_SECRETO].filter(Boolean).length;
     if (admin > 0 && admin < 3) {
       problema("ADMIN_CLAVE_HASH", "El panel necesita ADMIN_CLAVE_HASH, ADMIN_TOTP_SECRETO y ADMIN_SESION_SECRETO juntas.");
@@ -196,6 +232,10 @@ export const env: Env = EnvSchema.parse({
   EMAIL_REMITENTE: leer("EMAIL_REMITENTE"),
   WAITLIST_ENVIOS_DIARIOS: leer("WAITLIST_ENVIOS_DIARIOS"),
   WAITLIST_SECRETO: leer("WAITLIST_SECRETO"),
+  CUENTAS_MODO: leer("CUENTAS_MODO"),
+  CUENTAS_SECRETO: leer("CUENTAS_SECRETO"),
+  CUENTAS_ENVIOS_DIARIOS: leer("CUENTAS_ENVIOS_DIARIOS"),
+  RESEND_URL_API_PRUEBA: leer("RESEND_URL_API_PRUEBA"),
   ADMIN_CLAVE_HASH: leer("ADMIN_CLAVE_HASH"),
   ADMIN_TOTP_SECRETO: leer("ADMIN_TOTP_SECRETO"),
   ADMIN_SESION_SECRETO: leer("ADMIN_SESION_SECRETO"),
@@ -216,4 +256,9 @@ export const env: Env = EnvSchema.parse({
 /** El panel interno existe solo si está configurado por completo; si no, responde 404. */
 export function panelActivo(e: Env = env): boolean {
   return Boolean(e.ADMIN_CLAVE_HASH && e.ADMIN_TOTP_SECRETO && e.ADMIN_SESION_SECRETO && e.DATABASE_URL);
+}
+
+/** Las cuentas guardan datos solo si no están cerradas. */
+export function cuentasAbiertas(e: Env = env): boolean {
+  return e.CUENTAS_MODO !== "cerradas";
 }

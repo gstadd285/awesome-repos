@@ -80,3 +80,21 @@ describe("evento del asistente", () => {
     expect(Object.keys(linea).sort()).toEqual(["fecha", "motivo", "nivel", "resultado", "tipo"]);
   });
 });
+
+describe("eventos de las cuentas", () => {
+  it("un acceso lleva solo su resultado: nunca el correo, la contraseña ni el código", () => {
+    const linea = JSON.parse(formatSecurityEvent({ tipo: "acceso_cuenta", resultado: "dos_pasos_rechazado" }));
+    expect(Object.keys(linea).sort()).toEqual(["fecha", "nivel", "resultado", "tipo"]);
+    expect(linea).toMatchObject({ tipo: "acceso_cuenta", resultado: "dos_pasos_rechazado" });
+  });
+
+  it("un cambio en una cuenta lleva solo qué fue: nada de quién", () => {
+    const linea = JSON.parse(formatSecurityEvent({ tipo: "cuenta", evento: "clave_restablecida" }));
+    expect(Object.keys(linea).sort()).toEqual(["evento", "fecha", "nivel", "tipo"]);
+  });
+
+  it("aunque se colara un correo, una IP o un token en un campo de texto, el saneado lo oculta", () => {
+    const linea = formatSecurityEvent({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: `ana@correo.cl 190.1.2.3 ${"aB3_".repeat(11)}` });
+    expect(linea).not.toMatch(/ana@correo|190\.1\.2\.3|aB3_aB3_/);
+  });
+});

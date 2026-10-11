@@ -20,6 +20,26 @@ export type SecurityEvent =
   | { tipo: "fallo_servicio"; servicio: "base_de_datos" | "correo"; codigo: string }
   /** Intentos de entrar al panel interno (sin la clave ni el código usados). */
   | { tipo: "acceso_admin"; resultado: "correcto" | "rechazado" | "limite" | "cierre" }
+  /** Entrar a la cuenta de una persona usuaria (sin el correo, la contraseña ni el código usados). */
+  | { tipo: "acceso_cuenta"; resultado: "correcto" | "rechazado" | "limite" | "dos_pasos" | "dos_pasos_rechazado" | "cierre" }
+  /** Algo que pasó con una cuenta: solo qué fue, nunca de quién ni su correo. */
+  | {
+      tipo: "cuenta";
+      evento:
+        | "alta_pedida"
+        | "alta"
+        | "alta_repetida"
+        | "restablecer_pedido"
+        | "clave_cambiada"
+        | "clave_restablecida"
+        | "dos_pasos_activados"
+        | "dos_pasos_desactivados"
+        | "codigos_regenerados"
+        | "codigo_recuperacion"
+        | "sesiones_cerradas"
+        | "eliminada"
+        | "datos_exportados";
+    }
   /** Una pregunta al asistente: solo la categoría del resultado, nunca el texto ni quién preguntó. */
   | { tipo: "asistente"; resultado: "ia" | "sin_respuesta" | "negativa" | "degradada"; motivo?: string };
 

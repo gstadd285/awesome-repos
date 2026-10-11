@@ -212,3 +212,59 @@ describe("EnvSchema · asistente de preguntas", () => {
     expect(EnvSchema.safeParse({ ASISTENTE_URL_API_PRUEBA: "http://127.0.0.1:3299" }).success).toBe(false);
   });
 });
+
+describe("EnvSchema · cuentas de personas usuarias", () => {
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const SECRETO = "c".repeat(43);
+  const completas = { CUENTAS_MODO: "abiertas", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab", CUENTAS_SECRETO: SECRETO };
+
+  it("por omisión están cerradas: no guardan nada ni piden nada", () => {
+    const e = EnvSchema.parse({});
+    expect(e.CUENTAS_MODO).toBe("cerradas");
+    expect(e.CUENTAS_SECRETO).toBeUndefined();
+    expect(e.CUENTAS_ENVIOS_DIARIOS).toBe(20);
+  });
+
+  it("abiertas exige base de datos, clave de correo y el secreto de las cuentas", () => {
+    expect(EnvSchema.safeParse({ CUENTAS_MODO: "abiertas" }).success).toBe(false);
+    expect(EnvSchema.safeParse(completas).success).toBe(true);
+    for (const falta of ["DATABASE_URL", "RESEND_API_KEY", "CUENTAS_SECRETO"] as const) {
+      const { [falta]: _omitida, ...incompleta } = completas;
+      void _omitida;
+      const r = EnvSchema.safeParse(incompleta);
+      expect(r.success, falta).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0]), falta).toContain(falta);
+    }
+  });
+
+  it("la modalidad solo admite cerradas, memoria o abiertas", () => {
+    for (const mala of ["abierta", "cerrada", "on", "1", ""]) expect(EnvSchema.safeParse({ CUENTAS_MODO: mala }).success, mala).toBe(false);
+  });
+
+  it("memoria no se permite en producción, salvo para las pruebas e2e", () => {
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", CUENTAS_MODO: "memoria" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", CUENTAS_MODO: "memoria", OTEA_E2E: "1" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ NODE_ENV: "development", CUENTAS_MODO: "memoria" }).success).toBe(true);
+  });
+
+  it("el secreto debe tener 256 bits en base64url y no repetirse en otro uso", () => {
+    expect(EnvSchema.safeParse({ CUENTAS_SECRETO: SECRETO }).success).toBe(true);
+    for (const malo of ["corto", "c".repeat(42), `${"c".repeat(42)}+`, `${"c".repeat(43)} `]) {
+      expect(EnvSchema.safeParse({ CUENTAS_SECRETO: malo }).success, malo).toBe(false);
+    }
+    expect(EnvSchema.safeParse({ CUENTAS_SECRETO: SECRETO, WAITLIST_SECRETO: SECRETO }).success).toBe(false);
+    expect(EnvSchema.safeParse({ CUENTAS_SECRETO: SECRETO, ADMIN_SESION_SECRETO: SECRETO }).success).toBe(false);
+    expect(EnvSchema.safeParse({ CUENTAS_SECRETO: SECRETO, WAITLIST_SECRETO: "d".repeat(43) }).success).toBe(true);
+  });
+
+  it("el tope diario de correos es un entero positivo", () => {
+    expect(EnvSchema.parse({ CUENTAS_ENVIOS_DIARIOS: "30" }).CUENTAS_ENVIOS_DIARIOS).toBe(30);
+    for (const malo of ["0", "-1", "2.5", "abc", "5001"]) expect(EnvSchema.safeParse({ CUENTAS_ENVIOS_DIARIOS: malo }).success, malo).toBe(false);
+  });
+
+  it("la dirección de pruebas del correo solo existe con OTEA_E2E=1 (si no, la clave de Resend podría viajar a un servidor ajeno)", () => {
+    expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "http://127.0.0.1:3298/emails" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "http://127.0.0.1:3298/emails", OTEA_E2E: "1" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "no es una url", OTEA_E2E: "1" }).success).toBe(false);
+  });
+});
