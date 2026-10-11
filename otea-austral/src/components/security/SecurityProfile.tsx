@@ -1,3 +1,5 @@
+import { Migas } from "@/components/layout/Migas";
+import { TextoEnMovimiento } from "@/components/motion/TextoEnMovimiento";
 import { buttonClasses } from "@/components/ui/button";
 import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
 import { formatearFecha } from "@/lib/format";
@@ -23,17 +25,17 @@ export function SecurityProfile({ contacto }: { contacto: string }) {
 
   return (
     <>
-      <section aria-labelledby="seguridad-titulo" className="mx-auto max-w-[1440px] px-6 pt-16 sm:pt-24">
-        <SectionEyebrow numero="CSF 2.0" className="anim-aparecer">
-          Seguridad
-        </SectionEyebrow>
-        <h1
+      <section aria-labelledby="seguridad-titulo" className="mx-auto max-w-[1440px] px-6 pt-12 sm:pt-20">
+        <Migas actual="Seguridad" className="anim-aparecer" />
+        <TextoEnMovimiento
+          como="h1"
           id="seguridad-titulo"
-          className="titular anim-aparecer anim-retraso-1 mt-10 max-w-[18ch] text-display text-texto"
-        >
-          Cómo protegemos Otea Austral
-        </h1>
-        <p className="anim-aparecer anim-retraso-2 mt-8 max-w-[640px] text-lg leading-relaxed text-texto-suave">
+          efecto="letras"
+          disparo="carga"
+          texto="Cómo protegemos Otea Austral"
+          className="titular mt-8 max-w-[18ch] text-display text-texto"
+        />
+        <p className="anim-aparecer anim-retraso-3 mt-8 max-w-[640px] text-lede text-texto-suave">
           Organizamos la seguridad con el Marco de Ciberseguridad (CSF) 2.0 del NIST, el instituto de
           estándares de Estados Unidos. Aquí mostramos qué está hecho, qué está a medias y qué es
           todavía un objetivo.

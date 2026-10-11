@@ -6,6 +6,12 @@ import { Fragment } from "react";
  */
 export const MAX_INDICE = 79;
 
+/**
+ * `lectura` anima tramos de varias palabras, no palabra por palabra: el efecto se ve igual de progresivo y
+ * hay tres veces menos animaciones (cada una cuesta en teléfonos modestos). Medido: ver el plan del rediseño.
+ */
+export const PALABRAS_POR_TRAMO = 3;
+
 // Clases completas y literales: `motion.test.ts` comprueba que cada una existe en el CSS.
 const EFECTOS = { letras: "kx-letras", palabras: "kx-palabras", lectura: "kx-lectura" } as const;
 const DISPAROS = { carga: "kx-carga", scroll: "kx-scroll" } as const;
@@ -17,7 +23,7 @@ type TextoEnMovimientoProps = {
   texto: string;
   /**
    * `letras`: cada letra sube desde una máscara (solo titulares H1: partir en letras pierde el kerning).
-   * `palabras`: cada palabra sube desde una máscara. `lectura`: cada palabra pasa de tenue a plena.
+   * `palabras`: cada palabra sube desde una máscara. `lectura`: cada tramo de tres palabras pasa de tenue a pleno.
    */
   efecto: EfectoTexto;
   /** `carga`: al cargar la página. `scroll`: al bajar, ligado al scroll y reversible. */
@@ -47,25 +53,33 @@ export function TextoEnMovimiento({
   let n = 0;
   const indice = () => `kx-i-${Math.min(n++, MAX_INDICE)}`;
 
+  // En `lectura` la unidad es un tramo de palabras; en los demás efectos, la palabra (o sus letras).
+  const unidades =
+    efecto === "lectura"
+      ? Array.from({ length: Math.ceil(palabras.length / PALABRAS_POR_TRAMO) }, (_, i) =>
+          palabras.slice(i * PALABRAS_POR_TRAMO, (i + 1) * PALABRAS_POR_TRAMO).join(" "),
+        )
+      : palabras;
+
   return (
     <Etiqueta id={id} className={`kx ${EFECTOS[efecto]} ${DISPAROS[disparo]} ${className}`.trim()}>
       <span className="sr-only">{texto}</span>
       <span aria-hidden="true" className="kx-visual">
-        {palabras.map((palabra, i) => (
-          <Fragment key={`${i}-${palabra}`}>
+        {unidades.map((unidad, i) => (
+          <Fragment key={`${i}-${unidad}`}>
             {i > 0 ? " " : null}
             {efecto === "lectura" ? (
-              <span className={`kx-w ${indice()}`}>{palabra}</span>
+              <span className={`kx-w ${indice()}`}>{unidad}</span>
             ) : (
               <span className="kx-m">
                 {efecto === "letras" ? (
-                  Array.from(palabra).map((letra, j) => (
+                  Array.from(unidad).map((letra, j) => (
                     <span key={j} className={`kx-l ${indice()}`}>
                       {letra}
                     </span>
                   ))
                 ) : (
-                  <span className={`kx-p ${indice()}`}>{palabra}</span>
+                  <span className={`kx-p ${indice()}`}>{unidad}</span>
                 )}
               </span>
             )}

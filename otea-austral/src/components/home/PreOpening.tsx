@@ -1,25 +1,43 @@
-import { DirectionBadge } from "@/components/alert-card/DirectionBadge";
+import { DirectionIcon } from "@/components/alert-card/DirectionBadge";
+import { DIRECCION_ETIQUETA } from "@/components/alert-card/labels";
+import { TextoEnMovimiento } from "@/components/motion/TextoEnMovimiento";
 import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
 import { vistasEjemplo } from "@/data/ejemplo";
 import { TEMA_ETIQUETA, type Direccion } from "@/lib/domain/schemas";
 import { formatearDia } from "@/lib/format";
 
-const DIRECCIONES: Direccion[] = ["gana", "condicionado", "pierde"];
+// Colores de estado como relleno, siempre con texto tinta.
+const COLOR: Record<Direccion, string> = {
+  gana: "bg-gana",
+  condicionado: "bg-condicionado",
+  pierde: "bg-pierde",
+};
+
+/** Cuántos sectores se nombran por evento en el resumen: lo justo para entender el efecto. */
+const SECTORES_POR_EVENTO = 3;
 
 export function PreOpening() {
   const fecha = vistasEjemplo.map((v) => v.fecha).sort().at(-1)!;
   return (
-    <section aria-labelledby="pre-apertura-titulo" className="mx-auto max-w-[1440px] px-6 py-[120px]">
-      <SectionEyebrow numero="03">Pre-apertura</SectionEyebrow>
-      <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_1.2fr] lg:items-start">
+    <section aria-labelledby="pre-apertura-titulo" className="mx-auto max-w-[1440px] px-6 py-24 lg:py-[120px]">
+      <SectionEyebrow>Pre-apertura</SectionEyebrow>
+      <div className="mt-8 grid gap-12 lg:grid-cols-[1fr_1.2fr] lg:items-start">
         <div>
-          <h2 id="pre-apertura-titulo" className="titular text-titulo text-texto">
-            El resumen antes de la campana.
-          </h2>
-          <p className="mt-6 max-w-[520px] leading-relaxed text-texto-suave">
-            Cada mañana, lo que cambió durante la noche en tus temas y qué condición mirar en la jornada.
-            Corto, con fuentes y sin recomendaciones.
-          </p>
+          <TextoEnMovimiento
+            como="h2"
+            id="pre-apertura-titulo"
+            efecto="palabras"
+            disparo="scroll"
+            texto="El resumen de cada mañana."
+            className="titular text-titulo text-texto"
+          />
+          <TextoEnMovimiento
+            como="p"
+            efecto="lectura"
+            disparo="scroll"
+            texto="Cada mañana, lo que cambió durante la noche en tus temas y qué condición mirar en la jornada. Corto, con fuentes y sin recomendaciones."
+            className="mt-6 max-w-[520px] text-lede text-texto-suave"
+          />
         </div>
 
         <article aria-labelledby="resumen-ejemplo-titulo" className="superficie anim-revelar rounded-card p-6 sm:p-8">
@@ -45,10 +63,17 @@ export function PreOpening() {
                     <span className="font-medium text-texto">Qué mirar: </span>
                     {v.filas[0].condicion.charAt(0).toLowerCase() + v.filas[0].condicion.slice(1)}.
                   </p>
-                  <ul className="mt-3 flex flex-wrap gap-2" aria-label="Efectos posibles">
-                    {DIRECCIONES.filter((d) => v.filas.some((f) => f.direccion === d)).map((d) => (
-                      <li key={d}>
-                        <DirectionBadge direccion={d} />
+                  <p className="mt-3 text-xs text-apoyo">Podría afectar a</p>
+                  <ul className="mt-1.5 flex flex-wrap gap-2" aria-label="Sectores que podrían verse afectados">
+                    {v.filas.slice(0, SECTORES_POR_EVENTO).map((fila) => (
+                      <li
+                        key={fila.sector}
+                        data-direccion={fila.direccion}
+                        className={`inline-flex items-center gap-1.5 rounded-badge px-2 py-1 text-xs font-semibold text-ink ${COLOR[fila.direccion]}`}
+                      >
+                        <DirectionIcon direccion={fila.direccion} />
+                        <span className="sr-only">{DIRECCION_ETIQUETA[fila.direccion]}: </span>
+                        {fila.sector}
                       </li>
                     ))}
                   </ul>

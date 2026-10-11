@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MAX_INDICE, TextoEnMovimiento } from "./TextoEnMovimiento";
+import { MAX_INDICE, PALABRAS_POR_TRAMO, TextoEnMovimiento } from "./TextoEnMovimiento";
 
 const indicesDe = (nodos: NodeListOf<Element>) =>
   [...nodos].map((n) => Number(/kx-i-(\d+)/.exec(n.className)![1]));
@@ -32,12 +32,15 @@ describe("TextoEnMovimiento", () => {
     expect(indicesDe(container.querySelectorAll(".kx-p"))).toEqual([0, 1, 2, 3]);
   });
 
-  it("lectura: palabras sin máscara", () => {
+  it("lectura: tramos de palabras sin máscara", () => {
     const { container } = render(
-      <TextoEnMovimiento texto="Te avisamos antes de la apertura." efecto="lectura" disparo="scroll" />,
+      <TextoEnMovimiento texto="Te avisamos antes de la apertura del mercado." efecto="lectura" disparo="scroll" />,
     );
+    expect(PALABRAS_POR_TRAMO).toBe(3);
     expect(container.querySelectorAll(".kx-m")).toHaveLength(0);
-    expect(indicesDe(container.querySelectorAll(".kx-w"))).toEqual([0, 1, 2, 3, 4, 5]);
+    const tramos = container.querySelectorAll(".kx-w");
+    expect([...tramos].map((t) => t.textContent)).toEqual(["Te avisamos antes", "de la apertura", "del mercado."]);
+    expect(indicesDe(tramos)).toEqual([0, 1, 2]);
   });
 
   it("aplica las clases de efecto, disparo y las del llamador, y el id", () => {
@@ -53,7 +56,7 @@ describe("TextoEnMovimiento", () => {
     const { container } = render(
       <TextoEnMovimiento texto={"  uno \n  dos   tres "} efecto="lectura" disparo="carga" />,
     );
-    expect([...container.querySelectorAll(".kx-w")].map((w) => w.textContent)).toEqual(["uno", "dos", "tres"]);
+    expect([...container.querySelectorAll(".kx-w")].map((w) => w.textContent)).toEqual(["uno dos tres"]);
   });
 
   it("satura el índice en el tope en lugar de salirse del CSS", () => {

@@ -27,7 +27,7 @@ export default async function AlertasPage() {
   const { alertas, error } = await cargar();
   return (
     <ContentPage
-      numero="06"
+      ruta="/alertas"
       rotulo="Alertas"
       titulo="Alertas publicadas."
       intro={

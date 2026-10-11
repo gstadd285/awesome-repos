@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { TEMAS, TEMA_ETIQUETA, type Tema } from "@/lib/domain/temas";
+import { TEMA_DESCRIPCION } from "./temas";
 import { TopicIcon } from "./TopicIcon";
 
 /**
- * Vista previa de "Tus temas": se pueden marcar temas, pero aún no se
- * guardan (llegará con las cuentas). Botones con `aria-pressed`.
+ * «Elige qué seguir»: los seis temas como tarjetas que se marcan y se desmarcan. Aún no se guardan
+ * (llegará con las cuentas), así que es una vista previa. Botones con `aria-pressed`.
  */
 export function TopicPicker() {
   const [elegidos, setElegidos] = useState<Tema[]>(["cobre", "divisas"]);
@@ -26,14 +27,8 @@ export function TopicPicker() {
           .join(", ")}.`;
 
   return (
-    <div className="superficie rounded-card p-6">
-      <div className="flex items-center justify-between gap-3">
-        <p className="micro text-texto">Tus temas</p>
-        <span className="micro rounded-badge bg-fondo px-2 py-1 text-texto-suave linea-fina">
-          Vista previa
-        </span>
-      </div>
-      <ul className="mt-6 flex flex-wrap gap-2" aria-label="Temas disponibles">
+    <div>
+      <ul aria-label="Temas disponibles" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {TEMAS.map((tema) => {
           const activo = elegidos.includes(tema);
           return (
@@ -42,24 +37,48 @@ export function TopicPicker() {
                 type="button"
                 aria-pressed={activo}
                 onClick={() => alternar(tema)}
-                className={`inline-flex items-center gap-2 rounded-badge px-3 py-2 text-sm transition-colors ${
+                className={`flex h-full w-full flex-col gap-6 rounded-card p-5 text-left transition-[background-color,box-shadow] duration-300 ${
                   activo
-                    ? "bg-ink text-ivory"
-                    : "bg-papel text-texto-suave linea-fina hover:bg-papel-alto hover:text-texto"
+                    ? "bg-ink text-ivory shadow-[0_24px_48px_-28px_rgb(15_27_45/0.6)]"
+                    : "superficie superficie-interactiva text-texto"
                 }`}
               >
-                <TopicIcon tema={tema} className="h-4 w-4" />
-                {TEMA_ETIQUETA[tema]}
-                <span aria-hidden="true">{activo ? "✓" : "+"}</span>
+                <span className="flex items-center justify-between">
+                  <span
+                    className={`flex h-11 w-11 items-center justify-center rounded-full ${
+                      activo ? "bg-ivory/10 text-ivory" : "bg-fondo text-texto"
+                    }`}
+                  >
+                    <TopicIcon tema={tema} />
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-sm ${
+                      activo ? "bg-acento text-ink" : "linea-fina text-apoyo"
+                    }`}
+                  >
+                    {activo ? "✓" : "+"}
+                  </span>
+                </span>
+                <span>
+                  <span className="titular block text-xl">{TEMA_ETIQUETA[tema]}</span>
+                  <span
+                    className={`mt-2 block text-sm leading-relaxed ${activo ? "text-ivory" : "text-texto-suave"}`}
+                  >
+                    {TEMA_DESCRIPCION[tema]}
+                  </span>
+                </span>
               </button>
             </li>
           );
         })}
       </ul>
-      <p className="mt-6 border-t border-linea pt-4 text-sm text-texto" aria-live="polite">
-        {resumen}
-      </p>
-      <p className="mt-2 text-xs text-apoyo">Tus preferencias aún no se guardan: es una vista previa.</p>
+      <div className="mt-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-linea pt-5">
+        <p className="text-base font-medium text-texto" aria-live="polite">
+          {resumen}
+        </p>
+        <p className="text-sm text-apoyo">Tus preferencias aún no se guardan: es una vista previa.</p>
+      </div>
     </div>
   );
 }

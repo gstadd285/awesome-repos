@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function TerminosPage() {
   return (
     <ContentPage
-      numero="L2"
+      ruta="/terminos"
       rotulo="Términos"
       titulo="Condiciones de uso."
       aviso="Texto provisional · pendiente de revisión legal"

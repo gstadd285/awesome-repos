@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function MetodologiaPage() {
   return (
     <ContentPage
-      numero="02"
+      ruta="/metodologia"
       rotulo="Metodología"
       titulo="Cómo verificamos cada alerta."
       intro={

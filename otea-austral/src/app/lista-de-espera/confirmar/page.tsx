@@ -22,7 +22,7 @@ export default async function ConfirmarPage({ searchParams }: PageProps<"/lista-
   if (!valido.success) {
     return (
       <ContentPage
-        numero="05"
+        ruta="/lista-de-espera/confirmar"
         rotulo="Lista de espera"
         titulo="Enlace no válido."
         intro={<p>El enlace está incompleto. Puedes volver a inscribirte desde la portada.</p>}
@@ -36,7 +36,7 @@ export default async function ConfirmarPage({ searchParams }: PageProps<"/lista-
 
   return (
     <ContentPage
-      numero="05"
+      ruta="/lista-de-espera/confirmar"
       rotulo="Lista de espera"
       titulo="Confirma tu inscripción."
       intro={<p>Un paso más para entrar a la lista de espera de Otea Austral.</p>}

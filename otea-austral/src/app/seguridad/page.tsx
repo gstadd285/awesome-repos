@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 export default function SeguridadPage() {
   return (
     <>
-      <SiteHeader />
-      <main id="contenido" className="fondo-luz pb-[120px]">
+      <SiteHeader actual="/seguridad" />
+      <main id="contenido" className="fondo-luz pb-24 lg:pb-[120px]">
         <PageTransition>
           <SecurityProfile contacto={env.SECURITY_CONTACT} />
         </PageTransition>

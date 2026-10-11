@@ -14,7 +14,7 @@ const TIPO = { primaria: "Primaria", secundaria: "Secundaria", prensa: "Prensa" 
 export default function FuentesPage() {
   return (
     <ContentPage
-      numero="03"
+      ruta="/fuentes"
       rotulo="Fuentes"
       titulo="De dónde sale la información."
       intro={

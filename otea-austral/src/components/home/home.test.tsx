@@ -11,18 +11,27 @@ describe("Story", () => {
   it("presenta el eslogan como único h1 y los cuatro pasos en orden de lectura", () => {
     render(<Story />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Del horizonte al mercado.");
-    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
+    expect(screen.getByRole("heading", { level: 1 })).toHaveAccessibleName("Del horizonte al mercado.");
+    // El texto en movimiento se emite una vez para lectores de pantalla (`sr-only`) y otra decorativa.
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((h) => (h.querySelector(".sr-only") ?? h).textContent),
+    ).toEqual([
       "Verificamos antes de avisar.",
       "Quién gana, quién pierde y bajo qué condición.",
       "Tu panel antes de la apertura.",
     ]);
   });
 
-  it("permite saltarse la historia y llegar a la lista de espera", () => {
+  it("dice qué es en el héroe y deja saltarse la historia o ir a la lista de espera", () => {
     render(<Story />);
-    expect(screen.getByRole("link", { name: /Descubre más/ })).toHaveAttribute("href", "#temas");
+    expect(screen.getByRole("link", { name: /Ver una alerta de ejemplo/ })).toHaveAttribute("href", "#ejemplos");
     expect(screen.getByRole("link", { name: "Recibir alertas" })).toHaveAttribute("href", "#lista-de-espera");
+    expect(screen.getByText(/Te avisamos de los eventos globales que importan/, { selector: ".sr-only" })).toBeInTheDocument();
+  });
+
+  it("no deja atributos style en el HTML (la CSP los bloquea)", () => {
+    const { container } = render(<Story />);
+    expect(container.querySelector("[style]")).toBeNull();
   });
 
   it("las piezas 3D son decorativas para lectores de pantalla", () => {

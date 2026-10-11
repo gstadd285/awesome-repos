@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function AvisoLegalPage() {
   return (
     <ContentPage
-      numero="L3"
+      ruta="/aviso-legal"
       rotulo="Aviso legal"
       titulo="Aviso legal."
       aviso="Texto provisional · pendiente de revisión legal"

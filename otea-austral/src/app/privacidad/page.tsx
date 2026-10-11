@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacidadPage() {
   return (
     <ContentPage
-      numero="L1"
+      ruta="/privacidad"
       rotulo="Privacidad"
       titulo="Tus datos, los mínimos."
       intro={<p>Qué datos tratamos, para qué y cómo puedes pedir que los cambiemos o los borremos.</p>}

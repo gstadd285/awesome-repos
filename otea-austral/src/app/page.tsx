@@ -1,9 +1,8 @@
 import { headers } from "next/headers";
 import { AlertExamples } from "@/components/home/AlertExamples";
-import { MyTopics } from "@/components/home/MyTopics";
 import { PreOpening } from "@/components/home/PreOpening";
 import { Story } from "@/components/home/Story";
-import { Topics } from "@/components/home/Topics";
+import { Temas } from "@/components/home/Temas";
 import { Waitlist } from "@/components/home/Waitlist";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -33,6 +32,10 @@ function DatosEstructurados({ nonce }: { nonce?: string }) {
   );
 }
 
+/**
+ * Orden pensado para quien llega por primera vez: qué es y cómo funciona (historia), cómo se ve una
+ * alerta, qué temas seguir, qué llega cada mañana y cómo entrar a la lista de espera.
+ */
 export default async function Home() {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
@@ -42,10 +45,9 @@ export default async function Home() {
       <main id="contenido" className="fondo-luz">
         <PageTransition>
           <Story />
-          <Topics />
-          <MyTopics />
-          <PreOpening />
           <AlertExamples />
+          <Temas />
+          <PreOpening />
           <Waitlist />
         </PageTransition>
       </main>

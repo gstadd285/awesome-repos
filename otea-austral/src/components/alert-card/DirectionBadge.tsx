@@ -21,7 +21,7 @@ export function DirectionBadge({ direccion }: { direccion: Direccion }) {
   );
 }
 
-function DirectionIcon({ direccion }: { direccion: Direccion }) {
+export function DirectionIcon({ direccion }: { direccion: Direccion }) {
   const comunes = {
     viewBox: "0 0 12 12",
     className: "h-3 w-3",

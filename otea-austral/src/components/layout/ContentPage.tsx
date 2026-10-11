@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
-import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
+import { TextoEnMovimiento } from "@/components/motion/TextoEnMovimiento";
+import { Migas } from "./Migas";
 import { PageTransition } from "./PageTransition";
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 
 type ContentPageProps = {
-  numero: string;
+  /** Ruta de la página (por ejemplo «/metodologia»): marca la página actual en la cabecera. */
+  ruta: string;
+  /** Nombre corto de la página, para la ruta de navegación. */
   rotulo: string;
   titulo: string;
   intro?: ReactNode;
@@ -14,22 +17,24 @@ type ContentPageProps = {
   children: ReactNode;
 };
 
-/** Página de contenido con cabecera técnica, al estilo de la portada. */
-export function ContentPage({ numero, rotulo, titulo, intro, aviso, children }: ContentPageProps) {
+/** Página de contenido: ruta de navegación, titular que entra letra a letra e introducción. */
+export function ContentPage({ ruta, rotulo, titulo, intro, aviso, children }: ContentPageProps) {
   return (
     <>
-      <SiteHeader />
-      <main id="contenido" className="fondo-luz pb-[120px]">
+      <SiteHeader actual={ruta} />
+      <main id="contenido" className="fondo-luz pb-24 lg:pb-[120px]">
         <PageTransition>
-          <div className="mx-auto max-w-[1440px] px-6 pt-16 sm:pt-24">
-            <SectionEyebrow numero={numero} className="anim-aparecer">
-              {rotulo}
-            </SectionEyebrow>
-            <h1 className="titular anim-aparecer anim-retraso-1 mt-10 max-w-[18ch] text-display text-texto">
-              {titulo}
-            </h1>
+          <div className="mx-auto max-w-[1440px] px-6 pt-12 sm:pt-20">
+            <Migas actual={rotulo} className="anim-aparecer" />
+            <TextoEnMovimiento
+              como="h1"
+              efecto="letras"
+              disparo="carga"
+              texto={titulo}
+              className="titular mt-8 max-w-[18ch] text-display text-texto"
+            />
             {intro ? (
-              <div className="anim-aparecer anim-retraso-2 mt-8 max-w-[680px] text-lg leading-relaxed text-texto-suave">
+              <div className="anim-aparecer anim-retraso-3 mt-8 max-w-[680px] text-lede text-texto-suave">
                 {intro}
               </div>
             ) : null}
@@ -51,7 +56,7 @@ export function ContentPage({ numero, rotulo, titulo, intro, aviso, children }: 
   );
 }
 
-/** Bloque numerado de texto largo (páginas legales y metodología). */
+/** Bloque numerado de texto largo (páginas legales y metodología): ahí la numeración sí es una secuencia. */
 export function Apartado({ numero, titulo, children }: { numero: string; titulo: string; children: ReactNode }) {
   const id = `apartado-${numero}`;
   return (

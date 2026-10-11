@@ -40,12 +40,15 @@
   --radius-card: 16px;
   --radius-pill: 999px;
 
-  --text-micro: 11px;
+  --text-micro: 12px;
   --text-micro--line-height: 1.35;
   --text-display: clamp(2.4rem, 4.6vw, 4.25rem);
   --text-display--line-height: 1;
   --text-titulo: clamp(1.9rem, 3vw, 2.75rem);
   --text-titulo--line-height: 1.04;
+  /* Texto de entrada (el que explica el producto): 18 a 22 px. */
+  --text-lede: clamp(1.125rem, 1.1rem + 0.35vw, 1.375rem);
+  --text-lede--line-height: 1.55;
 }
 
 @theme inline {
@@ -127,7 +130,7 @@
   text-transform: uppercase;
 }
 
-/* Contadores técnicos: 001 — 004. */
+/* Contadores técnicos de los pasos: 01 — 03. */
 @utility contador {
   font-family: var(--font-mono);
   font-size: var(--text-micro);
@@ -135,7 +138,7 @@
   font-feature-settings: "tnum" on;
 }
 
-/* `[ RECIBIR ALERTAS ]`: enlace entre corchetes. */
+/* Enlace entre corchetes: `[ SALIR ]` en el panel interno y la pantalla de error (la cabecera pública ya no lo usa). */
 @utility corchetes {
   &::before {
     content: "[\00a0";
@@ -489,9 +492,44 @@
   perspective: 1600px;
 }
 
-.h-contador,
 .h-luz {
   display: none;
+}
+
+/* Héroe: apilado en móvil (titular, texto, acciones); en escritorio, titular y acciones a la izquierda y el
+   texto a la derecha, sin cambiar el orden de lectura del DOM. */
+.hero-rejilla {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .hero-rejilla {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    grid-template-areas:
+      "titulo texto"
+      "acciones texto";
+    align-items: start;
+    column-gap: 32px;
+    row-gap: 32px;
+  }
+
+  .hero-titulo {
+    grid-area: titulo;
+  }
+
+  .hero-texto {
+    grid-area: texto;
+    justify-self: end;
+    padding-top: 44px;
+  }
+
+  .hero-acciones {
+    grid-area: acciones;
+  }
 }
 
 .h-plano {
@@ -603,29 +641,20 @@
 }
 
 /* Historia: cada pieza recorre la línea de tiempo del scroll (0–100 %). */
+/* `pointer-events` también se anima: lo que se desvanece deja de interceptar clics (un bloque
+   invisible no debe tapar botones ni enlaces de otro paso). Foco y lectores de pantalla no cambian. */
 @keyframes h-hero {
   0%,
   14% {
     opacity: 1;
     transform: none;
+    pointer-events: auto;
   }
   24%,
   100% {
     opacity: 0;
     transform: translateY(-56px);
-  }
-}
-
-@keyframes h-hero-cta {
-  0%,
-  12% {
-    opacity: 1;
-    transform: none;
-  }
-  21%,
-  100% {
-    opacity: 0;
-    transform: translateY(40px);
+    pointer-events: none;
   }
 }
 
@@ -715,15 +744,18 @@
   0% {
     opacity: 0;
     transform: translateY(36px);
+    pointer-events: none;
   }
   22%,
   78% {
     opacity: 1;
     transform: none;
+    pointer-events: auto;
   }
   100% {
     opacity: 0;
     transform: translateY(-36px);
+    pointer-events: none;
   }
 }
 
@@ -731,23 +763,12 @@
   from {
     opacity: 0;
     transform: translateY(36px);
+    pointer-events: none;
   }
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-@keyframes h-visible {
-  0% {
-    opacity: 0;
-  }
-  12%,
-  88% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
+    pointer-events: auto;
   }
 }
 
@@ -1041,23 +1062,28 @@
 
   .kx-carga.kx-lectura .kx-w {
     animation: kx-palabra 700ms ease-out backwards;
-    animation-delay: calc(650ms + var(--i, 0) * 14ms);
+    animation-delay: calc(650ms + var(--i, 0) * 40ms);
   }
 
-  /* Texto en movimiento al bajar: ligado al scroll, así que se revierte al subir. Los rangos van en
-     `vh` y terminan antes de que el bloque llegue a la zona de lectura (≈ 60 % de la pantalla), para
-     que nada quede a medio aparecer; `motion.test.ts` y las pruebas e2e lo vigilan. */
+  /* Texto en movimiento al bajar: ligado al scroll, así que se revierte al subir. Cada bloque de texto
+     define UNA línea de tiempo (`--kx`) y sus unidades la comparten (antes, una por unidad: mucho más caro).
+     Los rangos van en `vh` y terminan antes de que el bloque llegue a la zona de lectura (≈ 60 % de la
+     pantalla), para que nada quede a medio aparecer; las pruebas e2e lo vigilan. */
   @supports (animation-timeline: view()) {
+    .kx-scroll {
+      view-timeline: --kx block;
+    }
+
     .kx-scroll.kx-palabras .kx-p {
       animation: kx-subir linear both;
-      animation-timeline: view();
+      animation-timeline: --kx;
       animation-range: entry calc(var(--i, 0) * 1.8vh) entry calc(16vh + var(--i, 0) * 1.8vh);
     }
 
     .kx-scroll.kx-lectura .kx-w {
       animation: kx-palabra linear both;
-      animation-timeline: view();
-      animation-range: entry calc(var(--i, 0) * 0.5vh) entry calc(10vh + var(--i, 0) * 0.5vh);
+      animation-timeline: --kx;
+      animation-range: entry calc(var(--i, 0) * 1.5vh) entry calc(10vh + var(--i, 0) * 1.5vh);
     }
   }
 
@@ -1110,35 +1136,6 @@
       overflow: hidden;
     }
 
-    .h-contador {
-      display: flex;
-      gap: 0.6ch;
-      position: absolute;
-      left: 24px;
-      top: 22px;
-    }
-
-    .h-contador-paso {
-      position: absolute;
-      left: 0;
-      top: 0;
-      animation: h-visible linear both;
-      animation-timeline: --historia;
-    }
-    .h-contador-paso:nth-child(1) {
-      animation-range: contain -10% contain 24%;
-    }
-    .h-contador-paso:nth-child(2) {
-      animation-range: contain 22% contain 50%;
-    }
-    .h-contador-paso:nth-child(3) {
-      animation-range: contain 48% contain 76%;
-    }
-    .h-contador-paso:nth-child(4) {
-      animation-name: h-encender;
-      animation-range: contain 74% contain 78%;
-    }
-
     .h-luz {
       display: block;
       position: absolute;
@@ -1158,28 +1155,16 @@
     }
 
     .h-cinta {
+      pointer-events: none;
       position: absolute;
-      inset: 31% 0 auto;
+      inset: max(43%, 316px) 0 auto;
       animation: h-cinta linear both;
       animation-timeline: --historia;
       animation-range: contain 0% contain 100%;
     }
 
-    .h-hero-cta {
-      position: absolute;
-      inset: auto 24px 56px;
-      animation: h-hero-cta linear both;
-      animation-timeline: --historia;
-      animation-range: contain 0% contain 100%;
-    }
-
-    .h-descubre {
-      position: absolute;
-      left: 24px;
-      bottom: 22px;
-    }
-
     .h-plano {
+      pointer-events: none;
       position: absolute;
       left: 63%;
       top: 54%;
@@ -1199,6 +1184,7 @@
     }
 
     .h-tablero {
+      pointer-events: none;
       position: absolute;
       left: 66%;
       top: 52%;
@@ -1297,8 +1283,7 @@
 
     /* Lo que recibe foco siempre se ve, aunque su paso no esté en pantalla. */
     .h-paso:focus-within,
-    .h-hero:focus-within,
-    .h-hero-cta:focus-within {
+    .h-hero:focus-within {
       opacity: 1 !important;
       transform: none !important;
     }
