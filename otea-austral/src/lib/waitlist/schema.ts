@@ -1,7 +1,10 @@
 import { z } from "zod";
 
-/** Versión del texto de consentimiento que acepta la persona (se guarda con el registro). */
-export const VERSION_CONSENTIMIENTO = "2026-10-borrador";
+/**
+ * Versión de los textos que acepta la persona al inscribirse (el consentimiento para guardar su correo y las
+ * condiciones de uso); se guarda con el registro. Cambia cada vez que cambie cualquiera de los dos.
+ */
+export const VERSION_CONSENTIMIENTO = "2026-10-borrador-2";
 
 export const SolicitudListaSchema = z.object({
   correo: z
@@ -10,7 +13,10 @@ export const SolicitudListaSchema = z.object({
     .toLowerCase()
     .max(254, "El correo es demasiado largo.")
     .pipe(z.email({ message: "Escribe un correo válido." })),
+  /** Consentimiento para guardar el correo y avisar del lanzamiento (política de privacidad). */
   acepta: z.literal("on", { message: "Necesitamos tu consentimiento para guardar el correo." }),
+  /** Aceptación de las condiciones de uso. */
+  condiciones: z.literal("on", { message: "Para inscribirte necesitas aceptar las condiciones de uso." }),
 });
 export type SolicitudLista = z.infer<typeof SolicitudListaSchema>;
 

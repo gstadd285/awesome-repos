@@ -12,7 +12,7 @@ export type ModoLista = "cerrada" | "memoria" | "abierta";
 export type ResultadoLista =
   | { estado: "ok"; prueba: boolean }
   | { estado: "cerrada" }
-  | { estado: "invalida"; errores: { correo?: string; acepta?: string } }
+  | { estado: "invalida"; errores: { correo?: string; acepta?: string; condiciones?: string } }
   | { estado: "limite" }
   /** No se pudo guardar o enviar el correo: se puede intentar de nuevo enseguida. */
   | { estado: "reintentar" }
@@ -25,7 +25,10 @@ export type ResultadoConfirmacion = "confirmada" | "invalida" | "limite";
 
 export type EntradaLista = {
   correo: unknown;
+  /** Consentimiento para guardar el correo. */
   acepta: unknown;
+  /** Aceptación de las condiciones de uso. */
+  condiciones: unknown;
   /** Campo trampa: las personas lo dejan vacío; los bots suelen llenarlo. */
   sitio_web: unknown;
   /** Marca de tiempo firmada que puso el servidor al generar el formulario (ver `tiempo.ts`). */
@@ -132,12 +135,18 @@ export function crearServicioLista({
         return { estado: "limite" };
       }
 
-      const validada = SolicitudListaSchema.safeParse({ correo: entrada.correo, acepta: entrada.acepta });
+      const validada = SolicitudListaSchema.safeParse({
+        correo: entrada.correo,
+        acepta: entrada.acepta,
+        condiciones: entrada.condiciones,
+      });
       if (!validada.success) {
-        const errores: { correo?: string; acepta?: string } = {};
+        const errores: { correo?: string; acepta?: string; condiciones?: string } = {};
         for (const issue of validada.error.issues) {
           const campo = issue.path[0];
-          if ((campo === "correo" || campo === "acepta") && !errores[campo]) errores[campo] = issue.message;
+          if ((campo === "correo" || campo === "acepta" || campo === "condiciones") && !errores[campo]) {
+            errores[campo] = issue.message;
+          }
         }
         return { estado: "invalida", errores };
       }

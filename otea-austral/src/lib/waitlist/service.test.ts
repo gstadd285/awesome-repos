@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createFixedWindowLimiter } from "@/lib/security/rate-limit";
+import { VERSION_CONSENTIMIENTO } from "./schema";
 import { crearServicioLista, generarTokenSeguro, sha256Hex } from "./service";
 import { createMemoryWaitlistStore } from "./store";
 
@@ -27,7 +28,7 @@ function servicio(modo: "cerrada" | "memoria" | "abierta" = "memoria", limite = 
 const MINUTO = 60_000;
 const HORA = 60 * MINUTO;
 
-const valido = { correo: "  Persona@Correo.CL ", acepta: "on", sitio_web: "" };
+const valido = { correo: "  Persona@Correo.CL ", acepta: "on", condiciones: "on", sitio_web: "" };
 
 describe("lista de espera", () => {
   it("inscribe con el correo normalizado y guarda solo lo mínimo", async () => {
@@ -51,16 +52,41 @@ describe("lista de espera", () => {
     expect(JSON.stringify(store.registros())).not.toContain(token);
   });
 
-  it("valida el correo y el consentimiento", async () => {
+  it("valida el correo, el consentimiento y las condiciones de uso", async () => {
     const { s, store } = servicio();
-    expect(await s.registrar({ correo: "no-es-correo", acepta: null, sitio_web: "" }, "c")).toEqual({
+    expect(await s.registrar({ correo: "no-es-correo", acepta: null, condiciones: null, sitio_web: "" }, "c")).toEqual({
       estado: "invalida",
       errores: {
         correo: "Escribe un correo válido.",
         acepta: "Necesitamos tu consentimiento para guardar el correo.",
+        condiciones: "Para inscribirte necesitas aceptar las condiciones de uso.",
       },
     });
     expect(store.registros()).toHaveLength(0);
+  });
+
+  it("aceptar solo una de las dos casillas no basta: cada texto se acepta por separado", async () => {
+    const { s, store } = servicio();
+    expect(await s.registrar({ ...valido, condiciones: null }, "c1")).toEqual({
+      estado: "invalida",
+      errores: { condiciones: "Para inscribirte necesitas aceptar las condiciones de uso." },
+    });
+    expect(await s.registrar({ ...valido, acepta: null }, "c2")).toEqual({
+      estado: "invalida",
+      errores: { acepta: "Necesitamos tu consentimiento para guardar el correo." },
+    });
+    // Un valor que no sea el de una casilla marcada («on») tampoco vale.
+    expect(await s.registrar({ ...valido, condiciones: "off" }, "c3")).toMatchObject({ estado: "invalida" });
+    expect(await s.registrar({ ...valido, condiciones: true }, "c4")).toMatchObject({ estado: "invalida" });
+    expect(store.registros()).toHaveLength(0);
+  });
+
+  it("guarda con el registro la versión de los textos que se aceptaron", async () => {
+    const { s, store } = servicio();
+    await s.registrar(valido, "c");
+    expect(store.registros()[0].versionConsentimiento).toBe(VERSION_CONSENTIMIENTO);
+    expect(VERSION_CONSENTIMIENTO).not.toBe("2026-10-borrador");
+    expect(VERSION_CONSENTIMIENTO.length).toBeLessThanOrEqual(40); // límite de la columna
   });
 
   it("el campo trampa responde igual pero no guarda nada", async () => {
@@ -185,7 +211,7 @@ describe("generarTokenSeguro", () => {
 });
 
 describe("tope diario de correos de confirmación", () => {
-  const correo = (n: number) => ({ correo: `persona${n}@correo.cl`, acepta: "on", sitio_web: "" });
+  const correo = (n: number) => ({ correo: `persona${n}@correo.cl`, acepta: "on", condiciones: "on", sitio_web: "" });
 
   it("al llegar al tope no guarda ni envía más, y se reanuda a las 24 horas", async () => {
     const { s, store, enviar, avanzar } = servicio("abierta", 100, 3);
@@ -263,7 +289,7 @@ describe("trampa de tiempo (control 12: bots)", () => {
 
   it("la validación del correo va antes y el campo trampa sigue respondiendo como si nada", async () => {
     const { s, store } = conMarca(() => false);
-    expect(await s.registrar({ correo: "mal", acepta: "on", sitio_web: "" }, "c")).toMatchObject({ estado: "invalida" });
+    expect(await s.registrar({ correo: "mal", acepta: "on", condiciones: "on", sitio_web: "" }, "c")).toMatchObject({ estado: "invalida" });
     expect(await s.registrar({ ...valido, sitio_web: "https://spam.example" }, "c")).toEqual({ estado: "ok", prueba: true });
     expect(store.registros()).toHaveLength(0);
   });

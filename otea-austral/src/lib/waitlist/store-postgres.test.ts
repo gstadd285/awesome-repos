@@ -90,7 +90,7 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("lista de espera en Postgres", () => {
       },
       duracionMinimaMs: 0,
     });
-    await servicio.registrar({ correo: "Hash@Example.org", acepta: "on", sitio_web: "" }, "cliente");
+    await servicio.registrar({ correo: "Hash@Example.org", acepta: "on", condiciones: "on", sitio_web: "" }, "cliente");
     // El dueño ve la fila completa; la aplicación no puede leer `correo_cifrado`.
     const [fila] = await base.propietario.consulta<Record<string, unknown>>(
       "select * from lista_espera where correo_indice = $1",

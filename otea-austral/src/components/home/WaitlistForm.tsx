@@ -12,8 +12,8 @@ function mensaje(estado: EstadoLista): { texto: string; tono: "exito" | "aviso" 
     case "ok":
       return {
         texto: estado.prueba
-          ? "Listo. Modo de prueba: no enviamos correos; el enlace de confirmación queda en el registro del servidor."
-          : "¡Gracias! Si el correo es válido, te llegará un mensaje con un enlace para confirmar tu inscripción (vence en 72 horas).",
+          ? "Listo, paso 1 de 2. Modo de prueba: no enviamos correos; el enlace de confirmación queda en el registro del servidor."
+          : "¡Gracias! Paso 2 de 2: revisa tu correo. Si es válido, te llegará un mensaje con un enlace para confirmar tu inscripción (vence en 72 horas). Sin ese paso no quedas inscrito.",
         tono: "exito",
       };
     case "cerrada":
@@ -40,6 +40,40 @@ function mensaje(estado: EstadoLista): { texto: string; tono: "exito" | "aviso" 
   }
 }
 
+const CASILLA = "h-6 w-6 shrink-0 accent-ink";
+const ENLACE = "text-texto underline underline-offset-4";
+
+/**
+ * La inscripción se verifica en dos pasos: dejar el correo y confirmarlo desde el enlace que llega a ese correo.
+ * Así nadie puede inscribir un correo ajeno. El paso actual lleva `aria-current="step"`.
+ */
+function Pasos({ enviado }: { enviado: boolean }) {
+  const base = "flex items-start gap-3 rounded-badge px-3 py-2.5 text-sm leading-snug";
+  const actual = "bg-fondo text-texto linea-fina";
+  return (
+    <ol aria-label="La inscripción se verifica en dos pasos" className="mb-6 grid gap-2 sm:grid-cols-2">
+      <li aria-current={enviado ? undefined : "step"} className={`${base} ${enviado ? "text-texto-suave" : actual}`}>
+        <span aria-hidden="true" className="contador pt-0.5">
+          {enviado ? "✓" : "01"}
+        </span>
+        <span>
+          <span className="sr-only">Paso 1 de 2{enviado ? ", hecho" : ""}: </span>
+          Deja tu correo y acepta los textos
+        </span>
+      </li>
+      <li aria-current={enviado ? "step" : undefined} className={`${base} ${enviado ? actual : "text-apoyo"}`}>
+        <span aria-hidden="true" className="contador pt-0.5">
+          02
+        </span>
+        <span>
+          <span className="sr-only">Paso 2 de 2: </span>
+          Confirma desde el enlace que te enviamos
+        </span>
+      </li>
+    </ol>
+  );
+}
+
 /**
  * Formulario con validación en el servidor; funciona también sin JavaScript. `marca` es la hora a la que el
  * servidor generó el formulario, firmada: el servidor descarta los envíos sin marca o demasiado rápidos.
@@ -48,9 +82,14 @@ export function WaitlistForm({ marca }: { marca: string }) {
   const [estado, accion, pendiente] = useActionState(unirseAListaDeEspera, INICIAL);
   const errores = estado.estado === "invalida" ? estado.errores : {};
   const aviso = mensaje(estado);
+  const enviado = estado.estado === "ok";
+  // Si el envío no prosperó, el servidor devuelve lo escrito: React vacía el formulario al terminar la acción.
+  const valores = "valores" in estado ? estado.valores : undefined;
 
   return (
     <form action={accion} noValidate className="superficie rounded-card p-6 sm:p-8">
+      <Pasos enviado={enviado} />
+
       <label htmlFor="correo" className="micro text-texto">
         Tu correo
       </label>
@@ -62,6 +101,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
         autoComplete="email"
         required
         maxLength={254}
+        defaultValue={valores?.correo}
         placeholder="nombre@correo.cl"
         aria-invalid={errores.correo ? true : undefined}
         aria-describedby={errores.correo ? "correo-error" : undefined}
@@ -82,30 +122,75 @@ export function WaitlistForm({ marca }: { marca: string }) {
         <input id="sitio_web" name="sitio_web" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
-      <div className="mt-5 flex items-start gap-3">
-        <input
-          id="acepta"
-          name="acepta"
-          type="checkbox"
-          required
-          aria-invalid={errores.acepta ? true : undefined}
-          aria-describedby={errores.acepta ? "acepta-error" : undefined}
-          className="mt-0.5 h-5 w-5 shrink-0 accent-ink"
-        />
-        <label htmlFor="acepta" className="text-sm leading-relaxed text-texto-suave">
-          Acepto que Otea guarde mi correo para avisarme del lanzamiento, según la{" "}
-          <Link href="/privacidad" className="text-texto underline underline-offset-4">
-            política de privacidad
-          </Link>
-          .
-        </label>
-      </div>
-      {errores.acepta ? (
-        <p id="acepta-error" className="mt-2 text-sm font-medium text-texto">
-          <span aria-hidden="true">⚠ </span>
-          {errores.acepta}
-        </p>
-      ) : null}
+      <fieldset className="mt-5 rounded-badge p-4 linea-fina">
+        <legend className="micro px-1 text-texto">Antes de enviar</legend>
+        <details>
+          <summary className="cursor-pointer text-sm font-medium text-texto">Lo esencial de las condiciones de uso</summary>
+          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-texto-suave">
+            <li>Otea ofrece información y análisis. No constituye asesoría financiera.</li>
+            <li>El contenido marcado «Datos de ejemplo» es ficticio: sirve para mostrar el servicio.</li>
+            <li>Podemos equivocarnos: si pasa, lo corregimos a la vista, sin borrar la alerta original.</li>
+            <li>El asistente de preguntas puede fallar: contrasta lo importante en las fuentes.</li>
+          </ul>
+          <p className="mt-3 text-sm">
+            <Link href="/terminos" className={ENLACE}>
+              Leer las condiciones de uso completas
+            </Link>
+          </p>
+        </details>
+
+        <div className="mt-4 flex items-start gap-3">
+          <input
+            id="condiciones"
+            name="condiciones"
+            type="checkbox"
+            required
+            defaultChecked={valores?.condiciones}
+            aria-invalid={errores.condiciones ? true : undefined}
+            aria-describedby={errores.condiciones ? "condiciones-error" : undefined}
+            className={CASILLA}
+          />
+          <label htmlFor="condiciones" className="text-sm leading-relaxed text-texto-suave">
+            Acepto las{" "}
+            <Link href="/terminos" className={ENLACE}>
+              condiciones de uso
+            </Link>
+            .
+          </label>
+        </div>
+        {errores.condiciones ? (
+          <p id="condiciones-error" className="mt-2 text-sm font-medium text-texto">
+            <span aria-hidden="true">⚠ </span>
+            {errores.condiciones}
+          </p>
+        ) : null}
+
+        <div className="mt-3 flex items-start gap-3">
+          <input
+            id="acepta"
+            name="acepta"
+            type="checkbox"
+            required
+            defaultChecked={valores?.acepta}
+            aria-invalid={errores.acepta ? true : undefined}
+            aria-describedby={errores.acepta ? "acepta-error" : undefined}
+            className={CASILLA}
+          />
+          <label htmlFor="acepta" className="text-sm leading-relaxed text-texto-suave">
+            Acepto que Otea guarde mi correo para avisarme del lanzamiento, según la{" "}
+            <Link href="/privacidad" className={ENLACE}>
+              política de privacidad
+            </Link>
+            .
+          </label>
+        </div>
+        {errores.acepta ? (
+          <p id="acepta-error" className="mt-2 text-sm font-medium text-texto">
+            <span aria-hidden="true">⚠ </span>
+            {errores.acepta}
+          </p>
+        ) : null}
+      </fieldset>
 
       <button type="submit" disabled={pendiente} className={buttonClasses("primary", "mt-6 w-full disabled:opacity-70")}>
         {pendiente ? "Enviando…" : "Unirme a la lista"}
@@ -115,8 +200,9 @@ export function WaitlistForm({ marca }: { marca: string }) {
         {aviso ? aviso.texto : null}
       </p>
       <p className="mt-2 text-xs leading-relaxed text-apoyo">
-        Solo guardamos tu correo y la fecha de tu consentimiento. Te pediremos confirmarlo y puedes darte de
-        baja cuando quieras.
+        Solo guardamos tu correo, la fecha y la versión de los textos que aceptaste. Verificamos la inscripción en dos
+        pasos (tu correo y el enlace de confirmación) para que nadie inscriba un correo ajeno. Puedes darte de baja
+        cuando quieras.
       </p>
     </form>
   );

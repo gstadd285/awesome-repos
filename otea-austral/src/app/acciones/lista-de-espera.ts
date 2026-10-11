@@ -6,7 +6,15 @@ import { ipCliente } from "@/lib/security/ip";
 import { sha256Hex, type ResultadoLista } from "@/lib/waitlist/service";
 import { servicioLista } from "@/lib/waitlist/instance";
 
-export type EstadoLista = { estado: "inicial" } | ResultadoLista;
+/** Lo que la persona había puesto en el formulario, para devolvérselo si el envío no prosperó. */
+export type ValoresFormulario = { correo: string; condiciones: boolean; acepta: boolean };
+
+/**
+ * React vacía el formulario cuando termina la acción (también si el servidor respondió con un error de validación):
+ * sin esto, olvidar una casilla borraría el correo y las demás casillas. Por eso toda respuesta que no inscribe
+ * devuelve lo escrito, y el formulario lo usa como valor por omisión.
+ */
+export type EstadoLista = { estado: "inicial" } | (ResultadoLista & { valores?: ValoresFormulario });
 export type EstadoConfirmacion = { estado: "inicial" | "confirmada" | "invalida" | "limite" };
 
 /**
@@ -16,15 +24,26 @@ export type EstadoConfirmacion = { estado: "inicial" | "confirmada" | "invalida"
  */
 export async function unirseAListaDeEspera(_previo: EstadoLista, formData: FormData): Promise<EstadoLista> {
   const ip = ipCliente(await headers(), env.IP_PROXIES_CONFIABLES);
-  return servicioLista().registrar(
+  const resultado = await servicioLista().registrar(
     {
       correo: formData.get("correo"),
       acepta: formData.get("acepta"),
+      condiciones: formData.get("condiciones"),
       sitio_web: formData.get("sitio_web"),
       tiempo: formData.get("tiempo"),
     },
     await sha256Hex(ip),
   );
+  if (resultado.estado === "ok") return resultado;
+  const correo = formData.get("correo");
+  return {
+    ...resultado,
+    valores: {
+      correo: typeof correo === "string" ? correo.slice(0, 254) : "",
+      condiciones: formData.get("condiciones") === "on",
+      acepta: formData.get("acepta") === "on",
+    },
+  };
 }
 
 /**

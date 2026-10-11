@@ -13,7 +13,7 @@ export default async function AccesoPage() {
         Acceso al panel.
       </h1>
       <p className="mt-4 leading-relaxed text-texto-suave">
-        Escribe tu frase de acceso y el código de seis dígitos de tu app de autenticación.
+        Verificación en dos pasos: escribe tu frase de acceso y el código de seis dígitos de tu app de autenticación.
       </p>
       <FormularioAcceso />
     </section>
