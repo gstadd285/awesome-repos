@@ -95,7 +95,7 @@ Plan, estado de cada control y evidencia en [`docs/seguridad/plan-20-controles.m
       respuesta del sitio contiene secretos; `server-only` y reglas de lint.
 - [x] Reglas de arquitectura que se comprueban solas (SQL, frontera cliente/servidor, autenticación del panel,
       inventario de endpoints, sin subida de archivos, `public/` de lista cerrada).
-- [x] Seguridad por fila (RLS) en las nueve tablas (migración `0003`).
+- [x] Seguridad por fila (RLS) en las nueve tablas (migración `0003`; la décima, `asistente_uso`, nace con RLS en la `0005`).
 - [x] Correos de la lista de espera cifrados (migración `0004`), con exportación y rotación del secreto.
 - [x] Redirección de http a https, marca de tiempo firmada contra bots y límite en la confirmación.
 - [x] Auditoría de todas las dependencias con avisos aceptados evaluados, escaneo de la imagen con Trivy, imagen
@@ -134,16 +134,47 @@ de las piezas 3D.
       reducir movimiento con activar/recordar/revertir, sin `animation-timeline`, sin JavaScript).
 - [x] Copia interactiva con el mismo motor (parte animada aunque el sistema pida reducir).
 
+## Incremento · Asistente de preguntas ✅ (IA apagada)
+
+Diseño, costos, seguridad, límites y la lista de decisiones en [`asistente-ia.md`](asistente-ia.md).
+
+- [x] Apartado «Resuelve tus dudas» en la portada (`#preguntas`, enlazado desde el pie): conversación accesible, atajos,
+      respuesta que llega frase por frase, «Detener», reintento, sin JavaScript (las respuestas más pedidas se leen en
+      un bloque `noscript`).
+- [x] **Modo base (por omisión): gratis y sin IA.** 30 preguntas frecuentes curadas (más las derivadas de los datos del
+      sitio), búsqueda léxica en español, políticas que nunca dejan pasar datos personales, manipulación, consejos ni
+      pronósticos.
+- [x] **Modo IA (opcional y apagado):** Claude de Anthropic con el SDK oficial, solo con el contexto de la base, salida
+      revisada frase por frase, gasto acotado con tope diario en Postgres (migración `0005`), cupo por persona, límites por
+      IP y cancelación al cerrar la conexión. Probado de punta a punta contra un servidor que imita la API.
+- [x] Pruebas: unidad (servicio, búsqueda, políticas, salida, gasto en Postgres real, SDK contra servidor falso),
+      componentes y e2e en ambos modos (segunda instancia de la aplicación con un servidor falso de Anthropic).
+- [ ] **Decisión de la persona responsable:** si se activa la IA (modelo, tope diario, clave con límite en la consola de
+      Anthropic) y con qué texto legal. Prueba con la API real: `npm run asistente:probar`.
+
+## Incremento · Condiciones de uso y verificación en dos pasos ✅
+
+- [x] `/terminos` se llama «Condiciones de uso» en toda la interfaz y se amplía (asistente de preguntas, lista de espera,
+      uso aceptable, marca, responsabilidad, cambios). Sigue siendo un texto **provisional**, pendiente de revisión legal.
+- [x] La lista de espera pide **dos aceptaciones por separado** (condiciones de uso y consentimiento para guardar el
+      correo) y guarda con el registro la versión de los textos aceptados (`VERSION_CONSENTIMIENTO`).
+- [x] La inscripción se muestra como **verificación en dos pasos** (dejar el correo → confirmarlo con el enlace) y el
+      acceso al panel `/admin` lo dice (frase + código TOTP, que ya existía).
+- [x] [`guia-dos-pasos.md`](guia-dos-pasos.md): paso a paso para activarla en las cuentas (control PR-09, que solo puede
+      hacer la persona responsable).
+- [ ] Cuentas de personas usuarias (con la verificación en dos pasos en su diseño inicial): **no existen** y hoy no se
+      necesitan; es una decisión de producto con consecuencias de privacidad y seguridad, para después del lanzamiento.
+
 ## Falta para abrir al público (no es código)
 
 - [ ] Crear los proyectos en Google Cloud, Neon y Resend y desplegar siguiendo `docs/despliegue.md`.
-- [ ] Verificación en dos pasos en todas las cuentas (R6) y presupuesto con alertas de 40 USD.
+- [ ] Verificación en dos pasos en todas las cuentas (R6; guía en [`guia-dos-pasos.md`](guia-dos-pasos.md)) y presupuesto con alertas de 40 USD.
 - [ ] Activar en GitHub _Secret scanning_, _Push protection_ y _Dependabot alerts_; generar `WAITLIST_SECRETO` y
       guardar una copia fuera de línea (sin ella, los correos cifrados no se recuperan).
 - [ ] Probar la redirección a https en una revisión sin tráfico antes de dar tráfico real (`docs/despliegue.md`).
 - [ ] Decidir si se añade un desafío tipo CAPTCHA a la lista de espera (introduce un tercero).
 - [ ] Comprar el dominio y actualizar `NEXT_PUBLIC_SITE_URL`.
-- [ ] Revisión legal de privacidad, términos, aviso legal y metodología.
+- [ ] Revisión legal de privacidad, condiciones de uso, aviso legal y metodología (incluido el apartado del asistente y el de Anthropic si se activa la IA).
 - [ ] Alerta de accesos fallidos al panel y retención de registros de 30 días.
 - [ ] Prueba de seguridad independiente antes de manejar datos reales de personas.
 - [ ] Cargar alertas reales (hoy todo el contenido es de ejemplo) con su revisión editorial.

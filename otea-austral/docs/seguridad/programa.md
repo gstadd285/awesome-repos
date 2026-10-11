@@ -84,6 +84,7 @@ revisión de cada pull request, auditoría inmutable y este programa versionado.
 | Registrador del dominio | oteaustral.com | Alta | Datos de la persona titular | Por comprar |
 | Resend | Correo de doble opt-in | Media | Correos de la lista de espera | Elegido; por crear |
 | Neon | Base de datos: alertas, fuentes, lista de espera, sesiones del panel | Alta | Correos de la lista de espera | Elegido; por crear |
+| Anthropic | Redacta las respuestas del asistente de preguntas, **solo si se activa la IA** (de pago) | Baja | El texto de cada pregunta y de las preguntas frecuentes que se usan para responderla, sin IP | **Opcional; apagado por omisión.** Requiere la decisión de la persona responsable (`docs/asistente-ia.md`) |
 
 Para aceptar un proveedor: plan gratuito suficiente, verificación en dos pasos, cifrado en tránsito
 y en reposo, condiciones de tratamiento de datos legibles y posibilidad de exportar los datos.
@@ -98,9 +99,12 @@ y en reposo, condiciones de tratamiento de datos legibles y posibilidad de expor
 | Enlace de confirmación | Aplicación | Correo de la persona; URL en los registros | Token de un solo uso (72 h); en la base solo su hash. |
 | Alias internos en la auditoría | Equipo | Base de datos | Inmutable; sin datos personales. |
 | Sesiones del panel | Equipo | Base de datos | Identificador aleatorio y fechas; sin datos personales. |
+| Preguntas al asistente | Visitantes | No se guardan | Se usan solo para responder. Con IA activada, el texto viaja a Anthropic (sin IP). Las preguntas con datos personales no se procesan ni se envían. |
+| Gasto diario de IA | Aplicación | Base de datos (`asistente_uso`) | Solo totales por día (micros y llamadas); sin datos personales. |
 
 Conexiones permitidas: el navegador solo habla con el propio sitio (`connect-src 'self'`). El servidor
-solo hace una petición saliente automática: `https://api.resend.com/emails`. Durante el build se
+solo hace dos peticiones salientes automáticas, ambas a direcciones fijas: `https://api.resend.com/emails` y, solo
+si se activa la IA del asistente, `https://api.anthropic.com`. Durante el build se
 contacta npm y Google Fonts; la CI corre en GitHub.
 
 ## 7. Registro de riesgos (ID.RA-03, ID.RA-04, ID.RA-06)
@@ -112,10 +116,13 @@ contacta npm y Google Fonts; la CI corre en GitHub.
 | R3 | Publicar como confirmada información sin respaldo | Media | Alto | Confianza calculada, reglas de publicación (lógica y base de datos), auditoría y correcciones públicas | Mitigado |
 | R4 | Acceso no autorizado al panel interno | Media | Alto | Frase + TOTP de un solo uso, sesión revocable, límite de intentos, CSRF, permisos mínimos; revisión OWASP | Mitigado; falta la alerta de accesos fallidos y una prueba independiente |
 | R5 | Fuga de correos de la lista de espera | Baja | Alto | Minimización, **correos cifrados en la base (la aplicación no puede leerlos)**, seguridad por fila, permisos mínimos, TLS verificado, registros sin datos personales, tope diario de correos | Mitigado en parte; pendiente revisión legal, guardar el secreto de la lista fuera de línea y abrir con proveedores reales |
-| R6 | Toma de cuentas de proveedores | Media | Alto | Verificación en dos pasos y códigos de respaldo | **Pendiente: acción de la persona responsable** |
+| R6 | Toma de cuentas de proveedores | Media | Alto | Verificación en dos pasos y códigos de respaldo (guía: `docs/guia-dos-pasos.md`) | **Pendiente: acción de la persona responsable** |
 | R7 | Secreto expuesto (token de despliegue o de base de datos) | Baja | Alto | Solo variables de entorno, escáner de secretos sobre archivos e historial, build con secretos falsos, rotación, procedimiento de contención | Mitigado en parte; falta activar _Secret scanning_ y _Push protection_ en GitHub |
 | R8 | Indisponibilidad (ataque de volumen o caída del proveedor) | Media | Medio | CDN del alojamiento, límites de solicitudes, vuelta a versión sana | Mitigado en parte |
 | R9 | Pérdida o secuestro del dominio | Baja | Alto | Renovación automática, bloqueo de transferencia, dos pasos en el registrador | Pendiente (dominio por comprar) |
+| R10 | Gasto descontrolado de IA (abuso del asistente, bucle, precio mal configurado) | Media | Medio | IA apagada por omisión; tope diario con reserva del peor caso en la base; cupo por persona; límites por IP; límite de gasto en la consola de Anthropic | Mitigado en parte; **falta el límite de la consola (acción de la persona responsable)** |
+| R11 | Respuesta de IA inadecuada: lenguaje de recomendación, enlaces, cifras inventadas, instrucciones filtradas | Media | Medio | Modelo sin herramientas ni secretos, solo texto público; políticas antes del modelo; salida revisada frase por frase; respaldo a la base | Mitigado en parte; probado contra un servidor falso, no contra la API real |
+| R12 | Datos personales enviados por una persona a un proveedor de IA | Media | Medio | Detección de correo, teléfono, RUT y números largos (la pregunta no se envía); aviso en la interfaz y en la política; no se guardan preguntas | Mitigado en parte; la detección es léxica |
 
 ## 8. Revisión y mejora (GV.OV-01, ID.IM)
 

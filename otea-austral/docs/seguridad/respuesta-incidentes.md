@@ -56,6 +56,8 @@ legal o al proveedor.
 | Dependencia comprometida | Fijar la versión sana anterior, regenerar el lockfile, revisar el SBOM del despliegue afectado. |
 | Alerta publicada fuera de las reglas | Retractar o corregir con texto público (nunca borrar); revisar la auditoría. |
 | Formulario abusado | Desactivarlo temporalmente y ajustar el límite de solicitudes. |
+| Gasto de IA anómalo o clave de Anthropic expuesta | `ASISTENTE_MODO=base` de inmediato (corta el gasto y el asistente sigue respondiendo con las preguntas frecuentes); revocar la clave en la consola de Anthropic, crear otra y rotar el secreto `otea-anthropic-api-key`; revisar el gasto en la consola y los eventos `"tipo":"asistente"`; ajustar el tope diario antes de volver a activarla. |
+| Respuesta de IA inadecuada (recomendación, dato falso, filtración de instrucciones) | Apagar la IA (`ASISTENTE_MODO=base`); guardar la pregunta y la respuesta **sin datos personales**; corregir la base de conocimiento o las reglas de `salida.ts` y sumar una prueba que reproduzca el caso; si afectó a alguien, publicar la corrección. |
 
 #### Secreto en git (la CI lo detecta con `npm run seguridad:secretos`)
 

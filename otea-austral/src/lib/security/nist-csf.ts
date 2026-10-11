@@ -111,7 +111,7 @@ export type Control = z.infer<typeof ControlSchema>;
 export const PERFIL = {
   marco: "NIST Cybersecurity Framework (CSF) 2.0",
   alcance: "Sitio web, código y servicios de Otea Austral",
-  revisado: "2026-10-10",
+  revisado: "2026-10-11",
   proximaRevision: "2027-01-10",
   nivelActual: 1,
   nivelObjetivo: 2,
@@ -182,7 +182,7 @@ export const CONTROLES: Control[] = [
     id: "ID-02",
     titulo: "Inventario de datos y conexiones",
     descripcion:
-      "Sabemos qué datos tratamos (hoy, ningún dato personal) y el sitio solo se conecta con su propio origen.",
+      "Sabemos qué datos tratamos y a dónde van: el navegador solo habla con el propio sitio; el servidor, con la base de datos, el envío de correo y, solo si se activa la IA del asistente, con Anthropic.",
     estado: "implementado",
     subcategorias: ["ID.AM-03", "ID.AM-07"],
     evidencia: [PROGRAMA, "src/lib/security/csp.ts"],
@@ -320,10 +320,10 @@ export const CONTROLES: Control[] = [
     id: "PR-09",
     titulo: "Verificación en dos pasos en todas las cuentas",
     descripcion:
-      "GitHub, alojamiento, dominio y correo con verificación en dos pasos y códigos de respaldo guardados fuera de línea.",
+      "GitHub, alojamiento, dominio y correo con verificación en dos pasos y códigos de respaldo guardados fuera de línea. Solo la persona responsable puede activarla: la guía paso a paso está escrita.",
     estado: "objetivo",
     subcategorias: ["PR.AA-03"],
-    evidencia: [],
+    evidencia: ["docs/guia-dos-pasos.md"],
   },
   {
     id: "PR-10",
@@ -379,6 +379,34 @@ export const CONTROLES: Control[] = [
       "db/migraciones/0004_correos_cifrados.sql",
       "src/lib/waitlist/cifrado.ts",
       "src/lib/db/rls.test.ts",
+    ],
+  },
+  {
+    id: "PR-16",
+    titulo: "Inscripción verificada en dos pasos",
+    descripcion:
+      "Dejar el correo no inscribe: hay que confirmarlo con un enlace de un solo uso que vence a las 72 horas y cuyo hash es lo único que se guarda. Las inscripciones sin confirmar se borran a los 30 días.",
+    estado: "implementado",
+    subcategorias: ["PR.AA-03"],
+    evidencia: [
+      "src/lib/waitlist/service.ts",
+      "src/components/home/WaitlistForm.tsx",
+      "src/app/lista-de-espera/confirmar/page.tsx",
+    ],
+  },
+  {
+    id: "PR-17",
+    titulo: "Asistente de preguntas con salida revisada y gasto acotado",
+    descripcion:
+      "Las preguntas con datos personales o intentos de manipulación no llegan al modelo; cada frase se revisa antes de mostrarse y el gasto de IA tiene un tope diario contado en la base. La IA está apagada por omisión y aún no se probó con la API real.",
+    estado: "parcial",
+    subcategorias: ["PR.PS-06", "PR.IR-04"],
+    evidencia: [
+      "src/lib/asistente/politicas.ts",
+      "src/lib/asistente/salida.ts",
+      "src/lib/asistente/presupuesto.ts",
+      "src/lib/asistente/manejador.ts",
+      "docs/asistente-ia.md",
     ],
   },
   {

@@ -23,7 +23,7 @@ configuración llega como variables de entorno al ejecutar y los secretos, desde
   preguntar.
 - **Verificación en dos pasos** en Google, GitHub, Neon, Resend y el registrador del dominio, con
   códigos de respaldo guardados fuera de línea. Es la medida más efectiva del perfil de seguridad y
-  solo la puedes activar tú.
+  solo la puedes activar tú: paso a paso en [`guia-dos-pasos.md`](guia-dos-pasos.md).
 - Herramientas locales: Node 22 (`.nvmrc`), `gcloud` autenticado y, si quieres construir en tu
   máquina, Docker.
 
@@ -49,7 +49,7 @@ configuración llega como variables de entorno al ejecutar y los secretos, desde
    la lista de espera admite `DELETE`, y únicamente de inscripciones pendientes. El usuario tiene además
    límite de conexiones y de tiempo por consulta. `db:rol-app` rechaza un usuario existente con
    superusuario, `BYPASSRLS` u otros atributos de más.
-5. **Seguridad por fila (migración `0003`).** Las nueve tablas activan RLS y el usuario de la aplicación
+5. **Seguridad por fila (migración `0003`).** Las diez tablas activan RLS (la décima, `asistente_uso`, con la migración `0005`) y el usuario de la aplicación
    solo puede lo que una política le permite. El dueño de la base no está sujeto a RLS (por eso nunca se
    usa en la aplicación). Una tabla nueva debe activar RLS y declarar sus políticas en su propia
    migración: una prueba lo exige.
@@ -211,6 +211,11 @@ La URL de cada solicitud queda en esos registros, y la del enlace de confirmaci�
 lleva un token de un solo uso (vence en 72 horas; en la base solo se guarda su hash). Ver
 `docs/seguridad/auditoria-owasp-2025.md` (A09-002).
 
+Las solicitudes al asistente (`POST /api/asistente`) quedan en esos registros como cualquier otra, con su IP y
+agente de usuario, pero **sin el cuerpo**: lo que la persona escribe no se registra. La aplicación solo anota
+categorías (`"tipo":"asistente"` con `"resultado"` `ia`, `sin_respuesta`, `negativa` o `degradada`), nunca el texto
+de la pregunta ni de la respuesta.
+
 ### Alerta ante intentos de acceso al panel
 
 La aplicación registra cada intento en `/admin` como un evento JSON sin datos personales
@@ -287,3 +292,49 @@ notificación a tu correo o teléfono. Es el objetivo `DE-04` del perfil de segu
   revisión, los avisos de desarrollo sin corrección publicada. Al vencer la fecha la CI falla hasta que se
   revisen: vuelve a evaluar el aviso, renueva la fecha o corrígelo.
 - **Vencimientos.** `security.txt` expira el 2027-04-01: renuévalo (ver `SECURITY.md`).
+
+## 11. Asistente de preguntas (IA, opcional)
+
+El asistente de la portada **funciona sin configurar nada**: responde con las preguntas frecuentes del sitio, sin IA,
+sin clave y sin costo. Es lo que despliega `despliegue/cloud-run.yaml` por omisión. Activar la IA es una decisión de
+dinero y de privacidad (reglas 1 y 7 de `CLAUDE.md`): [`asistente-ia.md`](asistente-ia.md) explica qué decidir y cuánto
+cuesta. Si decides activarla:
+
+1. **Decide** el modelo, los precios (dólares por millón de tokens, de la página de precios de Anthropic) y el tope de
+   gasto diario. Sin esos valores la configuración se rechaza y la revisión no arranca.
+2. **Crea la clave en la consola de Anthropic** y fija ahí un **límite de gasto mensual**: es la barrera final, porque
+   el tope diario de la aplicación solo cuenta lo que la aplicación gasta. La clave sirve solo para esto; guárdala en
+   tu gestor de contraseñas.
+3. **Aplica la migración `0005`** (la tabla `asistente_uso`, donde se cuenta el gasto del día; es idempotente) **antes** de
+   desplegar: `npm run db:migrar` con el rol dueño. Con la base caída, el asistente no llama al modelo (falla cerrado).
+4. **Guarda la clave en Secret Manager**, igual que los demás secretos:
+
+   ```bash
+   gcloud secrets create otea-anthropic-api-key --replication-policy=automatic
+   printf 'Clave de Anthropic: '; read -rs v; echo
+   printf '%s' "$v" | gcloud secrets versions add otea-anthropic-api-key --data-file=-
+   gcloud secrets add-iam-policy-binding otea-anthropic-api-key \
+     --member="serviceAccount:otea-ejecucion@$PROYECTO.iam.gserviceaccount.com" \
+     --role=roles/secretmanager.secretAccessor
+   ```
+
+5. **Prueba con la API real antes de abrirlo** (gasta centavos): `ASISTENTE_PRUEBA_REAL=1 ANTHROPIC_API_KEY=… ASISTENTE_MODELO=…
+   ASISTENTE_PRECIO_ENTRADA=… ASISTENTE_PRECIO_SALIDA=… npm run asistente:probar`. Hace dos preguntas, imprime lo que
+   respondió el modelo, cómo terminó y lo que costó de verdad, y falla si la API rechaza algo. Es la única prueba
+   que toca el servicio real: las demás usan un servidor que lo imita.
+6. **Descomenta el bloque «Asistente de preguntas» de `despliegue/cloud-run.yaml`**, completa los valores y despliega como
+   en el paso 7 (una revisión con etiqueta y sin tráfico). Haz unas preguntas de verdad en esa dirección y mira en
+   Cloud Logging los eventos `"tipo":"asistente"`; después dale tráfico.
+7. **Vigila el gasto** unos días: los eventos con `"resultado":"degradada"` y `"motivo":"limite"` indican que se agotó el
+   cupo o el tope del día (los visitantes reciben entonces la respuesta de las preguntas frecuentes, sin error), y la
+   consola de Anthropic muestra el gasto real. Si el tope diario se agota seguido, súbelo con una decisión, no por
+   reflejo.
+
+**Apagarla de inmediato** (sigue funcionando, gratis, con las preguntas frecuentes):
+
+```bash
+gcloud run services update otea-austral --region $REGION --update-env-vars ASISTENTE_MODO=base
+```
+
+Si sospechas que la clave se filtró: revócala en la consola de Anthropic (efecto inmediato), crea otra, agrégala como
+versión nueva del secreto y vuelve a desplegar; sigue `docs/seguridad/respuesta-incidentes.md`.

@@ -258,11 +258,29 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
   (`createFixedWindowLimiter`).
 - Lista de espera (`src/lib/waitlist/`): Server Action con validación Zod, campo trampa, **marca de tiempo
   firmada** (`tiempo.ts`: sin marca, falsa, en menos de 3 s o vencida → «espera»), límite por IP (cifrada con
-  SHA-256, solo en memoria; también en la confirmación) y doble opt-in con token cuyo hash se guarda. **El correo
+  SHA-256, solo en memoria; también en la confirmación) y doble opt-in con token cuyo hash se guarda (se presenta como **verificación en dos pasos**; el formulario pide **dos
+  casillas separadas**, `condiciones` y `acepta`, y el registro guarda `VERSION_CONSENTIMIENTO` de `schema.ts`: cámbiala cuando
+  cambie lo que esas casillas dicen o lo que las condiciones de uso y la privacidad aclaran sobre lo aceptado). **El correo
   se guarda cifrado** (AES-256-GCM + índice ciego HMAC, `cifrado.ts`; el usuario de la base escribe pero no puede
   leer `correo_cifrado`; solo el dueño descifra con `npm run lista:exportar`). Todo sale de `WAITLIST_SECRETO`
   (HKDF por propósito, `claves.ts`). Con `WAITLIST_MODE=cerrada` (por defecto) no guarda correos; `memoria` solo
   para desarrollo y e2e (el esquema de entorno la rechaza en producción salvo `OTEA_E2E=1`; sin cifrado).
+- **Asistente de preguntas** (`src/lib/asistente/`, `POST /api/asistente`; diseño, costos y decisiones en
+  `docs/asistente-ia.md`). Reglas:
+  - **Modo `base` por omisión: gratis y sin IA.** La IA (Claude, SDK oficial) es de pago (regla 1): **nunca la actives ni
+    cambies modelo, precios, topes o claves sin que la persona responsable lo pida.** `env.ts` exige todo para `ia` y no
+    tiene valores por omisión.
+  - Recorrido: puertas HTTP → políticas → búsqueda → base o IA → revisión de la salida. Una pregunta con datos personales,
+    manipulación, consejo o pronóstico, o que no encuentra respuesta en la base, **no llega nunca al modelo**. Un atajo de la
+    interfaz o una pregunta idéntica a una de la base se responde con la base.
+  - El modelo **no tiene herramientas ni secretos** y su salida solo se muestra como texto, revisada frase por frase
+    (`salida.ts`). Agregarle una herramienta o una fuente de datos exige una revisión de seguridad. Los enlaces salen solo
+    de `ENLACES_PERMITIDOS` y el navegador solo acepta rutas del propio sitio.
+  - El gasto se reserva (peor caso) antes de llamar y se ajusta al uso real; el tope diario vive en Postgres
+    (`asistente_uso`, migración `0005`). Si la base falla, no se llama al modelo.
+  - Cada entrada nueva de la base (`conocimiento.ts`): sin lenguaje de recomendación, cifras verificadas, enlaces permitidos, y
+    un caso en `recuperar.test.ts`; revisa que no robe preguntas de otras entradas (a igual puntaje gana la que va antes).
+  - Los componentes de cliente del asistente solo importan `@/lib/asistente/limites` y `cliente`.
 - **Panel `/admin`** (`src/app/admin/`, `src/lib/admin/`): sin `ADMIN_*` y `DATABASE_URL` responde 404.
   Acceso con frase (PBKDF2) y código TOTP; la sesión es una cookie `__Host-` firmada **y registrada en
   la base** (`admin_sesiones`), así que «Salir» la revoca de verdad. Toda página privada llama a
@@ -308,13 +326,15 @@ npm run lint
 npm run typecheck    # next typegen + tsc
 npm test             # Vitest (una pasada); npm run test:watch para modo observación
 npm run build && npm start   # `output: "standalone"`: start corre `node .next/standalone/server.js`
-npm run test:e2e     # Playwright sobre el build (levanta ese servidor en el puerto 3200)
+npm run test:e2e     # Playwright sobre el build (servidor en el 3200; el modo IA del asistente, en el 3201 contra un
+                     # servidor que imita a Anthropic en el 3299: `scripts/anthropic-falso.mjs`)
 npm run db:migrar    # DATABASE_URL_ADMIN (rol dueño): aplica db/migraciones y la semilla de fuentes
 npm run db:rol-app   # crea el usuario de la aplicación e imprime su URL una sola vez
 npm run admin:credenciales   # frase, TOTP y secretos de sesión del panel
 npm run lista:secreto        # WAITLIST_SECRETO (marca de tiempo del formulario y cifrado de correos)
 npm run lista:exportar       # DATABASE_URL_ADMIN + WAITLIST_SECRETO: correos confirmados, descifrados (-- --csv)
 npm run lista:recifrar       # rotar WAITLIST_SECRETO (ensayo; -- --aplicar para rotar de verdad)
+npm run asistente:probar     # GASTA DINERO: prueba el asistente con la API real (ASISTENTE_PRUEBA_REAL=1 + clave en el entorno)
 npm run seguridad:secretos   # escáner de secretos en archivos e historial (lo corre la CI)
 npm run seguridad:canarios   # build con secretos falsos: ninguno debe quedar en .next/ (lo corre la CI)
 npm run seguridad:dependencias   # audita TODAS las dependencias contra seguridad/avisos-npm-aceptados.json
@@ -349,10 +369,11 @@ contra la misma base dentro de los mismos 30 segundos pueden chocar (en la CI la
 src/
   app/                 rutas: portada, metodologia, fuentes, seguridad, legales, 404,
                        lista-de-espera/confirmar, acciones/ (Server Actions), api/csp-report,
-                       api/salud, error y global-error, admin/, alertas/, .well-known/security.txt,
+                       api/salud, api/asistente, error y global-error, admin/, alertas/, .well-known/security.txt,
                        sitemap, robots, manifest, íconos, imagen OG
   components/
     alert-card/        AlertCard y sus insignias
+    asistente/         AsistenteChat (la conversación; componente de cliente)
     brand/             Emblem y Logo
     home/              Story (héroe, cinta, plano, tablero), Temas (selector), ejemplos de alertas,
                        pre-apertura, lista de espera
@@ -371,13 +392,14 @@ src/
     waitlist/          lista de espera: esquema, almacenamiento (memoria y Postgres cifrado), correo, servicio,
                        marca de tiempo (tiempo.ts), cifrado y claves derivadas
     admin/             sesión firmada, TOTP, frase, almacén de sesiones en la base
+    asistente/         preguntas frecuentes, búsqueda, políticas, servicio, proveedor de IA, revisión de la salida, gasto
     alertas/           repositorio Postgres de alertas, fuentes, correcciones y auditoría; formularios
     db/                cliente de Postgres (pool, transacciones) y ayudante de pruebas
   app/admin/           panel interno (acceso, listado, alta, detalle y acciones)
   app/alertas/         alertas publicadas; app/api/salud: sonda de Cloud Run
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
-db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados)
+db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados, 0005 gasto del asistente)
 scripts/               migrar, rol de la aplicación, credenciales del panel, preparar standalone, lista de espera
                        (secreto, exportar, recifrar), escáner de secretos, canarios, auditoría de dependencias
 seguridad/             avisos de npm aceptados (con motivo y fecha de revisión)
@@ -433,6 +455,31 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   ejecutarlo a mano o reconsiderarla.
 - **`next build` ejecuta `tsc` sobre `e2e/` y los `*.test.ts`:** un error de tipos en una prueba rompe el build y el
   servidor de Playwright (que no arranca, sin más pista).
+
+## Lo aprendido (asistente de preguntas, condiciones de uso y dos pasos)
+
+- **El SDK de Anthropic lee del entorno todo lo que no recibe** (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`,
+  `ANTHROPIC_CUSTOM_HEADERS`…): `proveedor-anthropic.ts` pasa todo explícito (`authToken: null`, `webhookKey: null`, `baseURL`,
+  `logLevel: "off"`). Los modelos actuales rechazan `thinking`, parámetros de muestreo y prefill: no los envíes.
+- **Los precios por millón de tokens son «micros por token»**: el costo se lleva en micros (millonésimas de dólar) y se
+  reserva el peor caso antes de llamar; ver `presupuesto.ts`.
+- **`pgrep -f` y `pkill -f` matan tu propio shell** si el patrón está en la línea de comandos que los lanza; además Next
+  cambia el título del proceso a `next-server`. Para parar un servidor de prueba, búscalo por puerto (`ss -ltnp`) y mata ese PID.
+- **Playwright**: `getByText` no mira dentro de `<noscript>` (lee el elemento con `locator("noscript …")`); `response.text()`
+  falla a veces con respuestas que se leen como flujo (copia el cuerpo dentro de la página: `capturarRespuestasDelAsistente`);
+  el parámetro `use` de una fixture choca con la regla de hooks de React (llámalo `entregar`); y los límites por IP se
+  agotan entre pruebas que comparten servidor (`e2e/fixtures.ts` da una IP propia a cada prueba con `X-Forwarded-For`).
+- **Búsqueda léxica**: una palabra vacía dentro de una etiqueta de varias palabras la convierte en un sinónimo de una
+  sola («mi cuenta» → «cuenta»); a igual puntaje gana la entrada que va antes en la base, así que una entrada nueva que
+  pueda empatar con otra va después de ella; las marcas que usa el servidor falso (`ZZERROR`…) son una sola palabra sin
+  significado para no cambiar qué entradas se encuentran.
+- **Un `<span>` oculto con un espacio al principio** pierde ese espacio en el nombre accesible: pon el espacio fuera.
+- **Controles hasta hidratar**: `useSyncExternalStore(() => () => {}, () => true, () => false)` da «¿ya hidraté?» sin
+  efectos; el chat sale desactivado en el HTML del servidor (y sin JavaScript) y nada que se escriba se pierde.
+- **En el servidor falso, una variable local `registro` tapaba la opción `registro`** (zona muerta temporal: la solicitud
+  se colgaba): evita reutilizar nombres dentro de un manejador largo.
+- **Condiciones de uso**: la ruta sigue siendo `/terminos` (no cambia enlaces), pero todo lo que ve la persona dice
+  «Condiciones de uso»; los textos legales son provisionales y no se presentan como definitivos.
 
 ## Notas de Next.js
 

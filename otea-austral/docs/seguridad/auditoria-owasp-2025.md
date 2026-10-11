@@ -275,3 +275,35 @@ importancia, acciones que **no se resuelven con código**:
   primera barrera por instancia.
 - Las alertas de OWASP no sustituyen la revisión humana de las reglas de negocio de las alertas
   financieras (qué se publica y con qué respaldo), que es responsabilidad editorial.
+
+## Adenda · asistente de preguntas (2026-10-11)
+
+Revisión estática del endpoint `POST /api/asistente` y de todo lo que lo rodea (`src/lib/asistente/`, la interfaz y su
+configuración), siguiendo la pregunta desde el navegador hasta el proveedor de IA y la respuesta de vuelta, más las
+pruebas del propio asistente (unitarias, de integración con Postgres, de componentes y de navegador, estas últimas contra
+un servidor que imita la API de Anthropic). Misma salvedad que el resto: revisión asistida por IA, sin pruebas de
+intrusión, y **sin llamar nunca a la API real**.
+
+| Categoría | Resultado |
+|---|---|
+| A01 Control de acceso | Sin hallazgos. El endpoint es público por diseño, no maneja sesión ni datos de otras personas; exige mismo origen (`Sec-Fetch-Site` y `Origin`) y no reutiliza ninguna credencial del panel |
+| A02 Configuración | Un riesgo detectado y **cerrado durante la implementación**: el SDK de Anthropic lee del entorno (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_CUSTOM_HEADERS`…) todo lo que no recibe, lo que permitiría desviar la clave a otro servidor; el cliente recibe todo explícito y la URL de pruebas solo existe con `OTEA_E2E=1`. La IA no tiene valores por omisión |
+| A03 Cadena de suministro | Una dependencia nueva (`@anthropic-ai/sdk`, versión exacta, SDK oficial); pasa la auditoría de dependencias y el escáner de la imagen como las demás |
+| A04 Criptografía | Sin hallazgos. La clave viaja solo del servidor al proveedor por TLS; no se guarda ni se registra; es un canario más del build |
+| A05 Inyección | Sin SQL nuevo con datos (el gasto usa constantes `SQL_…` y parámetros). La inyección de instrucciones al modelo se trata con políticas previas, un modelo sin herramientas ni secretos y una salida revisada (detalle y mapeo con el OWASP de LLM en `docs/asistente-ia.md`) |
+| A06 Diseño inseguro | Gasto acotado por diseño (reserva del peor caso, tope diario en la base, cupos, falla cerrada); la IA nace apagada |
+| A07 Autenticación | No aplica (sin sesión). |
+| A08 Integridad | Esquema estricto de la solicitud; el navegador valida cada evento y descarta enlaces que no sean del sitio |
+| A09 Registro y alertas | Solo categorías (`ia`, `sin_respuesta`, `negativa`, `degradada`); nunca el texto de la pregunta ni de la respuesta; el SDK no registra |
+| A10 Condiciones excepcionales | Cualquier fallo del proveedor, del gasto o de la salida degrada a la respuesta de la base, sin error técnico; si la base de datos falla, no se llama al modelo; si la persona se va, se cancela la llamada |
+
+Observaciones (ninguna abierta de severidad media o alta):
+
+1. **La integración con la API real está sin probar** (`real.test.ts`, `npm run asistente:probar`): la hace la persona
+   responsable porque gasta dinero. Hasta entonces la IA permanece apagada.
+2. Los cupos por persona y por IP viven en la memoria de cada instancia (como el resto de los límites del sitio); el tope de
+   gasto, no.
+3. Las políticas de entrada son léxicas: reducen el riesgo, no lo eliminan. La defensa de fondo es estructural (el modelo no
+   puede hacer nada más que escribir texto, y ese texto se revisa).
+4. La detección de datos personales es un patrón (correo, teléfono, RUT, números largos): no detecta, por ejemplo, un
+   nombre o una dirección escritos en una frase.

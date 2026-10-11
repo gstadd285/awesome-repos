@@ -38,6 +38,7 @@ npm run dev                  # http://localhost:3000
 | `npm run lista:secreto` | Genera `WAITLIST_SECRETO` (marca de tiempo del formulario y cifrado de los correos) |
 | `npm run lista:exportar` | Exporta los correos confirmados, descifrados (`DATABASE_URL_ADMIN` + `WAITLIST_SECRETO`) |
 | `npm run lista:recifrar` | Rota `WAITLIST_SECRETO` (ensayo; `-- --aplicar` para rotar de verdad) |
+| `npm run asistente:probar` | **Gasta dinero (centavos).** Prueba el asistente con la API real de Anthropic; solo corre con `ASISTENTE_PRUEBA_REAL=1` y la clave en el entorno (ver `docs/asistente-ia.md`) |
 | `npm run seguridad:secretos` | Busca secretos en los archivos y en todo el historial de git |
 | `npm run seguridad:canarios` | Construye con secretos falsos y comprueba que ninguno queda en el resultado |
 | `npm run seguridad:dependencias` | Audita todas las dependencias contra los avisos aceptados |
@@ -48,8 +49,11 @@ npm run dev                  # http://localhost:3000
 - Portada en estilo editorial claro: héroe con el titular entrando letra a letra, historia 3D ligada al
   scroll (cinta, plano técnico, tablero con alertas y panel) con el texto escribiéndose al ritmo de la
   animación, ejemplos de alertas, selector de temas, resumen matutino y lista de espera.
+- **Asistente de preguntas** («Resuelve tus dudas», `#preguntas`): responde gratis y sin IA con las preguntas
+  frecuentes del sitio; la IA (Claude, de Anthropic) está construida pero **apagada** hasta que la persona responsable
+  decida modelo, tope de gasto y clave (`docs/asistente-ia.md`).
 - Páginas `/metodologia`, `/fuentes` (17 fuentes primarias), `/seguridad` y textos legales
-  provisionales; SEO con imagen para redes, sitemap, robots y manifiesto.
+  provisionales (privacidad, **condiciones de uso**, aviso legal); SEO con imagen para redes, sitemap, robots y manifiesto.
 - `AlertCard`: filas gana/condicionado/pierde, confianza calculada desde las fuentes, fuentes
   desplegables, estados corregida y retractada.
 - Modelo de datos y reglas de verificación con pruebas (`src/lib/domain/`).
@@ -58,8 +62,9 @@ npm run dev                  # http://localhost:3000
 - Animaciones y texto en movimiento en CSS, en cualquier pantalla: historia fija en escritorio y piezas que se arman
   al entrar en ventanas estrechas; un motor mínimo cubre los navegadores sin `animation-timeline` y deja activar el
   movimiento a quien tiene «reducir movimiento» en su sistema (que se respeta por defecto).
-- Postgres con migraciones, permisos mínimos y auditoría de solo agregar; lista de espera con doble
-  opt-in por correo (cerrada por defecto, `WAITLIST_MODE`).
+- Postgres con migraciones, permisos mínimos y auditoría de solo agregar; lista de espera con **verificación en
+  dos pasos** (dejar el correo y confirmarlo con un enlace) y aceptación separada de las condiciones de uso y del
+  consentimiento (cerrada por defecto, `WAITLIST_MODE`).
 - Panel interno `/admin` (frase + código TOTP, sesión revocable) para crear, revisar, aprobar, publicar,
   corregir y retractar alertas, y página pública `/alertas`. Sin configuración, el panel no existe (404).
 - Imagen de contenedor y guía de despliegue en Google Cloud Run; revisión OWASP Top 10:2025.
@@ -72,6 +77,8 @@ Todo el contenido visible es **de ejemplo** y está marcado así.
   de negocio.
 - [`SECURITY.md`](SECURITY.md): controles y pendientes de seguridad.
 - [`docs/despliegue.md`](docs/despliegue.md): Cloud Run, Neon, Resend, secretos y operación.
+- [`docs/asistente-ia.md`](docs/asistente-ia.md): el asistente de preguntas: cómo funciona, costos reales, seguridad, límites y decisiones.
+- [`docs/guia-dos-pasos.md`](docs/guia-dos-pasos.md): activar la verificación en dos pasos en tus cuentas, paso a paso.
 - [`docs/seguridad/auditoria-owasp-2025.md`](docs/seguridad/auditoria-owasp-2025.md): hallazgos y
   correcciones de la revisión OWASP.
 - [`docs/plan.md`](docs/plan.md): plan por tercios y decisiones abiertas.
