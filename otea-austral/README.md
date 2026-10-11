@@ -38,6 +38,7 @@ npm run dev                  # http://localhost:3000
 | `npm run lista:secreto` | Genera `WAITLIST_SECRETO` (marca de tiempo del formulario y cifrado de los correos) |
 | `npm run lista:exportar` | Exporta los correos confirmados, descifrados (`DATABASE_URL_ADMIN` + `WAITLIST_SECRETO`) |
 | `npm run lista:recifrar` | Rota `WAITLIST_SECRETO` (ensayo; `-- --aplicar` para rotar de verdad) |
+| `npm run cuentas:secreto` | Genera `CUENTAS_SECRETO` (cifrado del correo y de los dos pasos de las cuentas; hoy no se puede rotar) |
 | `npm run asistente:probar` | **Gasta dinero (centavos).** Prueba el asistente con la API real de Anthropic; solo corre con `ASISTENTE_PRUEBA_REAL=1` y la clave en el entorno (ver `docs/asistente-ia.md`) |
 | `npm run seguridad:secretos` | Busca secretos en los archivos y en todo el historial de git |
 | `npm run seguridad:canarios` | Construye con secretos falsos y comprueba que ninguno queda en el resultado |
@@ -65,6 +66,10 @@ npm run dev                  # http://localhost:3000
 - Postgres con migraciones, permisos mínimos y auditoría de solo agregar; lista de espera con **verificación en
   dos pasos** (dejar el correo y confirmarlo con un enlace) y aceptación separada de las condiciones de uso y del
   consentimiento (cerrada por defecto, `WAITLIST_MODE`).
+- **Cuentas de personas usuarias** (`/cuenta`): crear cuenta con el correo verificado, entrar, contraseñas (con lista de
+  claves comunes), verificación en dos pasos opcional con códigos de recuperación, perfil (nombre, temas), sesiones
+  abiertas, descarga y eliminación de los datos. **Cerradas por omisión** (`CUENTAS_MODO`): no guardan nada hasta que la
+  persona responsable las abra (`docs/cuentas.md`, `docs/despliegue.md` §12).
 - Panel interno `/admin` (frase + código TOTP, sesión revocable) para crear, revisar, aprobar, publicar,
   corregir y retractar alertas, y página pública `/alertas`. Sin configuración, el panel no existe (404).
 - Imagen de contenedor y guía de despliegue en Google Cloud Run; revisión OWASP Top 10:2025.
@@ -77,6 +82,7 @@ Todo el contenido visible es **de ejemplo** y está marcado así.
   de negocio.
 - [`SECURITY.md`](SECURITY.md): controles y pendientes de seguridad.
 - [`docs/despliegue.md`](docs/despliegue.md): Cloud Run, Neon, Resend, secretos y operación.
+- [`docs/cuentas.md`](docs/cuentas.md): las cuentas de personas usuarias: recorridos, qué se guarda, criptografía, modelo de amenazas y cómo abrirlas.
 - [`docs/asistente-ia.md`](docs/asistente-ia.md): el asistente de preguntas: cómo funciona, costos reales, seguridad, límites y decisiones.
 - [`docs/guia-dos-pasos.md`](docs/guia-dos-pasos.md): activar la verificación en dos pasos en tus cuentas, paso a paso.
 - [`docs/seguridad/auditoria-owasp-2025.md`](docs/seguridad/auditoria-owasp-2025.md): hallazgos y

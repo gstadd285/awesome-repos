@@ -338,3 +338,50 @@ gcloud run services update otea-austral --region $REGION --update-env-vars ASIST
 
 Si sospechas que la clave se filtró: revócala en la consola de Anthropic (efecto inmediato), crea otra, agrégala como
 versión nueva del secreto y vuelve a desplegar; sigue `docs/seguridad/respuesta-incidentes.md`.
+
+## 12. Cuentas de personas usuarias (opcional, cerradas por omisión)
+
+Las cuentas (crear cuenta, entrar, contraseñas, verificación en dos pasos, sesiones, descarga y eliminación de datos) vienen
+**cerradas**: con `CUENTAS_MODO=cerradas` (el valor por omisión, el de `despliegue/cloud-run.yaml`) las páginas explican que
+abren con el lanzamiento y **no guardan nada**, y el sitio no ofrece entrar. Abrirlas es una decisión de la persona responsable
+(secreto nuevo, correos, privacidad): el diseño, el modelo de amenazas y los límites están en [`cuentas.md`](cuentas.md). Para abrirlas:
+
+1. **Revisión legal** de la política de privacidad y de las condiciones de uso (hoy son textos provisionales). Quita de ellas el aviso
+   de «texto provisional» solo cuando la revisión esté hecha.
+2. **Genera el secreto** con el rol que despliega: `npm run cuentas:secreto`. Se muestra una sola vez: guárdalo en tu gestor de
+   contraseñas (copia fuera de línea) y en Secret Manager. **Es un secreto más**: Secret Manager incluye 6 versiones activas
+   gratis al mes y a partir de la séptima cuestan unos US$0,06 por versión al mes: revisa cuántas usas antes de crearlo.
+
+   ```bash
+   gcloud secrets create otea-cuentas-secreto --replication-policy=automatic
+   printf 'CUENTAS_SECRETO: '; read -rs v; echo
+   printf '%s' "$v" | gcloud secrets versions add otea-cuentas-secreto --data-file=-
+   gcloud secrets add-iam-policy-binding otea-cuentas-secreto \
+     --member="serviceAccount:otea-ejecucion@$PROYECTO.iam.gserviceaccount.com" \
+     --role=roles/secretmanager.secretAccessor
+   ```
+
+   **No lo rotes**: hoy no existe un script de recifrado y cambiarlo deja ilegibles los correos y los secretos de dos pasos.
+3. **Aplica la migración `0006`** (tablas de cuentas, sesiones, códigos y actividad, con permisos por columna y seguridad por fila)
+   **antes** de desplegar: `npm run db:migrar` con el rol dueño.
+4. **Reparte la cuota de correo.** El plan gratuito de Resend permite 100 correos al día **en total**; la lista de espera usa hasta
+   `WAITLIST_ENVIOS_DIARIOS` (80) y las cuentas hasta `CUENTAS_ENVIOS_DIARIOS` (20 por omisión: confirmaciones, restablecimientos y
+   avisos de seguridad; las altas pueden usar como mucho el 60 % de ese cupo y el resto queda para restablecer contraseñas y avisos). Que la suma no pase de 100; si el tráfico lo pide, subir de plan es una decisión de gasto (regla 1).
+5. **Descomenta el bloque «Cuentas»** de `despliegue/cloud-run.yaml` (`CUENTAS_MODO=abiertas`, `CUENTAS_ENVIOS_DIARIOS`,
+   `CUENTAS_SECRETO`) y despliega como en el paso 7: una revisión con etiqueta y sin tráfico. Si falta algo (base, clave de Resend o
+   secreto) la sonda `/api/salud` falla y la revisión no recibe tráfico.
+6. **Prueba en esa dirección con un correo real**: crear la cuenta (el correo debe llegar y el enlace abrir el sitio **de verdad**,
+   no `localhost`), entrar, activar los dos pasos con una app de autenticación (escanear el código QR), «olvidé mi contraseña»,
+   descargar los datos y eliminar la cuenta. Después dale tráfico.
+7. **Vigila los primeros días** en Cloud Logging los eventos `"tipo":"acceso_cuenta"` y `"tipo":"cuenta"`, y los
+   `"resultado":"limite"` (intentos repetidos) y `limite_excedido` con `cuentas_envios_diarios` (se agotó la cuota de correos).
+
+**Cerrarlas de inmediato** (las páginas siguen, sin guardar ni enviar nada; las sesiones abiertas dejan de servir):
+
+```bash
+gcloud run services update otea-austral --region $REGION --update-env-vars CUENTAS_MODO=cerradas
+```
+
+**Después de restaurar la base desde una copia**, cierra todas las sesiones, porque pueden reaparecer sesiones ya revocadas
+(con el rol dueño): `update cuenta_sesiones set revocada = now() where revocada is null;`
+

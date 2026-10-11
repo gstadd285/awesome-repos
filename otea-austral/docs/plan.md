@@ -162,13 +162,33 @@ Diseño, costos, seguridad, límites y la lista de decisiones en [`asistente-ia.
       acceso al panel `/admin` lo dice (frase + código TOTP, que ya existía).
 - [x] [`guia-dos-pasos.md`](guia-dos-pasos.md): paso a paso para activarla en las cuentas (control PR-09, que solo puede
       hacer la persona responsable).
-- [ ] Cuentas de personas usuarias (con la verificación en dos pasos en su diseño inicial): **no existen** y hoy no se
-      necesitan; es una decisión de producto con consecuencias de privacidad y seguridad, para después del lanzamiento.
+
+## Incremento · Cuentas de personas usuarias ✅ (cerradas)
+
+Diseño, modelo de amenazas, recorridos y operación en [`cuentas.md`](cuentas.md).
+
+- [x] Crear cuenta en **dos pasos** (correo → enlace → contraseña): la cuenta no existe hasta confirmar el correo, y las
+      respuestas son iguales exista o no el correo.
+- [x] Entrar y salir (sesión revocable en la base; cookie `__Host-` `HttpOnly` `SameSite=Lax`), contraseñas con scrypt y
+      política NIST 800-63B (lista local de claves comunes), «olvidé mi contraseña» y cambio de contraseña.
+- [x] Verificación en dos pasos opcional (TOTP con código QR propio, sin servicios externos) y 10 códigos de recuperación.
+- [x] Perfil (nombre, temas, resumen previo a la apertura), sesiones abiertas con cierre a distancia, actividad
+      reciente, **descarga** de los datos y **eliminación** de la cuenta.
+- [x] Correo cifrado (AES-256-GCM, `CUENTAS_SECRETO`), permisos por columna y seguridad por fila (migración `0006`),
+      límites por IP, correo y cuenta, tope diario de correos, avisos de seguridad por correo.
+- [x] Pruebas: servicio, almacenes (memoria y Postgres real), acciones, arquitectura y e2e con un servidor que imita a Resend.
+- [x] **Cerradas por omisión** (`CUENTAS_MODO`): las páginas existen y no guardan nada hasta que se abran.
+- [ ] **Decisiones de la persona responsable antes de abrirlas** (`cuentas.md` §12 y `despliegue.md` §12): el secreto nuevo
+      (Secret Manager), repartir la cuota de correo de Resend con la lista de espera, la revisión legal de privacidad y
+      condiciones, si se ofrece el cambio de correo y un plazo para las cuentas inactivas.
+- [ ] Mejoras posibles: cambio de correo, script de recifrado para rotar `CUENTAS_SECRETO`, consulta de contraseñas filtradas
+      (Pwned Passwords, k-anonimato: es una llamada saliente) y alertas personalizadas por tema cuando haya alertas reales.
 
 ## Falta para abrir al público (no es código)
 
 - [ ] Crear los proyectos en Google Cloud, Neon y Resend y desplegar siguiendo `docs/despliegue.md`.
-- [ ] Verificación en dos pasos en todas las cuentas (R6; guía en [`guia-dos-pasos.md`](guia-dos-pasos.md)) y presupuesto con alertas de 40 USD.
+- [ ] Verificación en dos pasos en todas las cuentas del proyecto (R6; guía en [`guia-dos-pasos.md`](guia-dos-pasos.md)) y presupuesto con alertas de 40 USD.
+- [ ] Abrir las cuentas de personas usuarias (opcional; ver el incremento «Cuentas» y `despliegue.md` §12).
 - [ ] Activar en GitHub _Secret scanning_, _Push protection_ y _Dependabot alerts_; generar `WAITLIST_SECRETO` y
       guardar una copia fuera de línea (sin ella, los correos cifrados no se recuperan).
 - [ ] Probar la redirección a https en una revisión sin tráfico antes de dar tráfico real (`docs/despliegue.md`).

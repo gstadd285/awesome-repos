@@ -57,6 +57,19 @@ spec:
             - name: WAITLIST_SECRETO
               valueFrom:
                 secretKeyRef: { name: otea-waitlist-secreto, key: latest }
+            # ── Cuentas de personas usuarias ─────────────────────────────────────────────────────────────────
+            # Por omisión están cerradas: las páginas existen pero no guardan nada. Se abren solo con la decisión de
+            # la persona responsable (docs/cuentas.md, «Abrir las cuentas»): aplicar antes la migración 0006, crear el
+            # secreto `otea-cuentas-secreto` (npm run cuentas:secreto) y descomentar TODO este bloque. Si falta algo,
+            # la sonda de /api/salud falla y la revisión no recibe tráfico. La cuota gratuita de Resend (100 correos
+            # al día) se reparte con la lista de espera: WAITLIST_ENVIOS_DIARIOS + CUENTAS_ENVIOS_DIARIOS <= 100.
+            # - name: CUENTAS_MODO
+            #   value: abiertas
+            # - name: CUENTAS_ENVIOS_DIARIOS
+            #   value: "20"
+            # - name: CUENTAS_SECRETO
+            #   valueFrom:
+            #     secretKeyRef: { name: otea-cuentas-secreto, key: latest }
             - name: ADMIN_CLAVE_HASH
               valueFrom:
                 secretKeyRef: { name: otea-admin-clave-hash, key: latest }

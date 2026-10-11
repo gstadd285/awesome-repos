@@ -281,6 +281,32 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
   - Cada entrada nueva de la base (`conocimiento.ts`): sin lenguaje de recomendación, cifras verificadas, enlaces permitidos, y
     un caso en `recuperar.test.ts`; revisa que no robe preguntas de otras entradas (a igual puntaje gana la que va antes).
   - Los componentes de cliente del asistente solo importan `@/lib/asistente/limites` y `cliente`.
+- **Cuentas de personas usuarias** (`src/lib/cuentas/`, `src/app/cuenta/`, `src/app/acciones/cuenta.ts`; diseño, modelo de
+  amenazas y operación en `docs/cuentas.md`). Reglas:
+  - **Cerradas por omisión** (`CUENTAS_MODO=cerradas`: las páginas existen, no guardan nada y el sitio no ofrece entrar).
+    **Abrirlas es decisión de la persona responsable** (secreto nuevo, cuota de correo, revisión legal): nunca las abras ni
+    cambies los textos legales como si estuvieran revisados por tu cuenta.
+  - La cuenta **no existe hasta confirmar el correo** (la contraseña se elige con el enlace). Abrir un enlace de correo no cambia
+    nada: solo el POST. Crear, entrar y olvidar **responden igual exista o no el correo** (con tiempo mínimo y contraseña
+    «señuelo»): no lo rompas con un mensaje o un estado distinto.
+  - Toda Server Action de `acciones/cuenta.ts` que cambia algo pasa por `conSesion` → `exigirAccionCuenta` (sesión + token
+    anti-CSRF), y toda página o ruta privada llama a `exigirSesionCuenta`; las excepciones son una **lista cerrada** que vigila
+    `arquitectura.test.ts`. Lo que vuelve al navegador desde una acción (`valores`) nunca incluye contraseñas, códigos ni tokens.
+  - Contraseñas con scrypt (`clave.ts`, con semáforo), política NIST 800-63B (`politica-clave.ts`: sin reglas de composición;
+    lista local de claves comunes generada con `scripts/generar-claves-comunes.mjs`; aviso de licencia en `AVISOS-DE-TERCEROS.md`).
+    El correo y el secreto de dos pasos van **cifrados** con claves derivadas de `CUENTAS_SECRETO` (que **hoy no se puede rotar**:
+    no hay script de recifrado). El correo de una cuenta no se puede cambiar (no hay permiso de escritura en la base).
+  - La sesión es la cookie `__Host-otea_sesion` (`HttpOnly`, `Secure`, `SameSite=Lax`), solo un token cuyo hash vive en la base:
+    «Salir» la revoca de verdad. Los intentos fallidos se cuentan por IP, por (correo, IP), por correo y **por cuenta en la base**
+    (en «puntos»: tope alto a propósito, porque uno bajo regala el bloqueo a distancia de cualquier cuenta; el freno fino es por
+    (correo, IP)). Los correos que cualquiera puede provocar (altas) no pueden pasar del 60 % del cupo diario de Resend: el resto es
+    de restablecer contraseñas y avisos. No cambies esos números ni «arregles» el bloqueo dejando pasar la contraseña correcta
+    (deja de limitar las adivinanzas) sin leer `docs/cuentas.md` §8–§9.
+  - `VERSION_TEXTOS` (cuentas) debe ser igual a `VERSION_CONSENTIMIENTO` (lista de espera): son las mismas dos páginas legales; una
+    prueba lo vigila. Un tipo de evento de actividad nuevo exige `TIPOS_DE_EVENTO`, `DESCRIPCION_EVENTO` y la restricción de la base
+    (si la migración ya se aplicó en algún lugar, en una migración nueva).
+  - Los componentes de cliente de `components/cuenta/` solo importan `@/lib/cuentas/formato-secreto` (el resto de `lib/cuentas` y
+    `lib/correo` es del servidor).
 - **Panel `/admin`** (`src/app/admin/`, `src/lib/admin/`): sin `ADMIN_*` y `DATABASE_URL` responde 404.
   Acceso con frase (PBKDF2) y código TOTP; la sesión es una cookie `__Host-` firmada **y registrada en
   la base** (`admin_sesiones`), así que «Salir» la revoca de verdad. Toda página privada llama a
@@ -326,14 +352,16 @@ npm run lint
 npm run typecheck    # next typegen + tsc
 npm test             # Vitest (una pasada); npm run test:watch para modo observación
 npm run build && npm start   # `output: "standalone"`: start corre `node .next/standalone/server.js`
-npm run test:e2e     # Playwright sobre el build (servidor en el 3200; el modo IA del asistente, en el 3201 contra un
-                     # servidor que imita a Anthropic en el 3299: `scripts/anthropic-falso.mjs`)
+npm run test:e2e     # Playwright sobre el build (servidor en el 3200, con las cuentas abiertas si hay DATABASE_URL y el correo
+                     # yendo a un servidor que imita a Resend en el 3298: `scripts/resend-falso.mjs`; el modo IA del asistente,
+                     # en el 3201 contra un servidor que imita a Anthropic en el 3299: `scripts/anthropic-falso.mjs`)
 npm run db:migrar    # DATABASE_URL_ADMIN (rol dueño): aplica db/migraciones y la semilla de fuentes
 npm run db:rol-app   # crea el usuario de la aplicación e imprime su URL una sola vez
 npm run admin:credenciales   # frase, TOTP y secretos de sesión del panel
 npm run lista:secreto        # WAITLIST_SECRETO (marca de tiempo del formulario y cifrado de correos)
 npm run lista:exportar       # DATABASE_URL_ADMIN + WAITLIST_SECRETO: correos confirmados, descifrados (-- --csv)
 npm run lista:recifrar       # rotar WAITLIST_SECRETO (ensayo; -- --aplicar para rotar de verdad)
+npm run cuentas:secreto      # CUENTAS_SECRETO (cifrado del correo y de los dos pasos de las cuentas; hoy no se puede rotar)
 npm run asistente:probar     # GASTA DINERO: prueba el asistente con la API real (ASISTENTE_PRUEBA_REAL=1 + clave en el entorno)
 npm run seguridad:secretos   # escáner de secretos en archivos e historial (lo corre la CI)
 npm run seguridad:canarios   # build con secretos falsos: ninguno debe quedar en .next/ (lo corre la CI)
@@ -367,13 +395,14 @@ contra la misma base dentro de los mismos 30 segundos pueden chocar (en la CI la
 
 ```
 src/
-  app/                 rutas: portada, metodologia, fuentes, seguridad, legales, 404,
+  app/                 rutas: portada, metodologia, fuentes, seguridad, legales, 404, cuenta/ (cuentas),
                        lista-de-espera/confirmar, acciones/ (Server Actions), api/csp-report,
                        api/salud, api/asistente, error y global-error, admin/, alertas/, .well-known/security.txt,
                        sitemap, robots, manifest, íconos, imagen OG
   components/
     alert-card/        AlertCard y sus insignias
     asistente/         AsistenteChat (la conversación; componente de cliente)
+    cuenta/            formularios y paneles de la cuenta (entrar, crear, perfil, seguridad, datos)
     brand/             Emblem y Logo
     home/              Story (héroe, cinta, plano, tablero), Temas (selector), ejemplos de alertas,
                        pre-apertura, lista de espera
@@ -393,13 +422,17 @@ src/
                        marca de tiempo (tiempo.ts), cifrado y claves derivadas
     admin/             sesión firmada, TOTP, frase, almacén de sesiones en la base
     asistente/         preguntas frecuentes, búsqueda, políticas, servicio, proveedor de IA, revisión de la salida, gasto
+    cuentas/           cuentas de personas usuarias: servicio, almacenes (memoria y Postgres), contraseñas, cifrado, tokens,
+                       TOTP, código QR propio, correos, acceso (cookie y CSRF)
+    correo/            envío con Resend y plantilla de los correos (compartidos por la lista de espera y las cuentas)
     alertas/           repositorio Postgres de alertas, fuentes, correcciones y auditoría; formularios
     db/                cliente de Postgres (pool, transacciones) y ayudante de pruebas
   app/admin/           panel interno (acceso, listado, alta, detalle y acciones)
   app/alertas/         alertas publicadas; app/api/salud: sonda de Cloud Run
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
-db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados, 0005 gasto del asistente)
+db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados, 0005 gasto del asistente,
+                       0006 cuentas)
 scripts/               migrar, rol de la aplicación, credenciales del panel, preparar standalone, lista de espera
                        (secreto, exportar, recifrar), escáner de secretos, canarios, auditoría de dependencias
 seguridad/             avisos de npm aceptados (con motivo y fecha de revisión)
@@ -480,6 +513,32 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   se colgaba): evita reutilizar nombres dentro de un manejador largo.
 - **Condiciones de uso**: la ruta sigue siendo `/terminos` (no cambia enlaces), pero todo lo que ve la persona dice
   «Condiciones de uso»; los textos legales son provisionales y no se presentan como definitivos.
+
+## Lo aprendido (cuentas de personas usuarias)
+
+- **La paleta de Tailwind está reiniciada**: `fill-white`, `bg-black`, `text-white`… **no existen** y no avisan. El código QR salió
+  como un cuadrado negro (todo se pintó del color por omisión del SVG) hasta que los colores pasaron a atributos del SVG
+  (`fill="#FFFFFF"`); `CodigoQr.test.tsx` y el e2e lo vigilan. Antes de usar una utilidad de color, mira los tokens de `globals.css`.
+- **React 19 vacía los campos sin controlar al terminar una acción** (`useActionState`): por eso las acciones devuelven lo que
+  no es secreto (`valores`: el correo, las casillas, lo guardado ya normalizado) y las contraseñas **nunca** vuelven. Un campo
+  `required` que se vacía impide reenviar: la casilla de «eliminar la cuenta» sigue marcada si solo falló la contraseña.
+- **Sin JavaScript también funciona** (un e2e lo prueba: crear cuenta, salir, entrar y restablecer): el segundo paso acepta el
+  código de la app o uno de recuperación en un solo campo (el conmutador y el teclado numérico aparecen al hidratar) y el botón
+  «Mostrar» de las contraseñas solo existe hidratado.
+- **`Referrer-Policy: no-referrer` rompe los formularios sin JavaScript**: el navegador manda `Origin: null` al enviar un
+  formulario (modo de navegación) y Next.js rechaza esa Server Action con un 500. Las páginas con token usan `strict-origin`
+  (entrega solo el origen, nunca la dirección con el token). Con `fetch` (con JavaScript) no pasa, así que solo se nota probando sin él.
+- **Playwright**: tras pulsar «Salir» hay que **esperar a que termine la acción** antes de ir a otra página (si no, la sesión
+  sigue viva y `/cuenta/entrar` redirige al perfil: falla solo bajo carga); `getByRole("alert")` también encuentra el anunciador
+  de rutas de Next.js (`__next-route-announcer__`): busca dentro de `main`; el idioma es `es-CL`; `getByLabel("Tu contraseña
+  nueva")` también encuentra «Repite tu contraseña nueva» (usa `exact`); los enlaces de los correos llevan el origen de
+  `NEXT_PUBLIC_SITE_URL`, no el del servidor de pruebas: se navega por la ruta. Los correos de las pruebas «llegan» al servidor
+  falso (`GET /__correos?para=…`).
+- **Next.js**: una ruta nueva exige `npx next typegen` antes de `tsc` (los tipos `PageProps<"/ruta">` salen de `.next/types`);
+  `source: "/cuenta/:path*"` en `headers()` también cubre `/cuenta`; el servidor falso de Resend se levanta con
+  `reuseExistingServer`: si cambias su puerto o sus variables, mata los servidores viejos (`ss -ltnp`).
+- **Una migración sin aplicar todavía se puede editar** (la `0006` mientras no se haya aplicado en ningún entorno); después, solo
+  una migración nueva.
 
 ## Notas de Next.js
 

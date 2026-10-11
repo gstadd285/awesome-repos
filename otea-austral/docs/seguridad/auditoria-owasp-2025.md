@@ -307,3 +307,46 @@ Observaciones (ninguna abierta de severidad media o alta):
    puede hacer nada más que escribir texto, y ese texto se revisa).
 4. La detección de datos personales es un patrón (correo, teléfono, RUT, números largos): no detecta, por ejemplo, un
    nombre o una dirección escritos en una frase.
+
+## Adenda · cuentas de personas usuarias (2026-10-11)
+
+Revisión de las cuentas (`src/lib/cuentas/`, `src/app/acciones/cuenta.ts`, `src/app/cuenta/`, `db/migraciones/0006_cuentas.sql`)
+en dos pasadas: la lectura propia durante la implementación y una **revisión ofensiva independiente** (otro agente de IA, sin
+haber visto mi razonamiento, con el código sin confirmar en un repositorio local). El revisor reprodujo los ataques con el
+servicio contra el almacén en memoria y los límites reales, y **no pudo** probar Postgres, el Resend real ni Cloud Run; esas
+partes se cubren con las pruebas del proyecto (el contrato del almacén se ejecuta también contra Postgres real con el rol de la
+aplicación, y los e2e usan Postgres real y un servidor que imita a Resend). Misma salvedad que el resto: es una revisión
+asistida por IA, sin pruebas de intrusión; **no sustituye** a una prueba de seguridad independiente antes de abrir las cuentas.
+
+| Categoría | Resultado |
+|---|---|
+| A01 Control de acceso | Sin hallazgos. Toda lectura y escritura filtra por la cuenta de la sesión (sin IDOR en sesiones, datos ni descarga); una sesión «a medias» (falta el código) no lee el perfil ni exporta; permisos por columna y seguridad por fila con una política por operación |
+| A02 Configuración | Un fallo propio **corregido**: la política de referente `no-referrer` de las páginas con token hacía que el navegador mandara `Origin: null` al enviar el formulario sin JavaScript y Next.js lo rechazaba (500); ahora es `strict-origin` (sigue sin entregar la dirección con el token) y un e2e cubre los formularios sin JavaScript. Cookie `__Host-` con `HttpOnly`, `Secure` y `SameSite=Lax`; secreto propio con canario en el build |
+| A03 Cadena de suministro | Sin dependencias nuevas de ejecución: el código QR es propio y la lista de contraseñas comunes sale de zxcvbn 4.4.2 (MIT, aviso en `AVISOS-DE-TERCEROS.md`), verificada por integridad |
+| A04 Criptografía | Sin hallazgos. AES-256-GCM con dato asociado (una fila copiada a otra no se abre), claves independientes por HKDF, índice ciego, scrypt con parámetros guardados en el hash, tokens de 256 bits de los que solo se guarda el hash, comparaciones en tiempo constante |
+| A05 Inyección | Sin SQL con datos (parámetros siempre; `arquitectura.test.ts` lo vigila). Correos: asunto sin saltos de línea, HTML escapado, enlaces armados desde `NEXT_PUBLIC_SITE_URL` y no desde `Host`; redirecciones solo a listas cerradas |
+| A06 Diseño inseguro | La cuenta no existe hasta confirmar el correo (nadie puede quedarse con la cuenta de otra persona). Dos hallazgos de disponibilidad, **corregidos** (CUE-01 y CUE-02) |
+| A07 Autenticación | Política del NIST SP 800-63B, límites por IP, por (correo, IP), por correo y por cuenta, dos pasos opcionales sin reutilización de códigos, sesiones revocables, contraseña de nuevo en las acciones delicadas. Un fallo propio **corregido**: volver a entrar con la contraseña reiniciaba el contador de códigos equivocados de los dos pasos |
+| A08 Integridad | Token anti-CSRF por sesión, `SameSite`, comprobación de `Origin` de Next.js; la descarga rechaza `Sec-Fetch-Site: cross-site` |
+| A09 Registro y alertas | Solo etiquetas (`cuenta`, `acceso_cuenta`, `limite_excedido`): nunca un correo, contraseña, token o código. La actividad de seguridad se muestra a la persona y se guarda 90 días |
+| A10 Condiciones excepcionales | Falla cerrada: sin base no hay sesión; sin cuota no se envía correo; sin cuenta se gasta igual el trabajo de scrypt; si el envío falla se descarta el enlace |
+
+**Hallazgos de la revisión independiente y qué se hizo**
+
+| ID | Severidad | Hallazgo | Estado |
+|---|---|---|---|
+| CUE-01 | Media | **Bloqueo dirigido**: ocho contraseñas equivocadas desde una sola IP dejaban a la dueña de la cuenta sin entrar 15 minutos, repetible sin fin | **Corregido.** El freno fino pasó a ser por (correo, IP): quien insiste se bloquea a sí mismo. El tope por cuenta subió a 100 «puntos» por ventana (el máximo de NIST SP 800-63B), con el código de los dos pasos pesando 13; restablecer la contraseña lo borra. *No se adoptó* la corrección que sugería el revisor (verificar la contraseña antes y dejar pasar siempre al que acierta): un tope que deja pasar la contraseña correcta no limita las adivinanzas. Queda el bloqueo con ≥13 IP (aceptado) |
+| CUE-02 | Media | Llenar la cuota diaria de correos con altas impedía el restablecimiento de contraseñas y los avisos de seguridad | **Corregido.** Las altas (y el aviso a quien ya tiene la cuenta) solo pueden usar el 60 % del cupo; el resto es de seguridad. Queda que un atacante con 12 altas al día impide crear cuentas nuevas (aceptado) |
+| CUE-03 | Baja | Si Resend tardara más de 1,2 s en enviar, el tiempo de respuesta de «crear cuenta» delataría si el correo ya tenía cuenta | **Aceptado.** No se pudo medir sin el Resend real. Enviar «después» de responder no es seguro en Cloud Run (la CPU se limita al terminar la solicitud) |
+| CUE-04 | Baja | Los topes globales (600 intentos por 15 min, 300 altas por 10 min, 200 «olvidé» por hora) son por instancia y con unas 60 IP se agotan para todos | **Aceptado.** Son topes de costo, no un control de identidad; vigilar `acceso_cuenta` con `resultado: "limite"` |
+| CUE-05 | Baja | Confirmar los dos pasos no repite la contraseña: con una cookie ya robada y una configuración dejada a medias, se podría terminar y dejar fuera a la dueña | **Aceptado.** Para empezar sí se pide la contraseña; exige robo de la sesión y un descuido en una ventana corta |
+| CUE-06 | Info | La unidad de cuota no se devuelve si el envío falla | **Aceptado.** El contador solo puede subir (disparador `OT010`) para que la aplicación no pueda reiniciarlo |
+| CUE-07 | Info | La descarga de datos depende de que el navegador envíe `Sec-Fetch-Site` (SameSite=Lax cubre el resto) | **Aceptado.** Todos los navegadores actuales la envían; solo permitiría forzar una descarga, no leerla |
+
+**Sin hallazgos tras revisarlo a fondo:** reutilización de códigos de los dos pasos y de recuperación (el gasto es atómico),
+enumeración por estado o por texto (las respuestas son idénticas), revocación real al salir, escalada desde una sesión «a
+medias», fijación de sesión, descifrado cruzado entre filas, SQL, correo, redirecciones y frontera entre cliente y servidor.
+
+**Sin probar:** la integración con el Resend real y la latencia de su API; el comportamiento de las cuentas en Cloud Run
+(`X-Forwarded-For`, cabeceras de caché en producción); rotar `CUENTAS_SECRETO` (no hay script de recifrado); lector de pantalla
+real. Las cuentas siguen **cerradas** hasta que la persona responsable las abra (`docs/cuentas.md`).

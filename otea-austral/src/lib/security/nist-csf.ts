@@ -306,7 +306,7 @@ export const CONTROLES: Control[] = [
     id: "PR-08",
     titulo: "Límite de solicitudes",
     descripcion:
-      "Reportes, panel, lista de espera y su confirmación limitan solicitudes por IP; la lista suma campo trampa, marca de tiempo firmada y tope diario en la base. Los límites por IP viven en cada instancia: primera barrera, no tope global.",
+      "Reportes, panel, lista de espera, cuentas y sus confirmaciones limitan solicitudes por IP; los formularios con correo suman campo trampa, marca de tiempo firmada y tope diario en la base. Los límites por IP viven en cada instancia: primera barrera, no tope global.",
     estado: "parcial",
     subcategorias: ["PR.IR-04"],
     evidencia: [
@@ -314,6 +314,7 @@ export const CONTROLES: Control[] = [
       "src/app/admin/acciones.ts",
       "src/lib/waitlist/service.ts",
       "src/lib/waitlist/tiempo.ts",
+      "src/lib/cuentas/servicio.ts",
     ],
   },
   {
@@ -371,13 +372,15 @@ export const CONTROLES: Control[] = [
     id: "PR-13",
     titulo: "Datos cifrados y seguridad por fila",
     descripcion:
-      "Los correos de la lista de espera se guardan cifrados (AES-256-GCM): la aplicación puede escribirlos, no leerlos. Cada tabla activa seguridad por fila: la base niega lo que ninguna política permite expresamente.",
+      "Los correos de la lista de espera (la aplicación los escribe, no los lee) y los de las cuentas y sus secretos de dos pasos se guardan cifrados con AES-256-GCM. Cada tabla activa seguridad por fila: la base niega lo que ninguna política permite.",
     estado: "implementado",
     subcategorias: ["PR.DS-01", "PR.AA-05"],
     evidencia: [
       "db/migraciones/0003_seguridad_por_fila.sql",
       "db/migraciones/0004_correos_cifrados.sql",
+      "db/migraciones/0006_cuentas.sql",
       "src/lib/waitlist/cifrado.ts",
+      "src/lib/cuentas/cifrado.ts",
       "src/lib/db/rls.test.ts",
     ],
   },
@@ -410,10 +413,28 @@ export const CONTROLES: Control[] = [
     ],
   },
   {
+    id: "PR-18",
+    titulo: "Cuentas de personas usuarias",
+    descripcion:
+      "La cuenta nace al confirmar el correo; contraseñas con scrypt y lista de claves comunes; sesión revocable (__Host-, HttpOnly, SameSite=Lax) con token anti-CSRF; dos pasos opcionales; frenos por IP, correo y cuenta. Cerradas hasta que se abran a propósito.",
+    estado: "implementado",
+    subcategorias: ["PR.AA-01", "PR.AA-03", "PR.AA-05"],
+    evidencia: [
+      "src/lib/cuentas/servicio.ts",
+      "src/lib/cuentas/clave.ts",
+      "src/lib/cuentas/politica-clave.ts",
+      "src/lib/cuentas/acceso.ts",
+      "src/app/acciones/cuenta.ts",
+      "db/migraciones/0006_cuentas.sql",
+      "e2e/cuentas.spec.ts",
+      "docs/cuentas.md",
+    ],
+  },
+  {
     id: "PR-14",
     titulo: "Reglas de seguridad que se comprueban solas",
     descripcion:
-      "Pruebas y reglas de lint leen el código y fallan si una acción del panel no exige sesión, se arma SQL con datos, el navegador importa la base o la configuración, aparece una subida de archivos o cambia el inventario de endpoints.",
+      "Pruebas y reglas de lint leen el código y fallan si una acción del panel o de las cuentas no exige sesión, se arma SQL con datos, el navegador importa la base o la configuración, aparece una subida de archivos o cambia el inventario de endpoints.",
     estado: "implementado",
     subcategorias: ["PR.PS-06"],
     evidencia: ["src/lib/security/arquitectura.test.ts", "eslint.config.mjs", "docs/seguridad/plan-20-controles.md"],

@@ -82,8 +82,8 @@ revisión de cada pull request, auditoría inmutable y este programa versionado.
 | Google Fonts | Descarga de tipografías **durante el build**; los visitantes no se conectan a Google | Baja | Ninguno | En uso |
 | Google Cloud (Cloud Run, Artifact Registry, Secret Manager, Cloud Logging) | Servir el sitio, imagen y secretos | Alta | IP y navegador de los visitantes en los registros de solicitudes (retención de 30 días) | Elegido; por crear |
 | Registrador del dominio | oteaustral.com | Alta | Datos de la persona titular | Por comprar |
-| Resend | Correo de doble opt-in | Media | Correos de la lista de espera | Elegido; por crear |
-| Neon | Base de datos: alertas, fuentes, lista de espera, sesiones del panel | Alta | Correos de la lista de espera | Elegido; por crear |
+| Resend | Correo de doble opt-in y de las cuentas (confirmación, restablecimiento y avisos de seguridad) | Media | Correos de la lista de espera y de las cuentas | Elegido; por crear |
+| Neon | Base de datos: alertas, fuentes, lista de espera, sesiones del panel, cuentas de personas usuarias | Alta | Correos de la lista de espera y de las cuentas (cifrados), hashes de contraseñas | Elegido; por crear |
 | Anthropic | Redacta las respuestas del asistente de preguntas, **solo si se activa la IA** (de pago) | Baja | El texto de cada pregunta y de las preguntas frecuentes que se usan para responderla, sin IP | **Opcional; apagado por omisión.** Requiere la decisión de la persona responsable (`docs/asistente-ia.md`) |
 
 Para aceptar un proveedor: plan gratuito suficiente, verificación en dos pasos, cifrado en tránsito
@@ -97,6 +97,9 @@ y en reposo, condiciones de tratamiento de datos legibles y posibilidad de expor
 | Reportes de violación de la CSP | Navegadores | Registros de la plataforma | Sin IP, agente de usuario ni parámetros de URL en lo que registra la aplicación. |
 | Correo de la lista de espera | Persona interesada | Base de datos | Con consentimiento y doble opt-in; las inscripciones sin confirmar se borran a los 30 días; se borra al darse de baja. |
 | Enlace de confirmación | Aplicación | Correo de la persona; URL en los registros | Token de un solo uso (72 h); en la base solo su hash. |
+| Cuenta de una persona usuaria | Persona usuaria (cuando se abran las cuentas) | Base de datos | Correo y secreto de dos pasos **cifrados**; contraseña como hash scrypt; nombre y temas (opcionales); versión y fecha de lo aceptado. Sin IP ni agente. Se descarga y se elimina desde el perfil. |
+| Sesiones y actividad de la cuenta | Aplicación | Base de datos | Hash del token, etiqueta aproximada del dispositivo y fechas (sesiones hasta 30 días); tipo y fecha de cada evento (90 días). |
+| Enlaces de las cuentas | Aplicación | Correo de la persona; URL en los registros | Token de un solo uso (72 h el alta, 1 h el restablecimiento); en la base solo su hash. Las altas sin confirmar (solo el correo cifrado) se borran a los 7 días. |
 | Alias internos en la auditoría | Equipo | Base de datos | Inmutable; sin datos personales. |
 | Sesiones del panel | Equipo | Base de datos | Identificador aleatorio y fechas; sin datos personales. |
 | Preguntas al asistente | Visitantes | No se guardan | Se usan solo para responder. Con IA activada, el texto viaja a Anthropic (sin IP). Las preguntas con datos personales no se procesan ni se envían. |
@@ -120,6 +123,8 @@ contacta npm y Google Fonts; la CI corre en GitHub.
 | R7 | Secreto expuesto (token de despliegue o de base de datos) | Baja | Alto | Solo variables de entorno, escáner de secretos sobre archivos e historial, build con secretos falsos, rotación, procedimiento de contención | Mitigado en parte; falta activar _Secret scanning_ y _Push protection_ en GitHub |
 | R8 | Indisponibilidad (ataque de volumen o caída del proveedor) | Media | Medio | CDN del alojamiento, límites de solicitudes, vuelta a versión sana | Mitigado en parte |
 | R9 | Pérdida o secuestro del dominio | Baja | Alto | Renovación automática, bloqueo de transferencia, dos pasos en el registrador | Pendiente (dominio por comprar) |
+| R13 | Toma de una cuenta de persona usuaria (contraseña débil o reutilizada, relleno de credenciales, enlace de correo robado) | Media | Medio | Contraseña mínima de 12 caracteres con lista de comunes (NIST 800-63B), scrypt, frenos por IP, por (correo, IP), por correo y por cuenta, dos pasos opcionales con códigos de recuperación, sesiones revocables y avisos por correo, acciones delicadas con la contraseña de nuevo | Mitigado; **cuentas cerradas hasta decidir abrirlas** (`docs/cuentas.md`) |
+| R14 | Fuga de datos de las cuentas (base o copia robada) | Baja | Alto | Correo y secreto de dos pasos cifrados con `CUENTAS_SECRETO` (en Secret Manager, aparte de la base); contraseñas con scrypt; tokens y códigos solo en hash; permisos por columna y RLS | Mitigado; **`CUENTAS_SECRETO` no se puede rotar todavía** (falta el script de recifrado) |
 | R10 | Gasto descontrolado de IA (abuso del asistente, bucle, precio mal configurado) | Media | Medio | IA apagada por omisión; tope diario con reserva del peor caso en la base; cupo por persona; límites por IP; límite de gasto en la consola de Anthropic | Mitigado en parte; **falta el límite de la consola (acción de la persona responsable)** |
 | R11 | Respuesta de IA inadecuada: lenguaje de recomendación, enlaces, cifras inventadas, instrucciones filtradas | Media | Medio | Modelo sin herramientas ni secretos, solo texto público; políticas antes del modelo; salida revisada frase por frase; respaldo a la base | Mitigado en parte; probado contra un servidor falso, no contra la API real |
 | R12 | Datos personales enviados por una persona a un proveedor de IA | Media | Medio | Detección de correo, teléfono, RUT y números largos (la pregunta no se envía); aviso en la interfaz y en la política; no se guardan preguntas | Mitigado en parte; la detección es léxica |

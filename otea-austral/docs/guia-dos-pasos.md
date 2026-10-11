@@ -62,6 +62,21 @@ con los valores nuevos (las sesiones anteriores quedan invalidadas).
 
 ## Para las personas que se inscriben en la lista de espera
 
-No tienen cuentas ni contraseñas: la inscripción se verifica en dos pasos (dejar el correo y confirmarlo con el enlace
-que llega a ese correo, que vence a las 72 horas). Si algún día existen cuentas de usuario, la verificación en dos pasos
-será parte de su diseño inicial y se decidirá antes con la persona responsable (ver `docs/plan.md`).
+La inscripción no necesita cuenta ni contraseña: se verifica en dos pasos (dejar el correo y confirmarlo con el enlace que
+llega a ese correo, que vence a las 72 horas).
+
+## Para las personas que tengan una cuenta de Otea (cuando se abran)
+
+Las cuentas de personas usuarias ya están construidas, pero **cerradas** hasta que la persona responsable decida abrirlas
+(ver [`cuentas.md`](cuentas.md)). Son distintas de las cuentas de arriba (las del proyecto): la verificación en dos pasos de
+una cuenta de Otea es **opcional** y la activa cada persona desde «Seguridad»:
+
+- Se agrega a una app de autenticación escaneando un código QR (o escribiendo el secreto, si no se puede escanear): el sitio
+  dibuja el código por su cuenta y el secreto nunca pasa por un servicio externo.
+- Al activarla entrega **10 códigos de recuperación**, que se muestran una sola vez: se guardan fuera del teléfono, como
+  los de cualquier otro servicio. Cada uno vale una sola vez, y desde «Seguridad» se pueden generar otros nuevos (los
+  anteriores dejan de servir).
+- Entrar pide la contraseña **y** el código; las acciones delicadas (cambiar la contraseña, desactivar los dos pasos,
+  eliminar la cuenta) piden de nuevo la contraseña y un código.
+- **No hay recuperación asistida:** sin la app ni los códigos de recuperación, la cuenta no se puede recuperar (en esta
+  versión no se puede cambiar el correo ni hay soporte humano para ello).

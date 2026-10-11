@@ -52,9 +52,14 @@ publiques detalles en issues abiertos.
 | Configuración | `WAITLIST_MODE=cerrada` por defecto; el esquema de entorno rechaza la lista en memoria, una base sin `verify-full` y una URL del sitio que no sea https en producción (se exige al ejecutar, no al construir) | `src/lib/env.ts` |
 | Panel `/admin` | Sin credenciales configuradas responde 404. Acceso con frase aleatoria (hash PBKDF2-SHA256 de 600 000 iteraciones) **y** código TOTP de un solo uso (gastado en la base, atómico entre instancias); sin pistas sobre qué falló; 5 intentos por IP y 100 en total cada 15 min por instancia | `src/app/admin/acciones.ts`, `src/lib/admin/` |
 | Sesión del panel | Cookie `__Host-` (`Secure`, `HttpOnly`, `SameSite=Strict`) firmada con HMAC-SHA256 y **registrada en la base**: «Salir» la revoca de verdad y falla cerrado si la base no responde; 8 horas; token anti-CSRF ligado a la sesión en cada acción, además de la comprobación de `Origin` de Next.js | `src/lib/admin/sesion.ts`, `acceso.ts`, `almacen.ts` |
+| Cuentas de personas usuarias | **Cerradas por omisión** (`CUENTAS_MODO`): las páginas existen y no guardan nada. La cuenta **no existe hasta confirmar el correo** (enlace de un solo uso, 72 h, solo su hash en la base; la contraseña se elige con el enlace) y abrir el enlace no cambia nada: solo el POST. Crear, entrar y «olvidé mi contraseña» **responden igual exista o no el correo**, con tiempo mínimo y una contraseña «señuelo»; las altas repetidas avisan a la persona dueña por correo, como mucho una vez por hora | `src/lib/cuentas/servicio.ts`, `docs/cuentas.md` |
+| Cuentas de personas usuarias | **Contraseñas** con scrypt (N = 2^15, r = 8, p = 3, sal propia, semáforo contra el agotamiento de memoria) y política del NIST SP 800-63B: mínimo 12 y máximo 128 caracteres, sin reglas de composición ni caducidad, y se rechazan las comunes (lista local de ~10 400 con sus variantes), repetitivas, secuencias y las que contienen el correo, el nombre o el del sitio. Entrar cuenta los fallos **por IP, por (correo, IP), por correo y por cuenta en la base**: a los 8 de un mismo lugar con un mismo correo en 15 minutos ese lugar no prueba nada más; y a los 100 «puntos» de la cuenta en 15 minutos (el máximo de NIST; el código equivocado de los dos pasos vale 13) tampoco nadie, aunque la contraseña sea la correcta, hasta que restablezca su contraseña por correo o termine la ventana | `clave.ts`, `politica-clave.ts`, `claves-comunes.ts` |
+| Cuentas de personas usuarias | **Sesión**: cookie `__Host-otea_sesion` (`Secure`, `HttpOnly`, `SameSite=Lax`) con solo un token al azar; en la base, su hash: «Salir» la revoca de verdad y falla cerrado si la base no responde. 30 días como máximo, 7 sin uso, 10 abiertas a la vez. Toda acción que cambia algo exige la sesión y un **token anti-CSRF** ligado a ella (además de `Origin` de Next.js); las delicadas piden la contraseña de nuevo. Una lista cerrada, vigilada por `arquitectura.test.ts`, fija cuáles acciones y páginas se ven sin sesión | `acceso.ts`, `src/app/acciones/cuenta.ts`, `arquitectura.test.ts` |
+| Cuentas de personas usuarias | **Verificación en dos pasos opcional** (TOTP RFC 6238; código QR que dibuja el propio sitio, sin enviar el secreto a ningún servicio), 10 códigos de recuperación (solo su hash; se gastan de forma atómica) y un código de la app que no se puede reutilizar. Los avisos de seguridad (contraseña cambiada, dos pasos activados o desactivados, cuenta eliminada) llegan por correo | `totp-cuenta.ts`, `qr.ts`, `tokens.ts` |
+| Cuentas de personas usuarias | **Datos**: correo y secreto de dos pasos **cifrados** (AES-256-GCM con claves derivadas de `CUENTAS_SECRETO` por propósito; el dato asociado liga cada texto a su fila) y búsqueda por índice ciego; sin IP ni agente de usuario; permisos por columna y RLS por operación; la actividad es de solo agregar y se conserva 90 días. La persona puede **descargar** todo (sin secretos) y **eliminar** la cuenta, que se borra en cascada | `cifrado.ts`, `db/migraciones/0006_cuentas.sql` |
 | Base de datos | Usuario de la aplicación con permisos mínimos por columna; sin `DELETE` salvo en la lista de espera; la auditoría, las correcciones, las sesiones y los códigos gastados son de solo agregar (permisos **y** disparadores); consultas siempre parametrizadas; ciclo de vida de las alertas validado también en la base | `db/migraciones/`, `scripts/crear-rol-app.mjs`, `src/lib/db/` |
 | Base de datos | **Seguridad por fila (RLS)** en las diez tablas (nueve en la migración `0003` y `asistente_uso` en la `0005`): sin política no hay acceso, aunque un `GRANT` agregado por error lo diera. Las inscripciones confirmadas quedan fuera del alcance de la aplicación (no puede cambiarlas ni borrarlas). Una prueba falla si una tabla nueva no activa RLS o si un permiso no tiene política; `db:rol-app` rechaza un usuario con superusuario, `BYPASSRLS` u otros atributos de más | `db/migraciones/0003_seguridad_por_fila.sql`, `src/lib/db/rls.test.ts` |
-| Correo | Única petición saliente (`api.resend.com`, fija), con tiempo límite y sin seguir redirecciones; los fallos se registran sin correo ni token | `src/lib/waitlist/correo.ts` |
+| Correo | Única petición saliente (`api.resend.com`, fija), con tiempo límite y sin seguir redirecciones; los fallos se registran sin correo ni token. Lo comparten la lista de espera y las cuentas; la plantilla escapa todo y solo admite enlaces https | `src/lib/correo/resend.ts`, `plantilla.ts` |
 | Errores | Páginas de error propias que nunca muestran el mensaje del error; la sonda `/api/salud` falla si la configuración es inválida y Cloud Run no envía tráfico a esa revisión | `src/app/error.tsx`, `global-error.tsx`, `src/app/api/salud/route.ts` |
 | Contenedor | Imagen multi-etapa sin privilegios (UID 10001), base fijada por digest, sin `.env`, código fuente, `sharp`, mapas de código ni gestores de paquetes (se quitan npm, corepack y yarn de la base: con ellos, el escaneo marcaba 13 hallazgos, uno crítico, en las dependencias que npm empaqueta); sin optimizador de imágenes público; la CI la construye, la prueba y la escanea con Trivy | `Dockerfile`, `.dockerignore`, `next.config.ts` |
 | Pruebas | Más de 70 pruebas de navegador en CI, también del panel con una base de datos real: sin errores de consola ni violaciones de CSP, cabeceras, teclado, movimiento reducido, lista de espera (incluida la marca de tiempo), enlaces seguros, sesión revocada al salir, código TOTP no reutilizable y **ninguna respuesta con secretos** | `e2e/` |
@@ -76,7 +81,8 @@ publiques detalles en issues abiertos.
 - [x] Pruebas e2e con Playwright que fallan ante errores de consola, incluidas violaciones de CSP.
 - [ ] Revisar con asesoría legal los textos provisionales (privacidad, términos, aviso legal,
       metodología). **Antes de abrir la lista de espera.**
-- [x] Cookies: la única cookie es la del panel, `__Host-`, `HttpOnly`, `Secure`, `SameSite=Strict`.
+- [x] Cookies: solo dos, ambas técnicas y `__Host-`, `HttpOnly`, `Secure`: la del panel (`SameSite=Strict`) y, si se abren las
+      cuentas, la de la sesión de la persona usuaria (`SameSite=Lax`).
 - [ ] El límite por IP depende de `X-Forwarded-For`: en Cloud Run se toma la entrada que agrega
       Google (`IP_PROXIES_CONFIABLES=1`; detrás de un balanceador, 2). **Confirmarlo tras desplegar.**
 
@@ -110,6 +116,10 @@ publiques detalles en issues abiertos.
 - [ ] Actualizar a mano, de vez en cuando, el digest de Trivy fijado en la CI (Dependabot no lo sigue).
 - [ ] Verificación en dos pasos en GitHub, Google Cloud, Neon, Resend, registrador del dominio y
       correo, con códigos de respaldo fuera de línea (guía paso a paso: `docs/guia-dos-pasos.md`).
+- [ ] **Antes de abrir las cuentas de personas usuarias** (`docs/cuentas.md`, `docs/despliegue.md` §12): crear el secreto
+      `CUENTAS_SECRETO` (`npm run cuentas:secreto`; Secret Manager cobra unos US$0,06 por versión al mes pasadas las 6
+      gratis), repartir los 100 correos diarios de Resend con la lista de espera, revisar los textos legales y probar el
+      recorrido con un correo real. **No rotar `CUENTAS_SECRETO`** (falta el script de recifrado).
 - [ ] **Antes de activar la IA del asistente** (`docs/asistente-ia.md`): decidir modelo, tope diario y clave; fijar
       el límite de gasto en la consola de Anthropic; confirmar las condiciones de Anthropic y la revisión legal de
       la política de privacidad y de las condiciones de uso. Sin eso, el asistente responde con la base, gratis.
@@ -119,6 +129,14 @@ publiques detalles en issues abiertos.
 - [ ] Renovar `Expires` de `security.txt` antes del 2027-04-01.
 
 ### Decisiones y riesgos conocidos
+
+- **Cuentas de personas usuarias: cerradas y con límites conocidos** (`docs/cuentas.md` §9 y §12). Se aceptan: el **bloqueo
+  dirigido** (quien conozca un correo y disponga de al menos 13 IP puede dejar esa cuenta sin entrar durante 15 minutos por
+  vez; un solo lugar solo se bloquea a sí mismo, y «Olvidé mi contraseña» lo borra; es mejor que dejar pasar la fuerza bruta),
+  el **agotamiento de los topes globales** con muchas IP, la **ausencia de recuperación asistida** (sin la app ni los códigos de recuperación no hay vuelta
+  atrás: no hay cambio de correo ni soporte humano en esta versión), que **la dirección con el token de un enlace de correo
+  queda en los registros de solicitudes de Cloud Run** (por eso vencen pronto y se gastan; los ve solo el equipo propietario) y
+  que la lista de contraseñas comunes es local (no consulta bases de contraseñas filtradas: eso sería otra llamada saliente).
 
 - **Asistente con IA: opcional y apagado.** Es el único servicio de pago posible (CLAUDE.md, regla 1). Por omisión
   responde con las preguntas frecuentes, sin llamar a nadie. Riesgos y cómo se acotan: _inyección de instrucciones_
