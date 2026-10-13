@@ -37,7 +37,7 @@ export function TopicPicker() {
                 type="button"
                 aria-pressed={activo}
                 onClick={() => alternar(tema)}
-                className={`flex h-full w-full flex-col gap-6 rounded-card p-5 text-left transition-[background-color,box-shadow] duration-300 ${
+                className={`flex h-full w-full flex-col gap-6 rounded-card p-5 text-left mov:transition-[background-color,color,box-shadow] mov:duration-(--dur-3) mov:ease-(--ease-salida) ${
                   activo
                     ? "bg-ink text-ivory shadow-[0_24px_48px_-28px_rgb(15_27_45/0.6)]"
                     : "superficie superficie-interactiva text-texto"

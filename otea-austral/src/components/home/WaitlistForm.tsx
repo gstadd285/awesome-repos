@@ -105,7 +105,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
         placeholder="nombre@correo.cl"
         aria-invalid={errores.correo ? true : undefined}
         aria-describedby={errores.correo ? "correo-error" : undefined}
-        className="mt-3 block w-full rounded-badge bg-papel px-4 py-3 text-base text-texto shadow-[inset_0_0_0_1px_var(--color-linea-fuerte)] placeholder:text-apoyo focus:shadow-[inset_0_0_0_1px_var(--color-ink)] focus:outline-none"
+        className="mt-3 block w-full rounded-badge bg-papel px-4 py-3 text-base text-texto campo placeholder:text-apoyo"
       />
       {errores.correo ? (
         <p id="correo-error" className="mt-2 text-sm font-medium text-texto">
@@ -192,8 +192,13 @@ export function WaitlistForm({ marca }: { marca: string }) {
         ) : null}
       </fieldset>
 
-      <button type="submit" disabled={pendiente} className={buttonClasses("primary", "mt-6 w-full disabled:opacity-70")}>
-        {pendiente ? "Enviando…" : "Unirme a la lista"}
+      <button
+        type="submit"
+        disabled={pendiente}
+        data-magnetico
+        className={buttonClasses("primary", "mt-6 w-full disabled:opacity-70")}
+      >
+        <span className="boton-etiqueta">{pendiente ? "Enviando…" : "Unirme a la lista"}</span>
       </button>
 
       <p role="status" aria-live="polite" className="mt-4 min-h-[1.5rem] text-sm text-texto">

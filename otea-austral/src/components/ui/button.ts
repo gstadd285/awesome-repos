@@ -1,8 +1,11 @@
 type Variante = "primary" | "outline" | "ghost";
 type Tamano = "md" | "sm";
 
+// Forma y respuesta común. Las transiciones usan los tokens de movimiento y solo existen con la puerta abierta
+// (`mov:`); el pulsado (`active:scale`) responde en todos los modos. El latón trae sus propias transiciones
+// (resorte, brillo y destello) en globals.css.
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-pill font-medium transition-[background-color,box-shadow,scale] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97]";
+  "inline-flex select-none items-center justify-center gap-2 rounded-pill font-medium active:scale-[0.97] mov:transition-[background-color,box-shadow,color,scale] mov:duration-(--dur-2) mov:ease-(--ease-salida)";
 
 const TAMANOS: Record<Tamano, string> = {
   // 14 px con 12 px de relleno vertical: 44 px de alto, un objetivo táctil cómodo.
@@ -11,10 +14,11 @@ const TAMANOS: Record<Tamano, string> = {
 };
 
 const VARIANTES: Record<Variante, string> = {
-  // Único acento: latón con texto tinta (5,6:1).
-  primary: "bg-acento text-ink shadow-[0_10px_24px_-12px_rgb(122_94_51/0.8)] hover:brightness-105",
-  // Píldora con borde fino.
-  outline: "text-texto shadow-[inset_0_0_0_1px_var(--color-linea-fuerte)] hover:bg-papel-alto",
+  // Único acento: latón como material, con texto tinta (≥ 4,9:1 en todo el degradado). Ver `boton-laton`.
+  primary: "boton-laton",
+  // Píldora con borde fino; el halo del foco va en la misma sombra.
+  outline:
+    "text-texto shadow-[var(--anillo,0_0_#0000),inset_0_0_0_1px_var(--color-linea-fuerte)] hover:bg-papel-alto hover:shadow-[var(--anillo,0_0_#0000),inset_0_0_0_1px_rgb(15_27_45/0.5)]",
   ghost: "bg-papel-alto text-texto linea-fina hover:bg-papel",
 };
 

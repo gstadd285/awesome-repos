@@ -1,6 +1,6 @@
 /**
  * Cinta 3D de láminas en los colores de Otea (estado y marca). Es una pieza
- * decorativa: las láminas ondean con CSS (`otea-ola` en globals.css) y los
+ * decorativa: las láminas ondean con CSS (`otea-ola` en globals.css, en pausa fuera de vista) y los
  * rótulos son temas, no datos.
  */
 const COLORES = ["pierde", "condicionado", "tinta", "gana", "bruma"] as const;
@@ -25,7 +25,8 @@ const ROTULOS = [
 
 export function Ribbon({ className = "" }: { className?: string }) {
   return (
-    <div className={`cinta ${className}`} aria-hidden="true">
+    // `data-bucle`: la ola y los rótulos no paran; DirectorEscena los pausa fuera de vista.
+    <div className={`cinta ${className}`} aria-hidden="true" data-bucle>
       <div className="cinta-pista">
         {LAMINAS.map((color, i) => (
           <span key={i} className={`cinta-lamina cinta-lamina-${color}`} />

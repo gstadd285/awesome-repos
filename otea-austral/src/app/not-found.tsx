@@ -20,8 +20,8 @@ export default function NotFound() {
         <p className="anim-aparecer anim-retraso-3 mt-6 max-w-[520px] text-lede text-texto-suave">
           Puede que el enlace esté roto o que la página se haya movido.
         </p>
-        <Link href="/" className={buttonClasses("outline", "mt-10")}>
-          Volver al inicio
+        <Link href="/" data-magnetico className={buttonClasses("primary", "mt-10")}>
+          <span className="boton-etiqueta">Volver al inicio</span>
         </Link>
       </main>
       <SiteFooter />

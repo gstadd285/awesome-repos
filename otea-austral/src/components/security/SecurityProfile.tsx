@@ -89,7 +89,7 @@ export function SecurityProfile({ contacto }: { contacto: string }) {
               key={f.codigo}
               id={id}
               aria-labelledby={`${id}-titulo`}
-              className="superficie superficie-interactiva anim-revelar mb-6 scroll-mt-24 break-inside-avoid rounded-card p-6"
+              className="superficie anim-revelar mb-6 scroll-mt-24 break-inside-avoid rounded-card p-6"
             >
               <div className="flex items-start gap-4">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fondo text-texto linea-fina">

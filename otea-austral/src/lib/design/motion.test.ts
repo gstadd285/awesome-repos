@@ -3,10 +3,19 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MAX_INDICE } from "@/components/motion/TextoEnMovimiento";
 
-const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8").replace(
-  /\/\*[\s\S]*?\*\//g,
-  "",
-);
+/** Todos los `.css` de `src/`: las guardas leen el CSS entero, no solo `globals.css`. */
+function hojas(dir: string): string[] {
+  return readdirSync(dir).flatMap((nombre) => {
+    const ruta = join(dir, nombre);
+    if (statSync(ruta).isDirectory()) return hojas(ruta);
+    return nombre.endsWith(".css") ? [ruta] : [];
+  });
+}
+
+const HOJAS = hojas(join(process.cwd(), "src"));
+const css = HOJAS.map((ruta) => readFileSync(ruta, "utf8"))
+  .join("\n")
+  .replace(/\/\*[\s\S]*?\*\//g, "");
 
 /** Quita cada bloque `{…}` que sigue a `cabecera` (con llaves anidadas). */
 function quitarBloques(texto: string, cabecera: RegExp): string {
@@ -31,6 +40,34 @@ function archivos(dir: string): string[] {
     if (statSync(ruta).isDirectory()) return archivos(ruta);
     return /\.tsx?$/.test(nombre) && !nombre.includes(".test.") ? [ruta] : [];
   });
+}
+
+/** Código de componentes y bibliotecas (sin pruebas), con su texto. */
+const CODIGO = archivos(join(process.cwd(), "src")).map((ruta) => ({ ruta, texto: readFileSync(ruta, "utf8") }));
+
+/** Declaraciones `propiedad: valor;` en orden, con el texto de la regla en que aparecen. */
+function declaraciones(texto: string): { prop: string; valor: string; indice: number }[] {
+  return [...texto.matchAll(/([a-z-]+)\s*:\s*([^;{}]+);/g)].map((m) => ({
+    prop: m[1],
+    valor: m[2].trim(),
+    indice: m.index ?? 0,
+  }));
+}
+
+/** El cuerpo de cada `@keyframes nombre { … }`. */
+function cuerposDeKeyframes(texto: string): { nombre: string; cuerpo: string }[] {
+  const resultado: { nombre: string; cuerpo: string }[] = [];
+  for (const m of texto.matchAll(/@keyframes ([\w-]+)\s*\{/g)) {
+    const apertura = (m.index ?? 0) + m[0].length - 1;
+    let nivel = 0;
+    let fin = apertura;
+    for (; fin < texto.length; fin++) {
+      if (texto[fin] === "{") nivel++;
+      if (texto[fin] === "}" && --nivel === 0) break;
+    }
+    resultado.push({ nombre: m[1], cuerpo: texto.slice(apertura + 1, fin) });
+  }
+  return resultado;
 }
 
 /** Todo el movimiento cuelga de esta puerta, que escribe el motor (src/lib/movimiento/motor.ts). */
@@ -137,5 +174,106 @@ describe("movimiento", () => {
     expect(usadas.size).toBeGreaterThan(0);
     const faltantes = [...usadas].filter((clase) => !css.includes(`.${clase}`));
     expect(faltantes).toEqual([]);
+  });
+  it("todo el CSS vive en globals.css: si aparece otra hoja en src/, las guardas la leen y esta prueba avisa", () => {
+    expect(HOJAS.map((ruta) => ruta.slice(process.cwd().length + 1))).toEqual(["src/app/globals.css"]);
+  });
+
+  it("los componentes no usan motion-safe:, motion-reduce: ni animate-* de Tailwind (no obedecen a la puerta)", () => {
+    for (const { ruta, texto } of CODIGO) {
+      expect(texto, ruta).not.toMatch(/\bmotion-(safe|reduce):/);
+      expect(texto, ruta).not.toMatch(/(^|[\s"'`])animate-[a-z[]/m);
+    }
+  });
+
+  it("nadie anima con la Web Animations API (contaría en getAnimations() con movimiento reducido)", () => {
+    for (const { ruta, texto } of CODIGO) expect(texto, ruta).not.toMatch(/\.animate\(/);
+  });
+
+  it("las variantes mov y fino se declaran en forma de bloque (la de una línea desalinea quitarBloques)", () => {
+    expect(css).toMatch(/@custom-variant mov \{\s*html\[data-movimiento="completo"\] & \{\s*@slot;/);
+    expect(css).toMatch(/@custom-variant fino \{\s*@media \(hover: hover\) and \(pointer: fine\) \{\s*@slot;/);
+    expect(css).not.toMatch(/@custom-variant [\w-]+\s*\([^)]*\)\s*;/);
+  });
+
+  it("los tokens de movimiento están en :root (no en @theme, que generaría utilidades animate-*)", () => {
+    const raiz = css.slice(css.indexOf(":root {"), css.indexOf("}", css.indexOf(":root {")));
+    for (const token of ["--dur-1: 120ms", "--dur-2: 200ms", "--dur-3: 320ms", "--dur-4: 560ms", "--dur-5: 900ms"]) {
+      expect(raiz).toContain(token);
+    }
+    expect(raiz).toMatch(/--ease-salida:\s*cubic-bezier\(0\.16, 1, 0\.3, 1\)/);
+    expect(raiz).toMatch(/--ease-enfasis:\s*cubic-bezier\(0\.65, 0, 0\.35, 1\)/);
+    expect(raiz).toMatch(/--ease-entrada:\s*cubic-bezier\(0\.5, 0, 0\.9, 0\.6\)/);
+    const tema = css.slice(css.indexOf("@theme {"), css.indexOf("@theme inline"));
+    expect(tema).not.toMatch(/--(dur|ease|animate)-/);
+  });
+
+  it("el resorte va literal: cada linear() sigue a un cubic-bezier de respaldo y nunca lleva var()", () => {
+    const lista = declaraciones(css);
+    const conResorte = lista.filter((d) => d.valor.includes("linear("));
+    expect(conResorte.length).toBeGreaterThan(0);
+    for (const d of conResorte) {
+      expect(d.prop, d.valor).toMatch(/^(transition|animation)-timing-function$/);
+      expect(d.valor, `${d.prop}: ${d.valor}`).not.toContain("var(");
+      const anterior = lista[lista.indexOf(d) - 1];
+      expect(anterior?.prop, `${d.prop} sin respaldo`).toBe(d.prop);
+      expect(anterior?.valor).toContain("cubic-bezier(");
+      expect(anterior?.valor).not.toContain("linear(");
+    }
+  });
+
+  it("ningún @keyframes anima propiedades fuera del compositor (filter, radios, fondo, tamaño o posición)", () => {
+    for (const { nombre, cuerpo } of cuerposDeKeyframes(css)) {
+      for (const { prop } of declaraciones(cuerpo)) {
+        expect(prop, `@keyframes ${nombre}`).not.toMatch(
+          /^(filter|backdrop-filter|border-radius|background-position|background-size|width|height|top|left|right|bottom|margin.*|padding.*)$/,
+        );
+      }
+    }
+  });
+
+  it("sin backdrop-filter: el desenfoque sobre la escena 3D hundía los fps de la historia", () => {
+    expect(css).not.toMatch(/backdrop-filter\s*:/);
+  });
+
+  it("los bucles infinitos son pocos y conocidos, y se pausan fuera de vista ([data-bucle][data-fuera])", () => {
+    const infinitos = new Set(
+      [...css.matchAll(/animation:\s*([\w-]+)[^;]*\binfinite\b/g)].map((m) => m[1]),
+    );
+    expect([...infinitos].sort()).toEqual(["otea-flotar", "otea-ola", "otea-pulso"]);
+    expect(css).toMatch(
+      /\[data-bucle\]\[data-fuera\],\s*\[data-bucle\]\[data-fuera\] \*\s*\{\s*animation-play-state:\s*paused;/,
+    );
+    const cinta = readFileSync(join(process.cwd(), "src/components/home/Ribbon.tsx"), "utf8");
+    expect(cinta).toMatch(/className=\{`cinta [^`]*`\}[^>]*data-bucle/);
+  });
+
+  it("los efectos de puntero solo viven en la puerta y con puntero fino", () => {
+    const fuera = quitarBloques(css, PUERTA);
+    expect(fuera).not.toMatch(/var\(--(tx|ty|rx|ry)\b/);
+    expect(fuera).not.toMatch(/\[data-magnetico\]/);
+  });
+
+  it("DirectorEscena: isla de cliente que escribe por CSSOM, sin estado de React ni importaciones del servidor", () => {
+    const isla = readFileSync(join(process.cwd(), "src/components/motion/DirectorEscena.tsx"), "utf8");
+    expect(isla.startsWith('"use client";')).toBe(true);
+    const importaciones = [...isla.matchAll(/from "([^"]+)"/g)].map((m) => m[1]);
+    expect(importaciones.sort()).toEqual(["next/navigation", "react"]);
+    expect(isla).not.toMatch(/useState|useReducer|setAttribute\(\s*"style"|\.style\.cssText|style=\{/);
+    expect(isla).toContain('dataset.movimiento === "completo"');
+    expect(isla).toContain("style.setProperty");
+    expect(isla).toContain("style.removeProperty");
+    const layout = readFileSync(join(process.cwd(), "src/app/layout.tsx"), "utf8");
+    expect(layout).toContain("<DirectorEscena />");
+  });
+
+  it("el botón principal es de latón, sin filtros, y las transiciones de los botones esperan a la puerta", () => {
+    const boton = readFileSync(join(process.cwd(), "src/components/ui/button.ts"), "utf8");
+    expect(boton).toMatch(/primary:\s*"boton-laton"/);
+    expect(boton).not.toContain("brightness");
+    const sinPuerta = boton.replace(/mov:[^\s"]+/g, "");
+    expect(sinPuerta).not.toMatch(/\btransition|\bduration-|\bease-/);
+    expect(css).toMatch(/@utility boton-laton \{/);
+    expect(css).toMatch(/@property --brillo \{\s*syntax: "<percentage>";\s*inherits: false;/);
   });
 });

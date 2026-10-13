@@ -5,7 +5,7 @@ import { EnlaceCuenta } from "./EnlaceCuenta";
 import { NAV_CABECERA, NAV_PRINCIPAL } from "./navigation";
 
 const ENLACE =
-  "rounded-badge text-sm font-medium text-texto-suave transition-colors hover:text-texto aria-[current=page]:text-texto";
+  "rounded-badge text-sm font-medium text-texto-suave hover:text-texto aria-[current=page]:text-texto mov:transition-colors mov:duration-(--dur-2) mov:ease-(--ease-salida)";
 
 type SiteHeaderProps = {
   /** Ruta de la página actual (por ejemplo «/alertas»): se marca en la navegación con `aria-current`. */
@@ -37,9 +37,15 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
 
         <div className="ml-auto flex items-center gap-3 lg:ml-0">
           <EnlaceCuenta variante="cabecera" actual={actual} className={`${ENLACE} hidden px-2 py-1 lg:inline-block`} />
-          <Link href="/#lista-de-espera" className={buttonClasses("primary", "whitespace-nowrap", "sm")}>
-            <span className="sm:hidden">Alertas</span>
-            <span className="hidden sm:inline">Recibir alertas</span>
+          <Link
+            href="/#lista-de-espera"
+            data-magnetico
+            className={buttonClasses("primary", "whitespace-nowrap", "sm")}
+          >
+            <span className="boton-etiqueta">
+              <span className="sm:hidden">Alertas</span>
+              <span className="hidden sm:inline">Recibir alertas</span>
+            </span>
           </Link>
 
           {/* Menú móvil sin JavaScript. */}

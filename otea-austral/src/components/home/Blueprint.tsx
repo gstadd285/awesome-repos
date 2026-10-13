@@ -1,6 +1,6 @@
 /**
  * Plano técnico isométrico: retícula de puntos, cotas y rumbos de horizonte,
- * con una gota de metal líquido. Decorativo.
+ * con una gota de metal (quieta). Decorativo.
  */
 export function Blueprint({ className = "" }: { className?: string }) {
   return (

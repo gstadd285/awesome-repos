@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AvisoMovimiento } from "@/components/motion/ControlesMovimiento";
 import { TextoEnMovimiento } from "@/components/motion/TextoEnMovimiento";
 import { buttonClasses } from "@/components/ui/button";
+import { Flecha } from "@/components/ui/Flecha";
 import { Blueprint } from "./Blueprint";
 import { Board } from "./Board";
 import { Ribbon } from "./Ribbon";
@@ -46,11 +47,12 @@ export function Story() {
             className="hero-texto max-w-[470px] text-lede text-texto-suave"
           />
           <div className="hero-acciones anim-aparecer anim-retraso-4 flex flex-wrap items-center gap-3">
-            <Link href="#lista-de-espera" className={buttonClasses("primary")}>
-              Recibir alertas
+            <Link href="#lista-de-espera" data-magnetico className={buttonClasses("primary")}>
+              <span className="boton-etiqueta">Recibir alertas</span>
             </Link>
             <Link href="#ejemplos" className={buttonClasses("outline")}>
               Ver una alerta de ejemplo
+              <Flecha direccion="abajo" />
             </Link>
           </div>
         </div>
@@ -124,6 +126,7 @@ export function Story() {
           <p className="micro mt-8 font-semibold text-texto">Información, no asesoría.</p>
           <Link href="/metodologia" className={buttonClasses("outline", "mt-4")}>
             Ver metodología
+            <Flecha />
           </Link>
         </section>
       </div>

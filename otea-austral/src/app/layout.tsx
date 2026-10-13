@@ -2,12 +2,14 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import { headers } from "next/headers";
 import { connection } from "next/server";
+import { DirectorEscena } from "@/components/motion/DirectorEscena";
 import { MovimientoSync } from "@/components/motion/MovimientoSync";
 import { ScriptMovimiento } from "@/components/motion/ScriptMovimiento";
 import { env } from "@/lib/env";
 import { SITIO } from "@/lib/site";
 import "./globals.css";
 
+// Source Serif 4 conserva la precarga: la usa la entrada del héroe (primer pintado).
 const serif = Source_Serif_4({
   variable: "--font-source-serif",
   subsets: ["latin"],
@@ -22,11 +24,13 @@ const sans = Inter({
   display: "swap",
 });
 
+// Contadores y cotas: fuera de la ruta crítica (21,5 KB menos antes del primer pintado).
 const mono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   weight: ["400"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -72,10 +76,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex min-h-dvh flex-col">
         <MovimientoSync />
-        <a
-          href="#contenido"
-          className="sr-only rounded-pill bg-acento px-4 py-2 text-sm font-medium text-ink focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[60]"
-        >
+        <DirectorEscena />
+        <a href="#contenido" className="salto-contenido">
           Saltar al contenido
         </a>
         {children}

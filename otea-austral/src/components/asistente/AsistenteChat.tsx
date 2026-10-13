@@ -353,7 +353,7 @@ export function AsistenteChat({ modo, sugeridas }: { modo: ModoRespuesta; sugeri
             aria-describedby="asistente-ayuda"
             enterKeyHint="send"
             autoComplete="off"
-            className="block max-h-40 min-h-[3.25rem] w-full resize-none field-sizing-content rounded-badge bg-papel px-4 py-3 text-base text-texto shadow-[inset_0_0_0_1px_var(--color-linea-fuerte)] placeholder:text-apoyo disabled:opacity-70"
+            className="block max-h-40 min-h-[3.25rem] w-full resize-none field-sizing-content rounded-badge bg-papel px-4 py-3 text-base text-texto campo placeholder:text-apoyo disabled:opacity-70"
           />
           {cargando ? (
             <button type="button" onClick={() => control.current?.abort()} className={buttonClasses("outline", "shrink-0")}>

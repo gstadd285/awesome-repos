@@ -34,7 +34,7 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
       id={base}
       aria-labelledby={`${base}-titulo`}
       data-estado={alerta.estado}
-      className={`superficie superficie-interactiva rounded-card p-6 text-left ${className}`}
+      className={`superficie rounded-card p-6 text-left ${className}`}
     >
       {retractada ? (
         <div role="note" className="mb-5 rounded-badge bg-fondo p-3 linea-fina">

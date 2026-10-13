@@ -42,7 +42,7 @@ export function useHidratado(): boolean {
 }
 
 export const CLASE_CAMPO =
-  "mt-3 block w-full rounded-badge bg-papel px-4 py-3 text-base text-texto shadow-[inset_0_0_0_1px_var(--color-linea-fuerte)] placeholder:text-apoyo focus:shadow-[inset_0_0_0_1px_var(--color-ink)] focus:outline-none aria-[invalid=true]:shadow-[inset_0_0_0_2px_var(--color-ink)]";
+  "mt-3 block w-full rounded-badge bg-papel px-4 py-3 text-base text-texto campo placeholder:text-apoyo";
 export const CLASE_ETIQUETA = "micro text-texto";
 export const CLASE_ENLACE = "text-texto underline underline-offset-4";
 export const CLASE_CASILLA = "h-6 w-6 shrink-0 accent-ink";

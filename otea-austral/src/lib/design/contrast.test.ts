@@ -42,6 +42,43 @@ describe("contraste AA del tema claro", () => {
     expect(contrastRatio(token("acento"), token("fondo"))).toBeLessThan(AA);
     expect(contrastRatio(token("mist"), token("fondo"))).toBeLessThan(AA);
   });
+
+  it.each(["laton-claro", "brass", "laton-oscuro"])(
+    "el botón de latón mantiene texto tinta AA en todo el degradado (%s)",
+    (parada) => {
+      expect(contrastRatio(token("ink"), token(parada))).toBeGreaterThanOrEqual(AA);
+    },
+  );
+
+  it("el degradado del botón usa esos tokens, en ese orden", () => {
+    expect(css).toMatch(
+      /linear-gradient\(180deg, var\(--color-laton-claro\) 0%, var\(--color-brass\) 55%, var\(--color-laton-oscuro\) 100%\)/,
+    );
+  });
+
+  it.each(["brass-deep"])("%s sirve como texto de 12 px o más sobre el lienzo claro, no sobre la sombra", (color) => {
+    for (const superficie of ["fondo", "papel", "papel-alto"]) {
+      expect(contrastRatio(token(color), token(superficie)), superficie).toBeGreaterThanOrEqual(AA);
+    }
+    expect(contrastRatio(token(color), token("fondo-sombra"))).toBeLessThan(AA);
+  });
+});
+
+describe("contraste AA sobre tinta (pie, capítulo nocturno, paneles oscuros)", () => {
+  it.each(["ivory", "brass", "mist", "niebla"])("%s sobre tinta ≥ 4.5:1", (texto) => {
+    expect(contrastRatio(token(texto), token("ink"))).toBeGreaterThanOrEqual(AA);
+  });
+
+  it("niebla es #C9CFD8", () => {
+    expect(token("niebla")).toBe("#C9CFD8");
+  });
+
+  it("el anillo de foco: tinta sobre el lienzo y latón sobre tinta (indicador no textual ≥ 3:1)", () => {
+    for (const superficie of superficies) {
+      expect(contrastRatio(token("ink"), token(superficie))).toBeGreaterThanOrEqual(3);
+    }
+    expect(contrastRatio(token("brass"), token("ink"))).toBeGreaterThanOrEqual(3);
+  });
 });
 
 describe("contrastRatio", () => {

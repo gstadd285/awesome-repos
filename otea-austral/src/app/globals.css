@@ -14,9 +14,15 @@
   --color-ink: #0F1B2D;
   --color-ivory: #F3EEE3;
   --color-brass: #B08D57;
-  /* Solo decorativo o logotipo sobre fondo claro (no alcanza AA en texto chico). */
+  /* AA como texto de 12 px o más sobre `fondo` (4,8:1), `papel` y `papel-alto` (numerales, índice, filetes);
+     no sobre `fondo-sombra` (4,2:1). `contrast.test.ts` lo vigila. */
   --color-brass-deep: #7A5E33;
   --color-mist: #8C97A6;
+  /* Texto secundario sobre tinta (11:1). */
+  --color-niebla: #C9CFD8;
+  /* Extremos del degradado del botón de latón: tinta sobre ambos ≥ 4,5:1 (7,4 y 4,9). */
+  --color-laton-claro: #C7A570;
+  --color-laton-oscuro: #A6834D;
 
   /* Tema claro */
   --color-fondo: #E7E5E0;
@@ -58,11 +64,73 @@
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
+/* ── Sistema de movimiento ─────────────────────────────────────────────────
+ * Tokens de duración, curva y escalonado (en `:root`, no en `@theme`, para no generar utilidades `animate-*`).
+ * Las curvas: `salida` para lo que aterriza (entradas, hover), `enfasis` para cámara, medidores y cambios de
+ * estado, `entrada` para lo que se va. El resorte NO es un token: va literal (utilidad `resorte`), siempre detrás
+ * de un `cubic-bezier` de respaldo, porque `var()` con `linear()` no tiene respaldo posible.
+ */
+:root {
+  --dur-1: 120ms; /* pulsado, cambio de color pequeño */
+  --dur-2: 200ms; /* hover, foco, chevrones, salidas cortas */
+  --dur-3: 320ms; /* cambios de estado, cabecera, paneles, view transitions de entrada */
+  --dur-4: 560ms; /* resortes, entradas de bloques, menú */
+  --dur-5: 900ms; /* titulares, trazados, piezas grandes */
+  --ease-salida: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-enfasis: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-entrada: cubic-bezier(0.5, 0, 0.9, 0.6);
+  --escalon: 40ms; /* listas */
+  --escalon-anotacion: 90ms;
+  --escalon-demo: 120ms; /* secuencias de demostración */
+}
+
+/* Destello del botón de latón: se registra para poder transicionarlo. `inherits: false` no llega a los
+   seudoelementos, así que se escribe en el propio `::after`. */
+@property --brillo {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: -30%;
+}
+
+/* Halo de latón del foco: lo pone `:focus-visible` (o el foco de un campo) y lo leen las sombras de botones,
+   superficies y campos (`var(--anillo, 0 0 #0000), …`). Sin herencia: no se contagia a los hijos. */
+@property --anillo {
+  syntax: "*";
+  inherits: false;
+}
+
+/* Variantes con puerta (forma de bloque: la de una línea desalinea `quitarBloques` de motion.test.ts).
+   `mov:` solo con el movimiento activado; `fino:` solo con ratón o trackpad. Nunca `motion-safe:`/`motion-reduce:`:
+   obedecen a la consulta de medios y no al conmutador del pie. */
+@custom-variant mov {
+  html[data-movimiento="completo"] & {
+    @slot;
+  }
+}
+
+@custom-variant fino {
+  @media (hover: hover) and (pointer: fine) {
+    @slot;
+  }
+}
+
+/* Resorte con un pequeño rebote (*pops*, checks, sellos, vuelta del botón magnético). Respaldo primero. */
+@utility resorte {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+}
+
 @layer base {
   html {
     color-scheme: light;
     background-color: var(--color-fondo);
     scroll-padding-top: 88px;
+    accent-color: var(--color-brass);
+    scrollbar-color: var(--color-mist) transparent;
+    /* El `:active` de botones y tarjetas da la respuesta al tacto. */
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -72,9 +140,41 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  button:not(:disabled),
+  summary,
+  label:has(input),
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  input,
+  textarea {
+    caret-color: var(--color-brass-deep);
+  }
+
+  /* Foco que aterriza: anillo tinta de 2 px (13,7:1) y, en la separación de 3 px, un halo de latón que pintan
+     las sombras de botones, superficies y campos. Con la puerta abierta el anillo llega desde 9 px (abajo). */
   :focus-visible {
     outline: 2px solid var(--color-ink);
     outline-offset: 3px;
+    --anillo: 0 0 0 3px rgb(176 141 87 / 0.5);
+  }
+
+  /* Sobre tinta (pie, capítulo nocturno, paneles oscuros) el anillo pasa a latón (5,6:1). */
+  .en-tinta :focus-visible,
+  .en-tinta:focus-visible {
+    outline-color: var(--color-brass);
   }
 
   ::selection {
@@ -89,26 +189,24 @@
 @utility superficie {
   background-color: var(--color-papel-alto);
   box-shadow:
+    var(--anillo, 0 0 #0000),
     inset 0 0 0 1px var(--color-linea),
     inset 0 1px 0 rgb(255 255 255 / 0.9),
     0 2px 6px -2px rgb(15 27 45 / 0.08),
     0 24px 48px -24px rgb(15 27 45 / 0.3);
 }
 
-/* Vidrio esmerilado claro (cabecera, paneles flotantes). */
+/* Porcelana casi opaca (cabecera, paneles flotantes). Sin `backdrop-filter`: el desenfoque sobre la escena 3D,
+   que cambia en cada cuadro, costaba ~11 fps en la historia. Al 94 % lo que pasa por debajo no se lee nítido. */
 @utility vidrio {
-  background-color: rgb(252 250 246 / 0.72);
+  background-color: rgb(252 250 246 / 0.94);
   box-shadow: inset 0 -1px 0 var(--color-linea);
-  -webkit-backdrop-filter: blur(18px) saturate(1.15);
-  backdrop-filter: blur(18px) saturate(1.15);
-
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    background-color: rgb(252 250 246 / 0.97);
-  }
 }
 
 @utility linea-fina {
-  box-shadow: inset 0 0 0 1px var(--color-linea);
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea);
 }
 
 /* ── Tipografía ────────────────────────────────────────────────────────────── */
@@ -135,7 +233,12 @@
   font-family: var(--font-mono);
   font-size: var(--text-micro);
   letter-spacing: 0.04em;
-  font-feature-settings: "tnum" on;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cifras que cambian o se comparan (contadores, cotas, porcentajes): de ancho fijo, no bailan. */
+@utility cifras {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Enlace entre corchetes: `[ SALIR ]` en el panel interno y la pantalla de error (la cabecera pública ya no lo usa). */
@@ -180,15 +283,175 @@
 
 /* ── Interacción ───────────────────────────────────────────────────────────── */
 
+/* Hover honesto: solo lo que se puede pulsar se eleva, y solo con un puntero que pase por encima (en táctil el
+   hover se quedaría pegado). El pulsado responde en todos los modos; el movimiento (transiciones y la subida
+   de 2 px) vive en la puerta, más abajo. La tarjeta de alerta no es clicable: no lleva esta utilidad. */
 @utility superficie-interactiva {
-  transition: box-shadow 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  @media (hover: hover) {
+    &:hover {
+      box-shadow:
+        var(--anillo, 0 0 #0000),
+        inset 0 0 0 1px var(--color-linea-fuerte),
+        inset 0 1px 0 rgb(255 255 255 / 0.95),
+        0 4px 10px -4px rgb(15 27 45 / 0.12),
+        0 32px 60px -28px rgb(15 27 45 / 0.38);
+    }
+  }
 
-  &:hover {
+  &:active {
+    scale: 0.985;
+  }
+}
+
+/* ── Botón de latón ────────────────────────────────────────────────────────
+ * Latón como material, no como relleno: degradado vertical claro → medio → oscuro (tinta sobre los tres
+ * ≥ 4,9:1), filo de luz arriba, filo de sombra abajo y una sombra de contacto cálida. `::before` es la luz
+ * (un velo al pasar el cursor; con la puerta abierta y ratón, un brillo que sigue al puntero) y `::after` el
+ * destello que barre el botón una sola vez al entrar. Ambos van detrás de la etiqueta (`isolation`).
+ */
+@utility boton-laton {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  color: var(--color-ink);
+  background-color: var(--color-brass);
+  /* Un satinado suave en la mitad de arriba (como un bisel) sobre el degradado del metal. */
+  background-image:
+    linear-gradient(180deg, rgb(255 251 240 / 0.18) 0%, rgb(255 251 240 / 0.05) 48%, rgb(255 251 240 / 0) 52%),
+    linear-gradient(180deg, var(--color-laton-claro) 0%, var(--color-brass) 55%, var(--color-laton-oscuro) 100%);
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 1px 0 rgb(255 250 235 / 0.55),
+    inset 0 -1px 0 rgb(90 68 34 / 0.35),
+    0 1px 2px rgb(15 27 45 / 0.2),
+    0 10px 22px -12px rgb(122 94 51 / 0.75);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  &::before {
+    background-image: linear-gradient(180deg, rgb(255 249 235 / 0.3), rgb(255 249 235 / 0.04) 75%);
+    opacity: 0;
+  }
+
+  &::after {
+    background-image: linear-gradient(
+      105deg,
+      transparent calc(var(--brillo) - 14%),
+      rgb(255 253 246 / 0.55) var(--brillo),
+      transparent calc(var(--brillo) + 14%)
+    );
+  }
+
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      box-shadow:
+        var(--anillo, 0 0 #0000),
+        inset 0 1px 0 rgb(255 250 235 / 0.65),
+        inset 0 -1px 0 rgb(90 68 34 / 0.35),
+        0 2px 4px rgb(15 27 45 / 0.18),
+        0 16px 30px -14px rgb(122 94 51 / 0.8);
+    }
+
+    &:hover:not(:disabled)::before {
+      opacity: 1;
+    }
+  }
+
+  &:active:not(:disabled) {
     box-shadow:
-      inset 0 0 0 1px var(--color-linea-fuerte),
-      inset 0 1px 0 rgb(255 255 255 / 0.95),
-      0 4px 10px -4px rgb(15 27 45 / 0.12),
-      0 32px 60px -28px rgb(15 27 45 / 0.38);
+      var(--anillo, 0 0 #0000),
+      inset 0 1px 0 rgb(255 250 235 / 0.4),
+      inset 0 -1px 0 rgb(90 68 34 / 0.3),
+      0 1px 1px rgb(15 27 45 / 0.22),
+      0 6px 14px -10px rgb(122 94 51 / 0.7);
+  }
+}
+
+/* Etiqueta del botón magnético: un segundo plano que se mueve un 45 % más que el botón (paralaje). Un `span`
+   en línea no admite `translate`, por eso es `inline-flex`. */
+@utility boton-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Flecha del botón secundario: avanza 3 px con el cursor encima. */
+@utility boton-flecha {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  margin-inline-end: -0.25rem;
+}
+
+@utility boton-flecha-abajo {
+  margin-inline-end: -0.125rem;
+}
+
+/* Campo de texto: borde fino; al enfocarlo, borde tinta, halo de latón y el mismo anillo tinta que el resto
+   del sitio (nunca `outline: none`). */
+@utility campo {
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea-fuerte);
+
+  /* El anillo tinta se apoya sobre el borde (separación 0) y el halo de latón asoma 3 px por fuera. */
+  &:focus {
+    --anillo: 0 0 0 5px rgb(176 141 87 / 0.4);
+    box-shadow:
+      var(--anillo),
+      inset 0 0 0 1px var(--color-ink);
+  }
+
+  &:focus-visible {
+    outline-offset: 0;
+  }
+
+  &[aria-invalid="true"] {
+    box-shadow:
+      var(--anillo, 0 0 #0000),
+      inset 0 0 0 2px var(--color-ink);
+  }
+}
+
+/* «Saltar al contenido»: píldora tinta de 44 px, bajo la cabecera y alineada con el logo (no lo tapa). */
+@utility salto-contenido {
+  &:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  &:focus {
+    position: fixed;
+    top: 84px;
+    left: max(24px, calc((100vw - 1440px) / 2 + 24px));
+    z-index: 60;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: 44px;
+    padding-inline: 1.125rem 1.25rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-ink);
+    color: var(--color-ivory);
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow:
+      var(--anillo, 0 0 #0000),
+      0 14px 30px -14px rgb(15 27 45 / 0.6);
   }
 }
 
@@ -295,7 +558,8 @@
   letter-spacing: 0.04em;
 }
 
-/* Gota de metal líquido: gradiente cromado y bordes que se deforman. */
+/* Gota de metal: gradiente cromado. Quieta (la deformación animaba `border-radius` y `background-position`,
+   fuera del compositor y sin pausa); el plano se reescribe en T4. */
 .gota {
   position: absolute;
   left: 22%;
@@ -629,20 +893,6 @@
   }
 }
 
-@keyframes otea-metal {
-  0% {
-    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
-    background-position: 0% 0%;
-  }
-  50% {
-    border-radius: 58% 42% 38% 62% / 55% 38% 62% 45%;
-  }
-  100% {
-    border-radius: 36% 64% 52% 48% / 46% 58% 42% 54%;
-    background-position: 100% 100%;
-  }
-}
-
 /* Historia: cada pieza recorre la línea de tiempo del scroll (0–100 %). */
 /* `pointer-events` también se anima: lo que se desvanece deja de interceptar clics (un bloque
    invisible no debe tapar botones ni enlaces de otro paso). Foco y lectores de pantalla no cambian. */
@@ -904,7 +1154,8 @@ html[data-movimiento="completo"] {
     animation-delay: calc(var(--retraso-base, 0ms) + 420ms);
   }
 
-  /* La cinta ondea sin pausa; los rótulos flotan. */
+  /* La cinta ondea y los rótulos flotan. Son bucles: su contenedor lleva `data-bucle` y `DirectorEscena` los
+     pausa fuera de vista (regla `[data-bucle][data-fuera]`, al final de este bloque). */
   .cinta-lamina {
     animation: otea-ola 8s ease-in-out infinite;
   }
@@ -1069,11 +1320,6 @@ html[data-movimiento="completo"] {
     animation-duration: 11.5s;
   }
 
-  .gota {
-    background-size: 160% 160%;
-    animation: otea-metal 9s ease-in-out infinite alternate;
-  }
-
   .punto-escribiendo {
     animation: otea-pulso 1.2s ease-in-out infinite;
   }
@@ -1195,11 +1441,9 @@ html[data-movimiento="completo"] {
       }
 
       .h-plano .gota {
-        animation:
-          otea-metal 9s ease-in-out infinite alternate,
-          m-gota linear both;
-        animation-timeline: auto, --plano;
-        animation-range: normal, entry 35% entry 90%;
+        animation: m-gota linear both;
+        animation-timeline: --plano;
+        animation-range: entry 35% entry 90%;
       }
 
       .h-tablero {
@@ -1273,9 +1517,7 @@ html[data-movimiento="completo"][data-timeline="no"][data-motor] {
     animation: m-plano 1100ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
   .h-plano.escena-vista:not(.mov-quieto) .gota {
-    animation:
-      otea-metal 9s ease-in-out infinite alternate,
-      m-gota 900ms ease-out 500ms backwards;
+    animation: m-gota 900ms ease-out 500ms backwards;
   }
   .h-tablero.escena-vista:not(.mov-quieto) {
     animation: m-tablero 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
@@ -1372,11 +1614,9 @@ html[data-movimiento="completo"] {
       }
 
       .h-plano .gota {
-        animation:
-          otea-metal 9s ease-in-out infinite alternate,
-          h-gota linear both;
-        animation-timeline: auto, --historia;
-        animation-range: normal, contain 0% contain 100%;
+        animation: h-gota linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
       }
 
       .h-tablero {
@@ -1483,6 +1723,153 @@ html[data-movimiento="completo"] {
         opacity: 1 !important;
         transform: none !important;
       }
+    }
+  }
+}
+
+/* ── Interacción con movimiento ────────────────────────────────────────────
+ * Respuesta física común: lo que aterriza usa `--ease-salida`; lo que rebota, el resorte literal (respaldo
+ * primero; dentro de una lista con `linear()` las demás curvas van literales, porque una `var()` invalidaría la
+ * declaración entera sin dejar respaldo). Los efectos de puntero leen las variables que escribe
+ * `DirectorEscena` por CSSOM (`--mx --my` de 0 a 1, `--tx --ty` en px, `--rx --ry` en grados) y solo existen
+ * con la puerta abierta y un puntero fino; sin ellas, `var(--tx, 0)` deja todo quieto.
+ */
+@keyframes otea-foco {
+  from {
+    outline-offset: 9px;
+  }
+}
+
+@keyframes otea-salto {
+  from {
+    opacity: 0;
+    translate: 0 -12px;
+  }
+}
+
+html[data-movimiento="completo"] {
+  /* El anillo de foco aterriza: llega desde 9 px y se asienta en 3 px con el resorte. */
+  :focus-visible {
+    animation: otea-foco var(--dur-3) backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .salto-contenido:focus-visible {
+    animation:
+      otea-salto var(--dur-2) var(--ease-salida) backwards,
+      otea-foco var(--dur-3) 80ms backwards;
+  }
+
+  /* Lo enfocado nunca espera a su entrada: aparece entero en cuanto recibe el foco. */
+  .anim-revelar:focus-within {
+    animation: none;
+  }
+
+  /* Bucles pausados fuera de vista: `DirectorEscena` pone `data-fuera` con un IntersectionObserver. */
+  [data-bucle][data-fuera],
+  [data-bucle][data-fuera] * {
+    animation-play-state: paused;
+  }
+
+  .superficie-interactiva {
+    transition-property: box-shadow, translate, scale;
+    transition-duration: var(--dur-3), var(--dur-3), var(--dur-4);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+
+    &:active {
+      transition-duration: var(--dur-3), var(--dur-3), var(--dur-1);
+      transition-timing-function: var(--ease-salida);
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        translate: 0 -2px;
+      }
+    }
+  }
+
+  /* Botón de latón: el pulsado baja en 120 ms y vuelve con resorte; la sombra y la luz, con la curva de salida. */
+  .boton-laton {
+    transition-property: translate, scale, box-shadow;
+    transition-duration: var(--dur-4), var(--dur-4), var(--dur-3);
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1), cubic-bezier(0.34, 1.56, 0.64, 1), cubic-bezier(0.16, 1, 0.3, 1);
+    transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%), cubic-bezier(0.16, 1, 0.3, 1);
+
+    &:active:not(:disabled) {
+      transition-duration: var(--dur-2), var(--dur-1), var(--dur-1);
+      transition-timing-function: var(--ease-salida);
+    }
+
+    &::before {
+      transition: opacity var(--dur-3) var(--ease-salida);
+    }
+  }
+
+  .boton-etiqueta {
+    transition-property: translate;
+    transition-duration: var(--dur-4);
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .boton-flecha {
+    transition: translate var(--dur-3) var(--ease-salida);
+  }
+
+  @media (hover: hover) {
+    :hover > .boton-flecha,
+    :hover > .boton-etiqueta > .boton-flecha {
+      translate: 3px 0;
+    }
+
+    :hover > .boton-flecha-abajo,
+    :hover > .boton-etiqueta > .boton-flecha-abajo {
+      translate: 0 3px;
+    }
+  }
+
+  /* Con ratón o trackpad: brillo bajo el cursor, destello al entrar y atracción de hasta 4 px. */
+  @media (hover: hover) and (pointer: fine) {
+    .boton-laton::before {
+      background-image:
+        radial-gradient(
+          110px 70px at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0) * 100%),
+          rgb(255 246 222 / 0.6),
+          rgb(255 246 222 / 0) 72%
+        ),
+        linear-gradient(180deg, rgb(255 249 235 / 0.22), rgb(255 249 235 / 0) 75%);
+    }
+
+    .boton-laton:hover:not(:disabled)::after {
+      --brillo: 130%;
+      transition: --brillo var(--dur-5) var(--ease-enfasis);
+    }
+
+    [data-magnetico] {
+      translate: calc(var(--tx, 0) * 1px) calc(var(--ty, 0) * 1px);
+    }
+
+    [data-magnetico] .boton-etiqueta {
+      translate: calc(var(--tx, 0) * 0.45px) calc(var(--ty, 0) * 0.45px);
+    }
+
+    /* Mientras el cursor está dentro, el botón lo sigue con suavidad; al salir vuelve con el resorte. */
+    .boton-laton[data-magnetico]:hover {
+      transition-duration: var(--dur-2), var(--dur-4), var(--dur-3);
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1), cubic-bezier(0.16, 1, 0.3, 1);
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%), cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-magnetico]:hover .boton-etiqueta {
+      transition-duration: var(--dur-2);
+      transition-timing-function: var(--ease-salida);
+    }
+
+    .boton-laton[data-magnetico]:active:not(:disabled) {
+      transition-duration: var(--dur-2), var(--dur-1), var(--dur-1);
+      transition-timing-function: var(--ease-salida);
     }
   }
 }
