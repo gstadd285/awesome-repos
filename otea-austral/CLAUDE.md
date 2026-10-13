@@ -71,11 +71,14 @@ Tokens en `src/app/globals.css` (`@theme`, con la paleta de Tailwind reiniciada)
 | `apoyo` | `#4C5665` | Texto de apoyo (AA incluso sobre sombras) |
 | `linea` / `linea-fuerte` | tinta 14 % / 32 % | Líneas finas y bordes |
 | `acento` | `#B08D57` | **Único acento:** relleno del botón principal, con texto tinta |
-| `ink`, `ivory`, `brass`, `brass-deep`, `mist` | marca | Logo, piezas decorativas, tema activo |
+| `ink`, `ivory`, `brass`, `brass-deep`, `mist` | marca | Logo, piezas decorativas, tema activo; `brass-deep` sirve como texto de ≥ 12 px sobre `fondo`, `papel` y `papel-alto` (no sobre `fondo-sombra`) |
+| `laton-claro` / `laton-oscuro` | `#C7A570` / `#A6834D` | Extremos del degradado del botón de latón (tinta ≥ 4,9:1 en todo el recorrido) |
+| `niebla` | `#C9CFD8` | Texto secundario sobre tinta (11:1) |
 | `gana`, `condicionado`, `pierde` | estado | Solo alertas y sus piezas |
 
 Utilidades propias: `superficie` (porcelana con borde fino y sombra suave),
-`superficie-interactiva`, `vidrio` (cabecera, con respaldo opaco sin `backdrop-filter`),
+`superficie-interactiva` (solo en lo clicable), `vidrio` (cabecera: porcelana al 94 %, **sin `backdrop-filter`**),
+`boton-laton` (latón como material), `campo` (campos con el foco del sitio), `salto-contenido`, `cifras`,
 `linea-fina`, `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
 pantalla de error), `fondo-luz`,
 `luz-ventana` (sombras de persiana), `reticula-puntos`, y el tamaño `text-lede` (18 a 22 px) para el texto
@@ -89,7 +92,9 @@ Reglas:
 - Radios: botones `rounded-pill`, tarjetas `rounded-card` (16 px), insignias y campos
   `rounded-badge` (6 px), íconos circulares.
 - Botones: `buttonClasses("primary" | "outline" | "ghost", extra, "md" | "sm")`: píldoras de 14 px con
-  inicial mayúscula (no versalitas) y 44 px de alto (`md`), cómodas al tacto; `primary` es latón con texto tinta.
+  inicial mayúscula (no versalitas) y 44 px de alto (`md`), cómodas al tacto; `primary` es `boton-laton` (degradado
+  `laton-claro → brass → laton-oscuro` con texto tinta, filos de luz y sombra). Las CTA principales llevan
+  `data-magnetico` y su texto en `<span className="boton-etiqueta">`; el secundario de contorno puede llevar `<Flecha />`.
 - Cabecera: logo, cuatro enlaces (`NAV_CABECERA`) y «Recibir alertas»; la página actual lleva `aria-current`
   (`<SiteHeader actual="/ruta" />`). Las páginas interiores usan `ContentPage` (ruta de navegación `Migas`).
 - Contraste mínimo AA: lo verifica `src/lib/design/contrast.test.ts` leyendo `globals.css`. El
@@ -102,7 +107,7 @@ Reglas:
 ### Portada: la historia en 3D (`src/components/home/Story.tsx`)
 
 El héroe (titular H1, texto de entrada y dos botones) y tres pasos (`01 — 03`): la **cinta** de láminas
-(`Ribbon`) que se pliega sobre el **plano técnico** con metal líquido (`Blueprint`), el **tablero** con alertas
+(`Ribbon`) que se pliega sobre el **plano técnico** con una gota de metal (`Blueprint`), el **tablero** con alertas
 que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 3D:
 
 - **Historia fija**: en escritorio (≥ 1024 px), con `animation-timeline` y con el movimiento activado, el
@@ -136,8 +141,9 @@ movimiento»):
 | `anim-aparecer` + `anim-retraso-1…4` | Entrada al cargar: sube, se enfoca y aparece |
 | `anim-escalonado` + `[--retraso-base:Xms]` | Los hijos entran uno tras otro |
 | `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
-| `otea-ola`, `otea-flotar`, `otea-metal` | La cinta ondea, los rótulos flotan, el metal se deforma |
-| `superficie-interactiva` | El borde se marca y la sombra crece al pasar el cursor |
+| `otea-ola`, `otea-flotar` | La cinta ondea y los rótulos flotan (bucles con `data-bucle`: se pausan fuera de vista) |
+| `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
+| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista y escribe `--mx --my --tx --ty --rx --ry` bajo el puntero |
 | `<PageTransition>` | Transición entre páginas (React `ViewTransition`); la cabecera queda fija |
 | `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
 
@@ -187,6 +193,14 @@ pintado y escribe en `<html>`:
   `ignorarSistema: true`: parte animada aunque el sistema pida reducir).
 - `dangerouslySetInnerHTML` aparece solo dos veces (JSON-LD y este script, ambos constantes de compilación);
   `src/lib/security/arquitectura.test.ts` lo vigila.
+
+**Sistema de movimiento del rediseño «Horizonte»** (tokens en `:root` de `globals.css`): duraciones `--dur-1…5`
+(120/200/320/560/900 ms), curvas `--ease-salida` (lo que aterriza), `--ease-enfasis` (cámara, estados) y
+`--ease-entrada` (lo que se va), y escalonados `--escalon*`. El **resorte va literal** (`linear(…)`), siempre detrás de
+un `cubic-bezier` de respaldo y nunca con `var()` en la misma declaración (utilidad `resorte`). Variantes con puerta en
+forma de bloque: `mov:` (solo con `data-movimiento="completo"`) y `fino:` (ratón o trackpad). El foco es un anillo tinta
+de 2 px con un halo de latón (`--anillo`) que pintan las sombras; con la puerta abierta, aterriza de 9 a 3 px. Sobre
+tinta, la clase `en-tinta` pasa el anillo a latón. Bucles infinitos: solo con `data-bucle` en su contenedor.
 
 Reglas (las vigila `src/lib/design/motion.test.ts`):
 
