@@ -17,7 +17,8 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
 
   return (
     <header className="vt-site-header vidrio sticky top-0 z-50 h-[72px]">
-      <div className="mx-auto flex h-full max-w-[1440px] items-center gap-6 px-6">
+      {/* Bajo 360 px los márgenes se ajustan para que logo, «Alertas» y «Menú» quepan sin scroll lateral. */}
+      <div className="mx-auto flex h-full max-w-[1440px] items-center gap-6 px-6 max-[359.98px]:gap-2 max-[359.98px]:px-3">
         <Link href="/" aria-label="Otea Austral, inicio" className="rounded-badge">
           <Logo />
         </Link>
@@ -35,12 +36,12 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3 lg:ml-0">
+        <div className="ml-auto flex items-center gap-3 max-[359.98px]:gap-2 lg:ml-0">
           <EnlaceCuenta variante="cabecera" actual={actual} className={`${ENLACE} hidden px-2 py-1 lg:inline-block`} />
           <Link
             href="/#lista-de-espera"
             data-magnetico
-            className={buttonClasses("primary", "whitespace-nowrap", "sm")}
+            className={buttonClasses("primary", "whitespace-nowrap max-[359.98px]:px-3", "sm")}
           >
             <span className="boton-etiqueta">
               <span className="sm:hidden">Alertas</span>
@@ -50,7 +51,7 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
 
           {/* Menú móvil sin JavaScript. */}
           <details className="relative lg:hidden">
-            <summary className="cursor-pointer list-none rounded-pill px-4 py-2 text-sm font-medium text-texto linea-fina [&::-webkit-details-marker]:hidden">
+            <summary className="cursor-pointer list-none rounded-pill px-4 py-2 text-sm font-medium text-texto linea-fina max-[359.98px]:px-3 [&::-webkit-details-marker]:hidden">
               Menú
             </summary>
             <nav
