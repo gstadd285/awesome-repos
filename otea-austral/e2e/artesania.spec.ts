@@ -117,6 +117,8 @@ test.describe("foco", () => {
     const salto = page.getByRole("link", { name: "Saltar al contenido" });
     await expect(salto).toBeFocused();
     await expect(salto).toBeVisible();
+    // Se mide ya aterrizada: a mitad de su entrada (`translate` fraccionario a DPR 2,625) la caja medía 43,999998 px.
+    await salto.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished)));
     const caja = (await salto.boundingBox())!;
     expect(caja.height).toBeGreaterThanOrEqual(44);
     const anillo = await salto.evaluate((e) => {
