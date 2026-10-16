@@ -641,10 +641,12 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   overscroll-behavior: contain;
   background-color: var(--color-papel-alto);
   color: var(--color-texto);
+  /* La dirección va fuera de `:popover-open`: al cerrar, `allow-discrete` mantiene `display: flex` durante el
+     fundido, y la hoja tiene que seguir en columna hasta el último fotograma. */
+  flex-direction: column;
 
   &:popover-open {
     display: flex;
-    flex-direction: column;
   }
 
   &::backdrop {
@@ -731,14 +733,22 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 
 .menu-lista > li {
   border-top: 1px solid var(--color-linea);
+
+  /* El último filete cierra la lista. */
+  &:last-child {
+    border-bottom: 1px solid var(--color-linea);
+  }
 }
 
+/* 8 px de aire a cada lado con el margen negativo equivalente: el numeral sigue alineado con el logo y el anillo de
+   foco, que va por dentro del borde del enlace, no toca ni el numeral ni el borde de la pantalla. */
 .menu-enlace {
   display: flex;
   align-items: center;
   gap: 16px;
   min-height: 64px;
-  padding: 12px 2px;
+  margin-inline: -8px;
+  padding: 12px 8px;
   font-family: var(--font-display);
   /* 30 px desde 400 px de ancho; a 320 px baja a 24 px para que «Cómo funciona» quepa en una línea. */
   font-size: clamp(22px, 7.5vw, 30px);
@@ -752,6 +762,13 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 
   &:active {
     background-color: rgb(15 27 45 / 0.04);
+  }
+
+  /* Foco: el anillo tinta de 2 px se apoya por dentro del borde y el halo de latón asoma 3 px hacia el texto (con
+     el anillo exterior de siempre, a 390 px quedaba pegado al numeral y casi en el borde de la pantalla). */
+  &:focus-visible {
+    outline-offset: -2px;
+    --anillo: inset 0 0 0 5px rgb(176 141 87 / 0.4);
   }
 
   @media (min-width: 640px) {
@@ -1948,7 +1965,10 @@ html[data-movimiento="completo"] {
     transition-timing-function: var(--ease-salida);
   }
 
-  .menu-movil:popover-open :is(.menu-lista > li, .menu-pie) {
+  /* Selectores separados y no `:is()`: con `:is()` la regla tomaba la especificidad de `.menu-lista > li` y su
+     atajo `transition` pisaba el retraso del pie, que llegaba antes que los enlaces. */
+  .menu-movil:popover-open .menu-lista > li,
+  .menu-movil:popover-open .menu-pie {
     transition:
       opacity var(--dur-4) var(--ease-salida),
       translate var(--dur-4) var(--ease-salida);
@@ -2442,6 +2462,13 @@ html[data-movimiento="completo"] {
   }
 }
 
+/* En las filas del menú el anillo va por dentro: aterriza desde la posición habitual (3 px por fuera) hacia dentro. */
+@keyframes menu-foco {
+  from {
+    outline-offset: 3px;
+  }
+}
+
 @keyframes otea-salto {
   from {
     opacity: 0;
@@ -2461,6 +2488,10 @@ html[data-movimiento="completo"] {
     animation:
       otea-salto var(--dur-2) var(--ease-salida) backwards,
       otea-foco var(--dur-3) 80ms backwards;
+  }
+
+  .menu-enlace:focus-visible {
+    animation-name: menu-foco;
   }
 
   /* El logo se aparta en 120 ms y vuelve con la misma curva cuando el foco sigue. */

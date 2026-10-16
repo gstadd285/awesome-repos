@@ -407,6 +407,34 @@ test.describe("menú del teléfono", () => {
     await tableta.close();
   });
 
+  test("el pie llega después del último enlace y la hoja se funde sin perder la columna", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const page = await contexto.newPage();
+    await page.goto("/metodologia");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+    await page.getByRole("button", { name: "Menú", exact: true }).click();
+    const hoja = page.locator("#menu-movil");
+    // El retraso del pie (320 ms) no lo pisa la transición de los enlaces: llega después del séptimo (280 ms).
+    expect(await hoja.locator(".menu-pie").evaluate((e) => getComputedStyle(e).transitionDelay)).toMatch(/^0\.32s(, 0\.32s)*$/);
+    await page.waitForTimeout(1000);
+    const abierta = (await hoja.locator(".menu-lista").boundingBox())!;
+    // A mitad del fundido de cierre la hoja sigue en columna: la lista no se va al lado del logo.
+    const cierre = await hoja.evaluate(async (m) => {
+      (m as HTMLElement).hidePopover();
+      await new Promise((r) => setTimeout(r, 90));
+      const s = getComputedStyle(m);
+      const caja = m.querySelector(".menu-lista")!.getBoundingClientRect();
+      return { display: s.display, direccion: s.flexDirection, opacidad: Number(s.opacity), x: caja.x, y: caja.y };
+    });
+    expect(cierre.display).toBe("flex");
+    expect(cierre.opacidad).toBeGreaterThan(0);
+    expect(cierre.direccion).toBe("column");
+    expect(Math.abs(cierre.x - abierta.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(cierre.y - abierta.y)).toBeLessThanOrEqual(1);
+    await contexto.close();
+  });
+
   test("con movimiento reducido el menú abre y se cierra al instante, igual de completo", async ({ browser }, info) => {
     soloEscritorio(info.project.name);
     const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
