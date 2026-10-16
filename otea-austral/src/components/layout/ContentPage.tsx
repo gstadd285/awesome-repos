@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { TextoEnMovimiento } from "@/components/motion/TextoEnMovimiento";
 import { Migas } from "./Migas";
-import { PageTransition } from "./PageTransition";
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 
@@ -23,33 +22,31 @@ export function ContentPage({ ruta, rotulo, titulo, intro, aviso, children }: Co
     <>
       <SiteHeader actual={ruta} />
       <main id="contenido" className="fondo-luz pb-24 lg:pb-[120px]">
-        <PageTransition>
-          <div className="mx-auto max-w-[1440px] px-6 pt-12 sm:pt-20">
-            <Migas actual={rotulo} className="anim-aparecer" />
-            <TextoEnMovimiento
-              como="h1"
-              efecto="letras"
-              disparo="carga"
-              texto={titulo}
-              className="titular mt-8 max-w-[18ch] text-display text-texto"
-            />
-            {intro ? (
-              <div className="anim-aparecer anim-retraso-3 mt-8 max-w-[680px] text-lede text-texto-suave">
-                {intro}
-              </div>
-            ) : null}
-            {aviso ? (
-              <p
-                role="note"
-                className="micro anim-aparecer anim-retraso-3 mt-6 inline-flex items-center gap-2 rounded-badge bg-papel-alto px-3 py-2 text-texto linea-fina"
-              >
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-acento" />
-                {aviso}
-              </p>
-            ) : null}
-            <div className="mt-16">{children}</div>
-          </div>
-        </PageTransition>
+        <div className="mx-auto max-w-[1440px] px-6 pt-12 sm:pt-20">
+          <Migas actual={rotulo} className="anim-aparecer" />
+          <TextoEnMovimiento
+            como="h1"
+            efecto="letras"
+            disparo="carga"
+            texto={titulo}
+            className="titular mt-8 max-w-[18ch] text-display text-texto"
+          />
+          {intro ? (
+            <div className="anim-aparecer anim-retraso-3 mt-8 max-w-[680px] text-lede text-texto-suave">
+              {intro}
+            </div>
+          ) : null}
+          {aviso ? (
+            <p
+              role="note"
+              className="micro anim-aparecer anim-retraso-3 mt-6 inline-flex items-center gap-2 rounded-badge bg-papel-alto px-3 py-2 text-texto linea-fina"
+            >
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-acento" />
+              {aviso}
+            </p>
+          ) : null}
+          <div className="mt-16">{children}</div>
+        </div>
       </main>
       <SiteFooter />
     </>

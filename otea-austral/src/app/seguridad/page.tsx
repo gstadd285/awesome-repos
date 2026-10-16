@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PageTransition } from "@/components/layout/PageTransition";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SecurityProfile } from "@/components/security/SecurityProfile";
@@ -16,9 +15,7 @@ export default function SeguridadPage() {
     <>
       <SiteHeader actual="/seguridad" />
       <main id="contenido" className="fondo-luz pb-24 lg:pb-[120px]">
-        <PageTransition>
-          <SecurityProfile contacto={env.SECURITY_CONTACT} />
-        </PageTransition>
+        <SecurityProfile contacto={env.SECURITY_CONTACT} />
       </main>
       <SiteFooter />
     </>

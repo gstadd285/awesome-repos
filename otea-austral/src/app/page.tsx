@@ -5,7 +5,6 @@ import { PreOpening } from "@/components/home/PreOpening";
 import { Story } from "@/components/home/Story";
 import { Temas } from "@/components/home/Temas";
 import { Waitlist } from "@/components/home/Waitlist";
-import { PageTransition } from "@/components/layout/PageTransition";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { modoAsistente } from "@/lib/asistente/modo";
@@ -45,14 +44,12 @@ export default async function Home() {
       <DatosEstructurados nonce={nonce} />
       <SiteHeader />
       <main id="contenido" className="fondo-luz">
-        <PageTransition>
-          <Story />
-          <AlertExamples />
-          <Temas />
-          <PreOpening />
-          <Asistente modo={modoAsistente()} />
-          <Waitlist />
-        </PageTransition>
+        <Story />
+        <AlertExamples />
+        <Temas />
+        <PreOpening />
+        <Asistente modo={modoAsistente()} />
+        <Waitlist />
       </main>
       <SiteFooter />
     </>
