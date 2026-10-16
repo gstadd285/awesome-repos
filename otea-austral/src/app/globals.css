@@ -127,7 +127,8 @@
     color-scheme: light;
     background-color: var(--color-fondo);
     scroll-padding-top: 88px;
-    accent-color: var(--color-brass);
+    /* Tinta y no latón: el latón queda bajo 3:1 sobre el lienzo claro (WCAG 1.4.11) en casillas y radios. */
+    accent-color: var(--color-ink);
     scrollbar-color: var(--color-mist) transparent;
     /* El `:active` de botones y tarjetas da la respuesta al tacto. */
     -webkit-tap-highlight-color: transparent;
@@ -175,6 +176,21 @@
   .en-tinta :focus-visible,
   .en-tinta:focus-visible {
     outline-color: var(--color-brass);
+  }
+
+  /* Sobre tinta, los controles nativos marcados van en latón (5,6:1). */
+  .en-tinta {
+    accent-color: var(--color-brass);
+  }
+
+  /* Enlaces de navegación (cabecera, menús, pie) y resúmenes sin sombra propia: el mismo halo de latón que
+     botones y campos, para que el recorrido con Tab hable un solo idioma. Los enlaces en prosa conservan solo el
+     anillo tinta (un marco relleno pesaría demasiado dentro de una línea de texto). Está en la capa base:
+     cualquier utilidad con su propia sombra (que ya lee `--anillo`) le gana. */
+  header a:focus-visible,
+  nav a:focus-visible,
+  summary:focus-visible {
+    box-shadow: var(--anillo);
   }
 
   ::selection {
@@ -1794,14 +1810,16 @@ html[data-movimiento="completo"] {
     animation-play-state: paused;
   }
 
+  /* Fondo y color también transicionan: así una tarjeta que vuelve de su estado activo (tema en tinta) se funde
+     igual que al activarse, en vez de cambiar de golpe. */
   .superficie-interactiva {
-    transition-property: box-shadow, translate, scale;
-    transition-duration: var(--dur-3), var(--dur-3), var(--dur-4);
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+    transition-property: background-color, color, box-shadow, translate, scale;
+    transition-duration: var(--dur-3), var(--dur-3), var(--dur-3), var(--dur-3), var(--dur-4);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
 
     &:active {
-      transition-duration: var(--dur-3), var(--dur-3), var(--dur-1);
+      transition-duration: var(--dur-3), var(--dur-3), var(--dur-3), var(--dur-3), var(--dur-1);
       transition-timing-function: var(--ease-salida);
     }
 

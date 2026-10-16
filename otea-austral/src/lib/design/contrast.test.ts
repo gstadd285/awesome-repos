@@ -81,6 +81,27 @@ describe("contraste AA sobre tinta (pie, capítulo nocturno, paneles oscuros)", 
   });
 });
 
+describe("controles nativos (casillas y radios): estado marcado ≥ 3:1 (WCAG 1.4.11)", () => {
+  it("el latón no alcanza 3:1 sobre el lienzo claro, la tinta sí", () => {
+    for (const superficie of ["fondo", "papel", "papel-alto"]) {
+      expect(contrastRatio(token("brass"), token(superficie))).toBeLessThan(3);
+      expect(contrastRatio(token("ink"), token(superficie))).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("accent-color es tinta en todo el sitio y latón solo sobre tinta (.en-tinta)", () => {
+    const sinComentarios = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    const usos = [...sinComentarios.matchAll(/([^{}]+)\{[^{}]*accent-color:\s*([^;]+);/g)].map((m) => ({
+      selector: m[1].trim(),
+      valor: m[2].trim(),
+    }));
+    expect(usos).toContainEqual({ selector: "html", valor: "var(--color-ink)" });
+    for (const uso of usos.filter((u) => u.valor !== "var(--color-ink)")) {
+      expect(uso.selector, uso.valor).toMatch(/^\.en-tinta$/);
+    }
+  });
+});
+
 describe("contrastRatio", () => {
   it("blanco sobre negro es 21:1", () => {
     expect(contrastRatio("#ffffff", "#000000")).toBeCloseTo(21, 5);
