@@ -197,9 +197,10 @@
 }
 
 /* Porcelana casi opaca (cabecera, paneles flotantes). Sin `backdrop-filter`: el desenfoque sobre la escena 3D,
-   que cambia en cada cuadro, costaba ~11 fps en la historia. Al 94 % lo que pasa por debajo no se lee nítido. */
+   que cambia en cada cuadro, costaba ~11 fps en la historia. Al 98,5 % el texto que pasa por debajo ya no
+   se distingue (al 94 % un titular todavía se leía a 3×). */
 @utility vidrio {
-  background-color: rgb(252 250 246 / 0.94);
+  background-color: rgb(252 250 246 / 0.985);
   box-shadow: inset 0 -1px 0 var(--color-linea);
 }
 
@@ -422,7 +423,9 @@
   }
 }
 
-/* «Saltar al contenido»: píldora tinta de 44 px, bajo la cabecera y alineada con el logo (no lo tapa). */
+/* «Saltar al contenido»: píldora tinta de 44 px que ocupa el lugar del logo dentro de la cabecera (centrada en
+   sus 72 px y alineada con su margen). El logo se aparta mientras la píldora tiene el foco (regla de abajo): no
+   queda nada tapado a medias ni pisa el contenido de la página. */
 @utility salto-contenido {
   &:not(:focus) {
     position: absolute;
@@ -437,8 +440,9 @@
 
   &:focus {
     position: fixed;
-    top: 84px;
-    left: max(24px, calc((100vw - 1440px) / 2 + 24px));
+    top: 14px;
+    /* `100%` y no `100vw`: en un elemento fijo es el ancho sin la barra de desplazamiento, como la cabecera. */
+    left: max(24px, calc((100% - 1440px) / 2 + 24px));
     z-index: 60;
     display: inline-flex;
     align-items: center;
@@ -452,8 +456,20 @@
     font-weight: 500;
     box-shadow:
       var(--anillo, 0 0 #0000),
-      0 14px 30px -14px rgb(15 27 45 / 0.6);
+      0 10px 24px -14px rgb(15 27 45 / 0.55);
+
+    /* Bajo 360 px la cabecera usa 12 px de margen y la píldora se compacta para no rozar «Alertas». */
+    @media (max-width: 359.98px) {
+      left: 12px;
+      padding-inline: 0.875rem;
+      font-size: 0.8125rem;
+    }
   }
+}
+
+/* Mientras la píldora tiene el foco, el logo de la cabecera le cede su sitio (pública y panel interno). */
+body:has(> .salto-contenido:focus) header > div > a:first-child {
+  opacity: 0;
 }
 
 /* ── Cinta 3D (hero) ───────────────────────────────────────────────────────── */
@@ -1760,6 +1776,11 @@ html[data-movimiento="completo"] {
     animation:
       otea-salto var(--dur-2) var(--ease-salida) backwards,
       otea-foco var(--dur-3) 80ms backwards;
+  }
+
+  /* El logo se aparta en 120 ms y vuelve con la misma curva cuando el foco sigue. */
+  header > div > a:first-child {
+    transition: opacity var(--dur-1) var(--ease-salida);
   }
 
   /* Lo enfocado nunca espera a su entrada: aparece entero en cuanto recibe el foco. */

@@ -109,7 +109,9 @@ test.describe("botón de latón magnético", () => {
 });
 
 test.describe("foco", () => {
-  test("el primer Tab muestra «Saltar al contenido»: 44 px, anillo tinta y sin tapar el logo", async ({ page }) => {
+  test("el primer Tab muestra «Saltar al contenido»: 44 px, anillo tinta, en la cabecera y en lugar del logo", async ({
+    page,
+  }) => {
     await page.goto("/");
     await page.keyboard.press("Tab");
     const salto = page.getByRole("link", { name: "Saltar al contenido" });
@@ -122,13 +124,31 @@ test.describe("foco", () => {
       return { estilo: s.outlineStyle, ancho: s.outlineWidth, color: s.outlineColor, fondo: s.backgroundColor };
     });
     expect(anillo).toMatchObject({ estilo: "solid", ancho: "2px", color: "rgb(15, 27, 45)", fondo: "rgb(15, 27, 45)" });
-    const logo = (await page.getByRole("link", { name: "Otea Austral, inicio" }).boundingBox())!;
-    const seCruzan =
-      caja.x < logo.x + logo.width &&
-      logo.x < caja.x + caja.width &&
-      caja.y < logo.y + logo.height &&
-      logo.y < caja.y + caja.height;
-    expect(seCruzan).toBe(false);
+
+    // Vive dentro de la cabecera (no pisa el antetítulo del héroe)…
+    const cabecera = (await page.locator("header").first().boundingBox())!;
+    expect(caja.y).toBeGreaterThanOrEqual(cabecera.y);
+    expect(caja.y + caja.height).toBeLessThanOrEqual(cabecera.y + cabecera.height);
+
+    // …el logo le cede su sitio mientras tiene el foco…
+    const logo = page.getByRole("link", { name: "Otea Austral, inicio" });
+    await expect.poll(() => logo.evaluate((e) => getComputedStyle(e).opacity)).toBe("0");
+
+    // …y no se cruza con ningún otro control visible de la cabecera.
+    const cruces = await page.evaluate((c) => {
+      const logo = document.querySelector('header a[aria-label="Otea Austral, inicio"]');
+      return [...document.querySelectorAll("header a, header summary")]
+        .filter((el) => el !== logo && el.checkVisibility())
+        .map((el) => ({ texto: el.textContent?.trim(), r: el.getBoundingClientRect() }))
+        .filter(({ r }) => r.width > 0 && c.x < r.right && r.left < c.x + c.width && c.y < r.bottom && r.top < c.y + c.height)
+        .map(({ texto }) => texto);
+    }, caja);
+    expect(cruces).toEqual([]);
+
+    // Al seguir con Tab, el logo vuelve.
+    await page.keyboard.press("Tab");
+    await expect(logo).toBeFocused();
+    await expect.poll(() => logo.evaluate((e) => getComputedStyle(e).opacity)).toBe("1");
   });
 
   test("ningún campo apaga el anillo de foco", async ({ page }) => {
