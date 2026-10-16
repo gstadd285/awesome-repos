@@ -14,7 +14,7 @@ export function SiteFooter() {
           <Logo />
           <p className="titular mt-6 max-w-[16ch] text-2xl text-texto">Del horizonte al mercado.</p>
         </div>
-        <nav aria-label="Producto">
+        <nav id="pie-navegacion" aria-label="Producto">
           <p className="micro text-apoyo">Producto</p>
           <ul className="mt-4 space-y-2">
             {NAV_PRINCIPAL.map((e) => (

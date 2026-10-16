@@ -126,12 +126,19 @@
   html {
     color-scheme: light;
     background-color: var(--color-fondo);
+    /* Cabecera de 72 px en escritorio (+16 px de aire); bajo 1024 px la barra mide 60 px (regla de abajo). */
     scroll-padding-top: 88px;
     /* Tinta y no latón: el latón queda bajo 3:1 sobre el lienzo claro (WCAG 1.4.11) en casillas y radios. */
     accent-color: var(--color-ink);
     scrollbar-color: var(--color-mist) transparent;
     /* El `:active` de botones y tarjetas da la respuesta al tacto. */
     -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (max-width: 1023.98px) {
+    html {
+      scroll-padding-top: 76px;
+    }
   }
 
   body {
@@ -456,6 +463,7 @@
 
   &:focus {
     position: fixed;
+    /* Centrada en la barra: 72 px en escritorio, 60 px bajo 1024 px. */
     top: 14px;
     /* `100%` y no `100vw`: en un elemento fijo es el ancho sin la barra de desplazamiento, como la cabecera. */
     left: max(24px, calc((100% - 1440px) / 2 + 24px));
@@ -474,9 +482,16 @@
       var(--anillo, 0 0 #0000),
       0 10px 24px -14px rgb(15 27 45 / 0.55);
 
-    /* Bajo 360 px la cabecera usa 12 px de margen y la píldora se compacta para no rozar «Alertas». */
+    @media (max-width: 1023.98px) {
+      top: 8px;
+    }
+
+    /* Bajo 640 px la barra usa 16 px de margen (o el área segura); bajo 360 px la píldora se compacta. */
+    @media (max-width: 639.98px) {
+      left: max(16px, env(safe-area-inset-left));
+    }
+
     @media (max-width: 359.98px) {
-      left: 12px;
       padding-inline: 0.875rem;
       font-size: 0.8125rem;
     }
@@ -486,6 +501,356 @@
 /* Mientras la píldora tiene el foco, el logo de la cabecera le cede su sitio (pública y panel interno). */
 body:has(> .salto-contenido:focus) header > div > a:first-child {
   opacity: 0;
+}
+
+/* ── Cabecera ──────────────────────────────────────────────────────────────
+ * Barra de 60 px en el teléfono y 72 px en escritorio. El material es `::before` (cero nodos): por defecto (sin JS,
+ * movimiento reducido, sin líneas de tiempo o bajo 1024 px) es la barra sólida de porcelana a todo el ancho. Con la
+ * puerta abierta, en escritorio y con `animation-timeline`, se convierte en la isla que aparece con el scroll (más
+ * abajo, en la puerta). `container-type` deja que el logo y las acciones midan su viaje hacia la isla en `cqw`.
+ */
+.cabecera {
+  height: 60px;
+  container-type: inline-size;
+  isolation: isolate;
+  /* Isla: 1200 px como máximo y 16 px de aire a cada lado; el logo entra 18 px en ella y las acciones, 6 px. */
+  --isla-w: min(1200px, 100cqw - 32px);
+  --isla-x: calc((100cqw - var(--isla-w)) / 2);
+  --fila-x: max(24px, calc((100cqw - 1440px) / 2 + 24px));
+  --cab-dx-logo: max(0px, calc(var(--isla-x) + 18px - var(--fila-x)));
+  --cab-dx-acciones: max(0px, calc(var(--isla-x) + 6px - var(--fila-x)));
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: rgb(252 250 246 / 0.985);
+    box-shadow: inset 0 -1px 0 var(--color-linea);
+  }
+
+  @media (min-width: 1024px) {
+    height: 72px;
+  }
+}
+
+.cabecera-fila {
+  padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+
+  @media (min-width: 640px) {
+    padding-inline: 24px;
+  }
+}
+
+/* Avance de lectura: un filete de latón (≥ 3:1 en `brass-deep`) que solo existe donde lo mueve una línea de tiempo. */
+.cabecera-progreso {
+  display: none;
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  pointer-events: none;
+  background-image: linear-gradient(90deg, var(--color-brass), var(--color-brass-deep));
+  transform-origin: left center;
+}
+
+/* Pastilla de hover: tinta al 6 %, detrás de los enlaces. La coloca `DirectorEscena` (`--nx --nw` en px y `--nv` de
+   0 a 1) solo con la puerta abierta y un ratón; sin esas variables no se ve. */
+.nav-principal {
+  isolation: isolate;
+}
+
+.nav-indicador {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: -1;
+  height: 36px;
+  width: calc(var(--nw, 0) * 1px);
+  translate: calc(var(--nx, 0) * 1px) -50%;
+  border-radius: var(--radius-pill);
+  background-color: rgb(15 27 45 / 0.06);
+  opacity: var(--nv, 0);
+  pointer-events: none;
+}
+
+/* Página actual: filete de 2 px en latón oscuro (4,8:1 sobre el lienzo). Con la puerta abierta viaja de un enlace a
+   otro en la transición de página (`view-transition-name`, en la puerta). */
+.nav-subrayado {
+  position: absolute;
+  inset: auto 16px 3px;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--color-brass-deep);
+  pointer-events: none;
+}
+
+/* Botón del menú: círculo de 44 px con dos trazos. */
+.boton-menu {
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 9999px;
+  color: var(--color-ink);
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea-fuerte);
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--color-papel-alto);
+    }
+  }
+
+  &:active {
+    scale: 0.94;
+  }
+
+  @media (min-width: 1024px) {
+    display: none;
+  }
+}
+
+.boton-menu-linea {
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  border-radius: 1px;
+  background-color: currentColor;
+}
+
+/* ── Menú del teléfono (popover nativo) ─────────────────────────────────────
+ * Bajo 640 px ocupa la pantalla entera, en papel alto; desde 640 px es un panel de 440 px a la derecha y el resto de
+ * la página queda bajo un velo tinta al 35 % (tocarlo cierra). Sin `@supports`: sin popover el botón no abre nada y la
+ * navegación completa sigue en el pie (`#pie-navegacion`). La coreografía vive en la puerta, más abajo.
+ */
+.menu-movil {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  padding: 0 max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--color-papel-alto);
+  color: var(--color-texto);
+
+  &:popover-open {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &::backdrop {
+    background-color: rgb(15 27 45 / 0.35);
+  }
+
+  @media (min-width: 640px) {
+    inset: 0 0 0 auto;
+    width: min(440px, 100%);
+    padding-inline: 32px 24px;
+    box-shadow:
+      inset 1px 0 0 var(--color-linea),
+      -32px 0 80px -40px rgb(15 27 45 / 0.45);
+  }
+
+  /* En escritorio no hay botón de menú: si quedó abierto al ensanchar la ventana, no se ve. */
+  @media (min-width: 1024px) {
+    &:popover-open {
+      display: none;
+    }
+  }
+}
+
+/* Mientras el menú ocupa la pantalla, la página de atrás no se desplaza (en el panel, el velo ya la separa). */
+@media (max-width: 639.98px) {
+  html:has(#menu-movil:popover-open) {
+    overflow: hidden;
+  }
+}
+
+.menu-cabecera {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+
+  /* En el panel lateral el logo ya se ve en la cabecera de la página: solo queda el botón de cerrar. */
+  @media (min-width: 640px) {
+    justify-content: flex-end;
+
+    & > a {
+      display: none;
+    }
+  }
+}
+
+/* Cerrar: círculo tinta de 44 px en el mismo lugar que el botón del menú; sus dos trazos forman la cruz. */
+.menu-cerrar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 9999px;
+  background-color: var(--color-ink);
+  color: var(--color-ivory);
+  box-shadow: var(--anillo, 0 0 #0000);
+
+  &:active {
+    scale: 0.94;
+  }
+}
+
+.menu-cerrar-linea {
+  position: absolute;
+  top: calc(50% - 0.75px);
+  left: calc(50% - 9px);
+  width: 18px;
+  height: 1.5px;
+  border-radius: 1px;
+  background-color: currentColor;
+  rotate: 45deg;
+
+  & + & {
+    rotate: -45deg;
+  }
+}
+
+.menu-lista {
+  flex: 1 0 auto;
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+
+.menu-lista > li {
+  border-top: 1px solid var(--color-linea);
+}
+
+.menu-enlace {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+  padding: 12px 2px;
+  font-family: var(--font-display);
+  /* 30 px desde 400 px de ancho; a 320 px baja a 24 px para que «Cómo funciona» quepa en una línea. */
+  font-size: clamp(22px, 7.5vw, 30px);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  color: var(--color-texto);
+  border-radius: var(--radius-badge);
+  box-shadow: var(--anillo, 0 0 #0000);
+
+  &:active {
+    background-color: rgb(15 27 45 / 0.04);
+  }
+
+  @media (min-width: 640px) {
+    font-size: 26px;
+    min-height: 60px;
+  }
+
+  @media (max-height: 700px) {
+    font-size: min(25px, 7.5vw);
+    min-height: 54px;
+    padding-block: 8px;
+  }
+
+  @media (max-height: 580px) {
+    font-size: min(21px, 7.5vw);
+    min-height: 46px;
+  }
+}
+
+/* Numeral grabado en latón oscuro (5,8:1 sobre papel alto); decorativo, fuera del nombre accesible. */
+.menu-numero {
+  min-width: 22px;
+  /* Centrado ópticamente con las mayúsculas (el mono de 12 px tiene la altura de x más baja). */
+  translate: 0 -0.08em;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--color-brass-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.menu-texto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Flecha que avanza al pasar el cursor; en la página actual, un punto de latón en su lugar. */
+.menu-marca {
+  margin-inline-start: auto;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background-color: var(--color-apoyo);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.menu-enlace[aria-current="page"] .menu-numero {
+  color: var(--color-texto);
+}
+
+.menu-enlace[aria-current="page"] .menu-marca {
+  width: 8px;
+  height: 8px;
+  margin-inline-end: 4px;
+  border-radius: 9999px;
+  background-color: var(--color-brass);
+  -webkit-mask: none;
+  mask: none;
+}
+
+.menu-pie {
+  display: grid;
+  flex: none;
+  gap: 16px;
+
+  & > a {
+    height: 52px;
+    font-size: 15px;
+  }
+}
+
+.menu-legal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  font-size: 13px;
+  color: var(--color-apoyo);
+
+  & > p {
+    margin-inline-start: auto;
+  }
+}
+
+.menu-cuenta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 2px;
+  border-radius: var(--radius-badge);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-texto);
+  text-decoration: underline;
+  text-decoration-color: var(--color-linea-fuerte);
+  text-underline-offset: 4px;
 }
 
 /* ── Cinta 3D (hero) ───────────────────────────────────────────────────────── */
@@ -1135,7 +1500,52 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 @keyframes otea-vt-entrar {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(12px);
+  }
+}
+
+/* Salto de ancla largo: la pantalla de destino sube 10 px mientras aparece (la de origen solo se funde). */
+@keyframes otea-vt-salto {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes otea-vt-fundir {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Cabecera isla, ligada a scroll(root) en los primeros 120 px: la isla aparece y crece un 3 %, el logo entra en ella
+   y baja al 94 % (sin tocar su geometría) y las acciones se acercan. El progreso es una escala horizontal. */
+@keyframes cab-isla {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+@keyframes cab-logo {
+  to {
+    translate: var(--cab-dx-logo) 0;
+    scale: 0.94;
+  }
+}
+
+@keyframes cab-acciones {
+  to {
+    translate: calc(-1 * var(--cab-dx-acciones)) 0;
+  }
+}
+
+@keyframes cab-progreso {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
   }
 }
 
@@ -1437,17 +1847,276 @@ html[data-movimiento="completo"] {
     block-size: auto;
   }
 
-  /* Transición entre páginas (React <ViewTransition>); la cabecera queda fija. */
+  /* Transición entre páginas (React <ViewTransition> en `template.tsx`): la página que se va sube 8 px y se funde en
+     180 ms; la que llega entra desde 12 px en 420 ms, 60 ms después. La cabecera no se mueve y el filete de la página actual viaja al enlace nuevo (420 ms, curva de énfasis). Los clics atraviesan
+     la capa de la transición. */
+  &::view-transition {
+    pointer-events: none;
+  }
+
   &::view-transition-old(.otea-pagina) {
-    animation: otea-vt-salir 200ms cubic-bezier(0.4, 0, 1, 1) both;
+    animation: otea-vt-salir 180ms var(--ease-entrada) both;
   }
 
   &::view-transition-new(.otea-pagina) {
-    animation: otea-vt-entrar 500ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+    animation: otea-vt-entrar 420ms var(--ease-salida) 60ms both;
   }
 
+  /* La cabecera es el ancla: no se mueve. Si la página anterior estaba desplazada, su isla se disuelve (320 ms) sobre
+     la cabecera nueva, y el logo y las acciones vuelven a su sitio deslizándose (420 ms, curva de énfasis), cada uno
+     con su nombre. Los textos de la navegación no cambian de lugar: solo funden su color. */
   &::view-transition-group(site-header) {
     animation: none;
+  }
+
+  &::view-transition-old(site-header) {
+    animation: otea-vt-fundir var(--dur-3) var(--ease-salida) both;
+  }
+
+  &::view-transition-new(site-header) {
+    animation: none;
+  }
+
+  .cabecera-logo {
+    view-transition-name: cab-logo;
+  }
+
+  .cabecera-acciones {
+    view-transition-name: cab-acciones;
+  }
+
+  &::view-transition-group(cab-logo),
+  &::view-transition-group(cab-acciones) {
+    animation-duration: 420ms;
+    animation-timing-function: var(--ease-enfasis);
+  }
+
+  .nav-subrayado {
+    view-transition-name: nav-subrayado;
+  }
+
+  &::view-transition-group(nav-subrayado) {
+    animation-duration: 420ms;
+    animation-timing-function: var(--ease-enfasis);
+  }
+
+  /* Salto de ancla largo (`DirectorEscena` marca `data-salto` mientras dura): un fundido de unos 320 ms en vez de
+     cruzar la historia en avance rápido. */
+  &[data-salto]::view-transition-old(root) {
+    animation: otea-vt-fundir 140ms var(--ease-entrada) both;
+  }
+
+  &[data-salto]::view-transition-new(root) {
+    animation: otea-vt-salto 280ms var(--ease-salida) 40ms both;
+  }
+
+  /* En el salto la cabecera no cambia: sus piezas con nombre no esperan los 420 ms de la navegación entre páginas. */
+  &[data-salto]::view-transition-group(*) {
+    animation-duration: var(--dur-3);
+  }
+
+  /* Menú del teléfono: la hoja entra desde 12 px arriba (desde la derecha en el panel) en 320 ms, opaca a los 200 ms,
+     y el velo se enciende; los enlaces llegan escalonados 40 ms, desde 14 px, en 560 ms; la cruz se forma con los dos trazos del
+     botón de menú. Al cerrar, todo se funde en 200 ms (`allow-discrete` mantiene la hoja hasta el final). */
+  .menu-movil {
+    opacity: 0;
+    transition:
+      opacity var(--dur-2) var(--ease-entrada),
+      translate var(--dur-2) var(--ease-entrada),
+      display var(--dur-2) allow-discrete,
+      overlay var(--dur-2) allow-discrete;
+  }
+
+  .menu-movil:popover-open {
+    opacity: 1;
+    translate: 0 0;
+    transition-duration: var(--dur-2), var(--dur-3), var(--dur-3), var(--dur-3);
+    transition-timing-function: var(--ease-salida);
+  }
+
+  .menu-movil::backdrop {
+    opacity: 0;
+    transition:
+      opacity var(--dur-2) var(--ease-entrada),
+      display var(--dur-2) allow-discrete,
+      overlay var(--dur-2) allow-discrete;
+  }
+
+  .menu-movil:popover-open::backdrop {
+    opacity: 1;
+    transition-duration: var(--dur-3);
+    transition-timing-function: var(--ease-salida);
+  }
+
+  .menu-movil:popover-open :is(.menu-lista > li, .menu-pie) {
+    transition:
+      opacity var(--dur-4) var(--ease-salida),
+      translate var(--dur-4) var(--ease-salida);
+  }
+
+  .menu-movil:popover-open .menu-lista > li:nth-child(1) {
+    transition-delay: 40ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(2) {
+    transition-delay: 80ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(3) {
+    transition-delay: 120ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(4) {
+    transition-delay: 160ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(5) {
+    transition-delay: 200ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(6) {
+    transition-delay: 240ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(n + 7) {
+    transition-delay: 280ms;
+  }
+  .menu-movil:popover-open .menu-pie {
+    transition-delay: 320ms;
+  }
+
+  .menu-movil:popover-open .menu-cerrar-linea {
+    transition-property: rotate, translate;
+    transition-duration: var(--dur-4);
+    transition-delay: 60ms;
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  @starting-style {
+    .menu-movil:popover-open {
+      opacity: 0;
+      translate: 0 -12px;
+    }
+
+    .menu-movil:popover-open::backdrop {
+      opacity: 0;
+    }
+
+    .menu-movil:popover-open :is(.menu-lista > li, .menu-pie) {
+      opacity: 0;
+      translate: 0 14px;
+    }
+
+    /* Los trazos parten donde están en el botón de menú (paralelos, a ±3,75 px) y giran hasta cruzarse. */
+    .menu-movil:popover-open .menu-cerrar-linea {
+      rotate: 0deg;
+      translate: 0 -3.75px;
+    }
+
+    .menu-movil:popover-open .menu-cerrar-linea + .menu-cerrar-linea {
+      rotate: 0deg;
+      translate: 0 3.75px;
+    }
+  }
+
+  @media (min-width: 640px) {
+    @starting-style {
+      .menu-movil:popover-open {
+        translate: 24px 0;
+      }
+    }
+  }
+
+  .boton-menu,
+  .menu-cerrar {
+    transition:
+      background-color var(--dur-2) var(--ease-salida),
+      scale var(--dur-1) var(--ease-salida);
+  }
+
+  .menu-marca {
+    transition: translate var(--dur-3) var(--ease-salida);
+  }
+
+  /* Ratón: la flecha avanza 4 px y la pastilla de la navegación se desliza de un enlace a otro (320 ms) y se apaga
+     en 200 ms. Al entrar en la navegación aparece en su sitio, sin viajar (`data-nav-salto`, una sola imagen). */
+  @media (hover: hover) and (pointer: fine) {
+    .menu-enlace:hover .menu-marca {
+      translate: 4px 0;
+    }
+
+    .menu-enlace[aria-current="page"]:hover .menu-marca {
+      translate: none;
+    }
+
+    .nav-indicador {
+      transition:
+        translate var(--dur-3) var(--ease-salida),
+        width var(--dur-3) var(--ease-salida),
+        opacity var(--dur-2) var(--ease-salida);
+    }
+
+    [data-nav-salto] .nav-indicador {
+      transition: opacity var(--dur-2) var(--ease-salida);
+    }
+  }
+}
+
+/* Cabecera isla: solo con la puerta abierta, en escritorio y con líneas de tiempo (literal de M8). Arriba del todo
+   la cabecera es transparente; en los primeros 120 px de scroll aparece la isla, una píldora de porcelana de hasta
+   1200 px con filo y sombra larga, y el logo y las acciones se acercan a ella. El avance de lectura recorre su
+   borde inferior. La altura de 72 px no cambia: el escenario fijo de la historia sigue en `top: 72px`. */
+html[data-movimiento="completo"] {
+  @media (min-width: 1024px) {
+    @supports (animation-timeline: view()) {
+      .cabecera::before {
+        inset: 10px max(16px, 50% - 600px);
+        border-radius: var(--radius-pill);
+        background-color: rgb(252 250 246 / 0.99);
+        box-shadow:
+          inset 0 0 0 1px var(--color-linea),
+          inset 0 1px 0 rgb(255 255 255 / 0.9),
+          0 1px 2px rgb(15 27 45 / 0.06),
+          0 18px 40px -22px rgb(15 27 45 / 0.34);
+        animation: cab-isla var(--ease-salida) both;
+        animation-timeline: scroll(root);
+        animation-range: 0px 120px;
+      }
+
+      /* La cabecera es transparente arriba: el fondo de la página sube por debajo de ella (un borde transparente
+         de 72 px conserva la posición del contenido y deja pintar la luz del lienzo), sin costura a los 72 px. */
+      .cabecera ~ main {
+        margin-top: -72px;
+        border-top: 72px solid transparent;
+      }
+
+      .cabecera-logo {
+        transform-origin: left center;
+        animation: cab-logo var(--ease-salida) both;
+        animation-timeline: scroll(root);
+        animation-range: 0px 120px;
+      }
+
+      .cabecera-acciones {
+        animation: cab-acciones var(--ease-salida) both;
+        animation-timeline: scroll(root);
+        animation-range: 0px 120px;
+      }
+
+      .cabecera-progreso {
+        display: block;
+        inset: auto calc(max(16px, 50% - 600px) + 28px) 11px;
+        border-radius: 1px;
+        animation: cab-progreso linear both;
+        animation-timeline: scroll(root);
+      }
+    }
+  }
+
+  /* Teléfono y tableta: la barra queda sólida y su filete inferior es el avance de lectura. */
+  @media (max-width: 1023.98px) {
+    @supports (animation-timeline: view()) {
+      .cabecera-progreso {
+        display: block;
+        animation: cab-progreso linear both;
+        animation-timeline: scroll(root);
+      }
+    }
   }
 }
 
@@ -1949,6 +2618,15 @@ html[data-sistema="reduce"]:not([data-movimiento="completo"]) .aviso-mov {
 
 html[data-mov-ui] .mov-conmutador {
   display: inline-flex;
+}
+
+/* Con la puerta cerrada por el conmutador (sin que el sistema pida reducir), las view transitions que React o la isla
+   lleguen a iniciar terminan al instante. `animation-duration` y no `animation`: no anima nada fuera de la puerta. */
+html:not([data-movimiento="completo"])::view-transition-group(*),
+html:not([data-movimiento="completo"])::view-transition-old(*),
+html:not([data-movimiento="completo"])::view-transition-new(*) {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
 }
 
 /* Un sistema con «reducir movimiento» no anima ni transiciona nada, salvo que la persona haya activado el

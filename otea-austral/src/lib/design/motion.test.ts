@@ -148,6 +148,22 @@ describe("movimiento", () => {
     expect(reduce).toMatch(/::view-transition-group\(\*\)/);
   });
 
+  it("con la puerta cerrada por el conmutador, las view transitions terminan al instante (sin animar fuera de la puerta)", () => {
+    const fuera = quitarBloques(css, PUERTA);
+    expect(fuera).toMatch(
+      /html:not\(\[data-movimiento="completo"\]\)::view-transition-group\(\*\),\s*html:not\(\[data-movimiento="completo"\]\)::view-transition-old\(\*\),\s*html:not\(\[data-movimiento="completo"\]\)::view-transition-new\(\*\)\s*\{\s*animation-duration:\s*0s !important;/,
+    );
+    // Los nombres de transición que se mueven (subrayado, logo, acciones) solo existen con la puerta abierta.
+    expect(fuera).not.toMatch(/view-transition-name:\s*(nav-subrayado|cab-logo|cab-acciones)/);
+  });
+
+  it("la transición de página vive en template.tsx (se vuelve a montar en cada navegación), no dentro de las páginas", () => {
+    const plantilla = readFileSync(join(process.cwd(), "src/app/template.tsx"), "utf8");
+    expect(plantilla).toContain("<PageTransition>");
+    const usos = CODIGO.filter(({ texto }) => texto.includes("<PageTransition>")).map(({ ruta }) => ruta.slice(process.cwd().length + 1));
+    expect(usos).toEqual(["src/app/template.tsx"]);
+  });
+
   it("lo ligado al scroll solo se aplica donde el navegador lo soporta", () => {
     const timelines = [...css.matchAll(/animation-timeline:\s*([^;]+);/g)].map((m) => m[1]);
     expect(timelines.length).toBeGreaterThan(0);

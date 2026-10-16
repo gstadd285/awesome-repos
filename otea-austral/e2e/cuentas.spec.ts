@@ -804,7 +804,7 @@ test.describe("cuentas en el teléfono", () => {
       expect(await sinScrollHorizontal(page), ruta).toBe(true);
     }
     await page.goto("/");
-    await page.locator("summary", { hasText: "Menú" }).click();
+    await page.getByRole("button", { name: "Menú", exact: true }).click();
     await expect(page.getByRole("navigation", { name: "Principal (móvil)" }).getByRole("link", { name: "Entrar" })).toBeVisible();
 
     await crearCuenta(page, request, correoUnico("movil"));
@@ -813,7 +813,7 @@ test.describe("cuentas en el teléfono", () => {
       expect(await sinScrollHorizontal(page), ruta).toBe(true);
     }
     await page.goto("/");
-    await page.locator("summary", { hasText: "Menú" }).click();
+    await page.getByRole("button", { name: "Menú", exact: true }).click();
     await expect(page.getByRole("navigation", { name: "Principal (móvil)" }).getByRole("link", { name: "Mi cuenta" })).toBeVisible();
     expect(errores).toEqual([]);
   });

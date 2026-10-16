@@ -10,8 +10,31 @@ const VARIABLES = ["--mx", "--my", "--tx", "--ty", "--rx", "--ry"] as const;
 const ATRACCION = 4;
 /** Inclinación máxima de las piezas con `data-inclinar`, en grados. */
 const INCLINACION = 4;
+/** Navegación con pastilla de hover y sus variables (px, px y 0/1). */
+const NAV = "[data-nav-indicador]";
+const VARIABLES_NAV = ["--nx", "--nw", "--nv"] as const;
+/** Un salto de ancla más largo que esto (en pantallas) se hace en un fundido, sin cruzar la historia. */
+const SALTO_LARGO = 1.5;
 
 const acotar = (valor: number, minimo: number, maximo: number) => Math.min(maximo, Math.max(minimo, valor));
+
+/** El elemento de esta misma página al que apunta un enlace con ancla (`#id` o `/ruta#id` de la página actual). */
+function destinoEnPagina(enlace: HTMLAnchorElement): HTMLElement | null {
+  const url = new URL(enlace.href, location.href);
+  if (url.origin !== location.origin || url.pathname !== location.pathname || url.search !== location.search) return null;
+  if (url.hash.length < 2) return null;
+  try {
+    return document.getElementById(decodeURIComponent(url.hash.slice(1)));
+  } catch {
+    return null;
+  }
+}
+
+/** Cierra el menú del teléfono si está abierto (sin popover en el navegador, no hace nada). */
+function cerrarMenu(menu: HTMLElement | null) {
+  if (!menu || typeof menu.hidePopover !== "function" || !menu.matches(":popover-open")) return;
+  menu.hidePopover();
+}
 
 /**
  * Isla única de cliente del sistema de movimiento. Se monta una vez en el layout y no pinta nada.
@@ -22,7 +45,18 @@ const acotar = (valor: number, minimo: number, maximo: number) => Math.min(maxim
  *   elemento bajo el cursor `--mx --my` (posición de 0 a 1), `--tx --ty` (atracción en px, `data-magnetico`) y
  *   `--rx --ry` (inclinación en grados, `data-inclinar`). Las borra al salir.
  *
- * Solo actúa con la puerta abierta (`html[data-movimiento="completo"]`): observa el atributo y, al cerrarse,
+ * - **Pastilla de la navegación:** al pasar el ratón por un enlace de `[data-nav-indicador]` escribe en la navegación
+ *   `--nx --nw` (posición y ancho del enlace, leídos solo al cambiar de enlace) y `--nv` (0 o 1). Si estaba apagada,
+ *   marca `data-nav-salto` durante un cuadro para que aparezca en su sitio en vez de viajar.
+ * - **Saltos de ancla largos:** un clic en un enlace a un ancla de esta página que esté a más de 1,5 pantallas se hace
+ *   dentro de `document.startViewTransition` (con `data-salto` en `<html>` mientras dura): un fundido en vez de cruzar
+ *   la historia en avance rápido. Antes de mover guarda la entrada en el historial (`pushState`), así «Atrás» vuelve a
+ *   donde estaba; después mueve el foco al destino (`tabindex="-1"` si no lo tenía).
+ * - **Menú del teléfono** (siempre, también con movimiento reducido: no es movimiento): un clic en un enlace del menú
+ *   lo cierra (`hidePopover`), y si el enlace es un ancla de esta página el salto es instantáneo, detrás de la hoja que
+ *   se funde. Si el foco sale del menú con el teclado, también se cierra.
+ *
+ * Lo demás solo actúa con la puerta abierta (`html[data-movimiento="completo"]`): observa el atributo y, al cerrarse,
  * retira oyentes, marcas y variables. Escribe solo por CSSOM (`style.setProperty`, admitido por la CSP; nunca un
  * atributo `style`), no usa la Web Animations API (contaría en `getAnimations()`), no guarda estado de React y no
  * importa nada del servidor. Vuelve a buscar los bucles en cada navegación (`usePathname`).
@@ -39,6 +73,7 @@ export function DirectorEscena() {
     let cuadro = 0;
     let ultimo: PointerEvent | null = null;
     let actual: HTMLElement | null = null;
+    let enlaceNav: HTMLElement | null = null;
 
     const limpiar = (el: HTMLElement) => {
       for (const variable of VARIABLES) el.style.removeProperty(variable);
@@ -95,11 +130,46 @@ export function DirectorEscena() {
       soltar();
     };
 
+    const alEntrarNav = (evento: PointerEvent) => {
+      if (evento.pointerType !== "mouse" && evento.pointerType !== "pen") return;
+      const enlace = evento.target instanceof Element ? evento.target.closest<HTMLElement>(`${NAV} a`) : null;
+      if (!enlace || enlace === enlaceNav) return;
+      const nav = enlace.closest<HTMLElement>(NAV);
+      if (!nav) return;
+      if (nav.style.getPropertyValue("--nv") !== "1") {
+        nav.toggleAttribute("data-nav-salto", true);
+        requestAnimationFrame(() => requestAnimationFrame(() => nav.removeAttribute("data-nav-salto")));
+      }
+      enlaceNav = enlace;
+      nav.style.setProperty("--nx", String(enlace.offsetLeft));
+      nav.style.setProperty("--nw", String(enlace.offsetWidth));
+      nav.style.setProperty("--nv", "1");
+    };
+
+    const alSalirNav = (evento: PointerEvent) => {
+      const nav = enlaceNav?.closest<HTMLElement>(NAV);
+      if (!nav) return;
+      const destino = evento.relatedTarget;
+      if (destino instanceof Node && nav.contains(destino)) return;
+      nav.style.setProperty("--nv", "0");
+      enlaceNav = null;
+    };
+
+    const apagarNav = () => {
+      enlaceNav = null;
+      for (const nav of document.querySelectorAll<HTMLElement>(NAV)) {
+        for (const variable of VARIABLES_NAV) nav.style.removeProperty(variable);
+        nav.removeAttribute("data-nav-salto");
+      }
+    };
+
     const encenderPuntero = () => {
       if (punteroActivo) return;
       punteroActivo = true;
       document.addEventListener("pointermove", alMover, { passive: true });
       document.addEventListener("pointerout", alSalir, { passive: true });
+      document.addEventListener("pointerover", alEntrarNav, { passive: true });
+      document.addEventListener("pointerout", alSalirNav, { passive: true });
     };
 
     const apagarPuntero = () => {
@@ -107,7 +177,62 @@ export function DirectorEscena() {
       punteroActivo = false;
       document.removeEventListener("pointermove", alMover);
       document.removeEventListener("pointerout", alSalir);
+      document.removeEventListener("pointerover", alEntrarNav);
+      document.removeEventListener("pointerout", alSalirNav);
       soltar();
+      apagarNav();
+    };
+
+    /** Mueve la página al destino: primero la entrada del historial (guarda dónde estaba), luego el salto y el foco. */
+    const saltar = (destino: HTMLElement, ancla: string, conFundido: boolean) => {
+      const mover = () => {
+        history.pushState(null, "", ancla);
+        destino.scrollIntoView({ behavior: "instant", block: "start" });
+        if (destino.tabIndex < 0 && !destino.hasAttribute("tabindex")) destino.setAttribute("tabindex", "-1");
+        destino.focus({ preventScroll: true });
+      };
+      if (!conFundido || typeof document.startViewTransition !== "function") {
+        mover();
+        return;
+      }
+      raiz.toggleAttribute("data-salto", true);
+      document
+        .startViewTransition(mover)
+        .finished.catch(() => undefined)
+        .finally(() => raiz.removeAttribute("data-salto"));
+    };
+
+    // En captura: corre antes que el `onClick` de `next/link`, que respeta `defaultPrevented`.
+    const alClic = (evento: MouseEvent) => {
+      if (evento.defaultPrevented || evento.button !== 0) return;
+      if (evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+      const enlace = evento.target instanceof Element ? evento.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!enlace || (enlace.target && enlace.target !== "_self") || enlace.hasAttribute("download")) return;
+      const destino = destinoEnPagina(enlace);
+      const abierta = raiz.dataset.movimiento === "completo";
+      const menu = enlace.closest<HTMLElement>("#menu-movil");
+      if (menu) {
+        cerrarMenu(menu);
+        // Con la puerta abierta el ancla iría con scroll suave: se salta al instante, detrás de la hoja que se funde.
+        if (destino && abierta) {
+          evento.preventDefault();
+          saltar(destino, enlace.hash, false);
+        }
+        return;
+      }
+      if (!destino || !abierta) return;
+      if (Math.abs(destino.getBoundingClientRect().top) <= window.innerHeight * SALTO_LARGO) return;
+      evento.preventDefault();
+      saltar(destino, enlace.hash, true);
+    };
+
+    // Salir del menú con el teclado (Tab más allá del último enlace) lo cierra: no queda abierto tapando la página.
+    const alSalirDelMenu = (evento: FocusEvent) => {
+      const menu = document.getElementById("menu-movil");
+      if (!menu || !(evento.target instanceof Node) || !menu.contains(evento.target)) return;
+      const destino = evento.relatedTarget;
+      if (!(destino instanceof Element) || menu.contains(destino) || destino.matches('[popovertarget="menu-movil"]')) return;
+      cerrarMenu(menu);
     };
 
     const encenderBucles = () => {
@@ -138,11 +263,15 @@ export function DirectorEscena() {
     const vigilante = new MutationObserver(sincronizar);
     vigilante.observe(raiz, { attributes: true, attributeFilter: ["data-movimiento"] });
     fino.addEventListener("change", sincronizar);
+    document.addEventListener("click", alClic, true);
+    document.addEventListener("focusout", alSalirDelMenu, true);
     sincronizar();
 
     return () => {
       vigilante.disconnect();
       fino.removeEventListener("change", sincronizar);
+      document.removeEventListener("click", alClic, true);
+      document.removeEventListener("focusout", alSalirDelMenu, true);
       apagarPuntero();
       apagarBucles();
     };

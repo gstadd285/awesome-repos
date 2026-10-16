@@ -137,7 +137,7 @@ test.describe("foco", () => {
     // …y no se cruza con ningún otro control visible de la cabecera.
     const cruces = await page.evaluate((c) => {
       const logo = document.querySelector('header a[aria-label="Otea Austral, inicio"]');
-      return [...document.querySelectorAll("header a, header summary")]
+      return [...document.querySelectorAll("header a, header button")]
         .filter((el) => el !== logo && el.checkVisibility())
         .map((el) => ({ texto: el.textContent?.trim(), r: el.getBoundingClientRect() }))
         .filter(({ r }) => r.width > 0 && c.x < r.right && r.left < c.x + c.width && c.y < r.bottom && r.top < c.y + c.height)
@@ -243,4 +243,270 @@ test("sin errores de consola ni violaciones de la CSP en las 10 rutas, con el ra
     page.removeAllListeners("console");
     page.removeAllListeners("pageerror");
   }
+});
+
+/* ── T2 · Cabecera isla, menú de app y navegación con continuidad ─────────────────────────────────────────────── */
+
+/** Opacidad calculada de la isla (`header::before`). */
+const opacidadIsla = (page: Page) =>
+  page.evaluate(() => Number(getComputedStyle(document.querySelector("header.cabecera")!, "::before").opacity));
+
+/** Clic real en el centro de un elemento, sin que Playwright desplace la página para mostrarlo. */
+async function clicEnSitio(page: Page, el: Locator) {
+  const caja = (await el.boundingBox())!;
+  await page.mouse.click(caja.x + caja.width / 2, caja.y + caja.height / 2);
+}
+
+test.describe("cabecera isla", () => {
+  test("transparente arriba e isla flotante tras 120 px; el logo y la CTA se acercan a ella", async ({ page }, info) => {
+    soloEscritorio(info.project.name);
+    const errores = vigilarErrores(page);
+    await page.goto("/metodologia");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+    const cabecera = page.locator("header.cabecera");
+    expect((await cabecera.boundingBox())!.height).toBe(72);
+    expect(await opacidadIsla(page)).toBeLessThan(0.05);
+    const logo = page.getByRole("link", { name: "Otea Austral, inicio" }).first();
+    const xArriba = (await logo.boundingBox())!.x;
+
+    await page.evaluate(() => window.scrollTo({ top: 400, behavior: "instant" }));
+    await expect.poll(() => opacidadIsla(page)).toBe(1);
+    const isla = await page.evaluate(() => {
+      const s = getComputedStyle(document.querySelector("header.cabecera")!, "::before");
+      return { izquierda: Number.parseFloat(s.left), radio: s.borderTopLeftRadius, sombra: s.boxShadow };
+    });
+    expect(isla.izquierda).toBeGreaterThan(100);
+    expect(isla.sombra).not.toBe("none");
+    // El logo entra en la isla (sin cambiar su geometría: solo se traslada y escala).
+    const xAbajo = (await logo.boundingBox())!.x;
+    expect(xAbajo).toBeGreaterThan(isla.izquierda);
+    expect(xAbajo - xArriba).toBeGreaterThan(80);
+    // El avance de lectura recorre el borde de la isla.
+    const avance = await page.evaluate(() => getComputedStyle(document.querySelector(".cabecera-progreso")!).scale);
+    expect(Number.parseFloat(avance)).toBeGreaterThan(0);
+    expect(errores).toEqual([]);
+  });
+
+  test("la pastilla sigue al ratón y el subrayado marca solo la página actual", async ({ page }, info) => {
+    soloEscritorio(info.project.name);
+    await page.goto("/metodologia");
+    const nav = page.getByRole("navigation", { name: "Principal", exact: true });
+    await expect(nav.locator(".nav-subrayado")).toHaveCount(1);
+    await expect(nav.getByRole("link", { name: "Metodología" }).locator(".nav-subrayado")).toHaveCount(1);
+    // Indicador no textual de 2 px en latón oscuro.
+    const filete = await nav.locator(".nav-subrayado").evaluate((e) => {
+      const s = getComputedStyle(e);
+      return { alto: s.height, color: s.backgroundColor };
+    });
+    expect(filete).toEqual({ alto: "2px", color: "rgb(122, 94, 51)" });
+
+    const alertas = nav.getByRole("link", { name: "Alertas" });
+    const caja = (await alertas.boundingBox())!;
+    await page.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 2, { steps: 3 });
+    await expect.poll(() => nav.evaluate((e) => (e as HTMLElement).style.getPropertyValue("--nv"))).toBe("1");
+    const pastilla = nav.locator(".nav-indicador");
+    await expect.poll(async () => Math.round((await pastilla.boundingBox())!.width)).toBe(Math.round(caja.width));
+    await expect.poll(async () => Math.round((await pastilla.boundingBox())!.x)).toBe(Math.round(caja.x));
+
+    await page.mouse.move(700, 600, { steps: 3 });
+    await expect.poll(() => nav.evaluate((e) => (e as HTMLElement).style.getPropertyValue("--nv"))).toBe("0");
+    await expect.poll(() => pastilla.evaluate((e) => getComputedStyle(e).opacity)).toBe("0");
+  });
+
+  test("con movimiento reducido la barra es sólida y quieta, sin pastilla ni avance", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    const contexto = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+    const page = await contexto.newPage();
+    await page.goto("/metodologia");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "reducido");
+    expect(await opacidadIsla(page)).toBe(1);
+    await expect(page.locator(".cabecera-progreso")).toBeHidden();
+    const nav = page.getByRole("navigation", { name: "Principal", exact: true });
+    const caja = (await nav.getByRole("link", { name: "Alertas" }).boundingBox())!;
+    await page.mouse.move(caja.x + 10, caja.y + 10, { steps: 3 });
+    expect(await nav.evaluate((e) => (e as HTMLElement).style.length)).toBe(0);
+    await expect.poll(() => page.evaluate(() => document.getAnimations().length), { timeout: 1000 }).toBe(0);
+    await contexto.close();
+  });
+});
+
+test.describe("menú del teléfono", () => {
+  test("barra de 60 px con objetivos de 44 px; a 320 px sin desborde y sin «Alertas», que pasa al menú", async ({
+    browser,
+  }, info) => {
+    soloEscritorio(info.project.name);
+    for (const ancho of [320, 390, 768]) {
+      const contexto = await browser.newContext({ viewport: { width: ancho, height: 800 }, hasTouch: true });
+      const page = await contexto.newPage();
+      await page.goto("/");
+      expect((await page.locator("header.cabecera").boundingBox())!.height, `${ancho}`).toBe(60);
+      const menu = page.getByRole("button", { name: "Menú", exact: true });
+      const caja = (await menu.boundingBox())!;
+      expect(caja.width).toBeGreaterThanOrEqual(44);
+      expect(caja.height).toBeGreaterThanOrEqual(44);
+      const cta = page.locator("header").getByRole("link", { name: /^(Alertas|Recibir alertas)$/ });
+      if (ancho < 400) await expect(cta).toBeHidden();
+      else expect((await cta.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth), `${ancho}`).toBe(ancho);
+      await menu.click();
+      const hoja = page.getByRole("navigation", { name: "Principal (móvil)" });
+      await expect(hoja).toBeVisible();
+      await expect(hoja.getByRole("link", { name: "Recibir alertas" })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth), `${ancho} con el menú`).toBe(ancho);
+      if (ancho < 640) {
+        // A pantalla completa.
+        await expect.poll(async () => Math.round((await hoja.boundingBox())!.width)).toBe(ancho);
+        expect((await hoja.boundingBox())!.height).toBeCloseTo(800, 0);
+      }
+      await contexto.close();
+    }
+  });
+
+  test("Escape, un toque fuera, un toque en «Temas» y navegar cierran el menú", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const page = await contexto.newPage();
+    const errores = vigilarErrores(page);
+    await page.goto("/");
+    const boton = page.getByRole("button", { name: "Menú", exact: true });
+    const hoja = page.getByRole("navigation", { name: "Principal (móvil)" });
+    const abierto = () => page.evaluate(() => document.querySelector("#menu-movil")!.matches(":popover-open"));
+
+    await boton.click();
+    await expect(hoja).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect.poll(abierto).toBe(false);
+    await expect(boton).toBeFocused();
+
+    // «Temas» es un ancla de esta página: el menú se cierra y el titular de destino queda a la vista.
+    await boton.click();
+    await hoja.getByRole("link", { name: "Temas" }).click();
+    await expect.poll(abierto).toBe(false);
+    await expect(page).toHaveURL(/#temas$/);
+    await expect(page.locator("#temas-titulo")).toBeInViewport();
+
+    // Navegar a otra página también lo cierra.
+    await boton.click();
+    await hoja.getByRole("link", { name: "Metodología" }).click();
+    await expect(page).toHaveURL(/\/metodologia$/);
+    await expect.poll(abierto).toBe(false);
+    await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
+    expect(errores).toEqual([]);
+    await contexto.close();
+
+    // En el panel lateral (desde 640 px) queda página a la vista: tocarla cierra el menú.
+    const tableta = await browser.newContext({ viewport: { width: 768, height: 1024 }, hasTouch: true });
+    const otra = await tableta.newPage();
+    await otra.goto("/fuentes");
+    await otra.getByRole("button", { name: "Menú", exact: true }).click();
+    await expect(otra.getByRole("navigation", { name: "Principal (móvil)" })).toBeVisible();
+    await otra.mouse.click(80, 600);
+    await expect
+      .poll(() => otra.evaluate(() => document.querySelector("#menu-movil")!.matches(":popover-open")))
+      .toBe(false);
+    await tableta.close();
+  });
+
+  test("con movimiento reducido el menú abre y se cierra al instante, igual de completo", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+    const page = await contexto.newPage();
+    await page.goto("/metodologia");
+    await page.getByRole("button", { name: "Menú", exact: true }).click();
+    const hoja = page.getByRole("navigation", { name: "Principal (móvil)" });
+    await expect(hoja).toBeVisible();
+    await expect(hoja.getByRole("link", { name: "Metodología" })).toHaveAttribute("aria-current", "page");
+    await expect.poll(() => page.evaluate(() => document.getAnimations().length), { timeout: 1000 }).toBe(0);
+    await page.getByRole("button", { name: "Cerrar menú" }).click();
+    await expect(hoja).toBeHidden();
+    await contexto.close();
+  });
+});
+
+test.describe("navegación con continuidad", () => {
+  test("ir de /metodologia a /fuentes inicia una view transition y el subrayado viaja", async ({ page }, info) => {
+    soloEscritorio(info.project.name);
+    await page.addInitScript(() => {
+      const ventana = window as Window & { __vt?: number };
+      ventana.__vt = 0;
+      const original = document.startViewTransition?.bind(document);
+      if (original) {
+        document.startViewTransition = ((...args: Parameters<typeof original>) => {
+          ventana.__vt = (ventana.__vt ?? 0) + 1;
+          return original(...args);
+        }) as typeof document.startViewTransition;
+      }
+    });
+    await page.goto("/metodologia");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+    await clicEnSitio(page, page.getByRole("navigation", { name: "Principal", exact: true }).getByRole("link", { name: "Fuentes" }));
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.getAnimations().some((a) => String((a.effect as KeyframeEffect | null)?.pseudoElement).includes("nav-subrayado")),
+        ),
+      )
+      .toBe(true);
+    await expect(page).toHaveURL(/\/fuentes$/);
+    expect(await page.evaluate(() => (window as Window & { __vt?: number }).__vt)).toBeGreaterThanOrEqual(1);
+    await expect(
+      page.getByRole("navigation", { name: "Principal", exact: true }).getByRole("link", { name: "Fuentes" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  test("«Ver una alerta de ejemplo» llega en un fundido de menos de 400 ms, sin cruzar la historia, y «Atrás» vuelve", async ({
+    page,
+  }, info) => {
+    soloEscritorio(info.project.name);
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+    await page.evaluate(() => window.scrollTo({ top: 120, behavior: "instant" }));
+    const antes = await page.evaluate(() => window.scrollY);
+    await page.evaluate(() => {
+      const ventana = window as Window & { __ys?: number[]; __vtMs?: number };
+      ventana.__ys = [];
+      const medir = () => {
+        ventana.__ys!.push(Math.round(window.scrollY));
+        const vt = document
+          .getAnimations()
+          .filter((a) => String((a.effect as KeyframeEffect | null)?.pseudoElement).includes("view-transition"))
+          .map((a) => {
+            const t = a.effect!.getComputedTiming();
+            return Number(t.delay ?? 0) + Number(t.duration ?? 0);
+          });
+        if (vt.length) ventana.__vtMs = Math.max(ventana.__vtMs ?? 0, ...vt);
+        if (ventana.__ys!.length < 90) requestAnimationFrame(medir);
+      };
+      requestAnimationFrame(medir);
+    });
+    await clicEnSitio(page, page.getByRole("link", { name: /Ver una alerta de ejemplo/ }));
+    await expect(page).toHaveURL(/#ejemplos$/);
+    await expect(page.getByRole("heading", { name: "Así se ve una alerta." })).toBeInViewport();
+    await expect(page.locator("#ejemplos")).toBeFocused();
+    await page.waitForTimeout(1600);
+    const { posiciones, vtMs } = await page.evaluate(() => {
+      const ventana = window as Window & { __ys?: number[]; __vtMs?: number };
+      return { posiciones: [...new Set(ventana.__ys)], vtMs: ventana.__vtMs ?? 0 };
+    });
+    // Solo el origen y el destino: ningún cuadro intermedio de la historia.
+    expect(posiciones).toHaveLength(2);
+    expect(vtMs).toBeGreaterThan(0);
+    expect(vtMs).toBeLessThan(400);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+    await expect.poll(async () => Math.abs((await page.evaluate(() => window.scrollY)) - antes)).toBeLessThanOrEqual(2);
+  });
+
+  test("con movimiento reducido el ancla funciona como siempre (sin fundido ni transición)", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    const contexto = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+    const page = await contexto.newPage();
+    await page.goto("/");
+    await page.getByRole("link", { name: /Ver una alerta de ejemplo/ }).click();
+    await expect(page).toHaveURL(/#ejemplos$/);
+    await expect(page.getByRole("heading", { name: "Así se ve una alerta." })).toBeInViewport();
+    expect(await page.locator("html").getAttribute("data-salto")).toBeNull();
+    await expect.poll(() => page.evaluate(() => document.getAnimations().length), { timeout: 1000 }).toBe(0);
+    await contexto.close();
+  });
 });
