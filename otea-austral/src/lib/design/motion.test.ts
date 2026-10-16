@@ -34,6 +34,23 @@ function quitarBloques(texto: string, cabecera: RegExp): string {
   }
 }
 
+/** El contenido de cada bloque `{…}` que sigue a `cabecera` (con llaves anidadas). */
+function bloques(texto: string, cabecera: RegExp): string[] {
+  const global = new RegExp(cabecera.source, "g");
+  const resultado: string[] = [];
+  for (const m of texto.matchAll(global)) {
+    const apertura = texto.indexOf("{", m.index);
+    let nivel = 0;
+    let fin = apertura;
+    for (; fin < texto.length; fin++) {
+      if (texto[fin] === "{") nivel++;
+      if (texto[fin] === "}" && --nivel === 0) break;
+    }
+    resultado.push(texto.slice(apertura + 1, fin));
+  }
+  return resultado;
+}
+
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
     const ruta = join(dir, nombre);
@@ -241,17 +258,23 @@ describe("movimiento", () => {
       [...css.matchAll(/animation:\s*([\w-]+)[^;]*\binfinite\b/g)].map((m) => m[1]),
     );
     expect([...infinitos].sort()).toEqual(["otea-flotar", "otea-ola", "otea-pulso"]);
-    expect(css).toMatch(
-      /\[data-bucle\]\[data-fuera\],\s*\[data-bucle\]\[data-fuera\] \*\s*\{\s*animation-play-state:\s*paused;/,
-    );
+    // Solo los descendientes: las animaciones propias del contenedor (entrada, claves ligadas al scroll) no se
+    // congelan al salir de vista.
+    expect(css).toMatch(/\[data-bucle\]\[data-fuera\] \*\s*\{\s*animation-play-state:\s*paused;/);
+    expect(css).not.toMatch(/\[data-bucle\]\[data-fuera\]\s*[,{]/);
     const cinta = readFileSync(join(process.cwd(), "src/components/home/Ribbon.tsx"), "utf8");
     expect(cinta).toMatch(/className=\{`cinta [^`]*`\}[^>]*data-bucle/);
   });
 
-  it("los efectos de puntero solo viven en la puerta y con puntero fino", () => {
-    const fuera = quitarBloques(css, PUERTA);
-    expect(fuera).not.toMatch(/var\(--(tx|ty|rx|ry)\b/);
-    expect(fuera).not.toMatch(/\[data-magnetico\]/);
+  it("los efectos de puntero solo viven en la puerta y, dentro de ella, con puntero fino", () => {
+    // Las variables que escribe DirectorEscena: brillo (--mx/--my), atracción (--tx/--ty), inclinación
+    // (--rx/--ry) y la luz del héroe (--cx/--cy).
+    const PUNTERO = /var\(--(mx|my|tx|ty|rx|ry|cx|cy)\b|\[data-(magnetico|inclinar|foco)\]/;
+    const FINO = /@media \(hover: hover\) and \(pointer: fine\)/;
+    expect(quitarBloques(css, PUERTA)).not.toMatch(PUNTERO);
+    const dentro = bloques(css, PUERTA);
+    expect(dentro.some((b) => PUNTERO.test(b))).toBe(true);
+    for (const bloque of dentro) expect(quitarBloques(bloque, FINO)).not.toMatch(PUNTERO);
   });
 
   it("DirectorEscena: isla de cliente que escribe por CSSOM, sin estado de React ni importaciones del servidor", () => {

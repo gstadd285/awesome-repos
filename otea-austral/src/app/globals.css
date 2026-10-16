@@ -1804,8 +1804,9 @@ html[data-movimiento="completo"] {
     animation: none;
   }
 
-  /* Bucles pausados fuera de vista: `DirectorEscena` pone `data-fuera` con un IntersectionObserver. */
-  [data-bucle][data-fuera],
+  /* Bucles pausados fuera de vista: `DirectorEscena` pone `data-fuera` con un IntersectionObserver. Solo se
+     pausan los descendientes (los bucles): las animaciones propias del contenedor (entrada, claves ligadas al
+     scroll) siguen su curso y no quedan congeladas al volver. */
   [data-bucle][data-fuera] * {
     animation-play-state: paused;
   }
