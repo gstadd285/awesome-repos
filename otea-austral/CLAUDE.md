@@ -77,8 +77,8 @@ Tokens en `src/app/globals.css` (`@theme`, con la paleta de Tailwind reiniciada)
 | `gana`, `condicionado`, `pierde` | estado | Solo alertas y sus piezas |
 
 Utilidades propias: `superficie` (porcelana con borde fino y sombra suave),
-`superficie-interactiva` (solo en lo clicable), `vidrio` (cabecera: porcelana al 94 %, **sin `backdrop-filter`**),
-`boton-laton` (latón como material), `campo` (campos con el foco del sitio), `salto-contenido`, `cifras`,
+`superficie-interactiva` (solo en lo clicable), `vidrio` (cabecera: porcelana al 98,5 %, **sin `backdrop-filter`**),
+`boton-laton` (latón como material), `campo` (campos con el foco del sitio), `salto-contenido` (píldora en la cabecera que ocupa el lugar del logo), `cifras`,
 `linea-fina`, `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
 pantalla de error), `fondo-luz`,
 `luz-ventana` (sombras de persiana), `reticula-puntos`, y el tamaño `text-lede` (18 a 22 px) para el texto
@@ -199,8 +199,10 @@ pintado y escribe en `<html>`:
 `--ease-entrada` (lo que se va), y escalonados `--escalon*`. El **resorte va literal** (`linear(…)`), siempre detrás de
 un `cubic-bezier` de respaldo y nunca con `var()` en la misma declaración (utilidad `resorte`). Variantes con puerta en
 forma de bloque: `mov:` (solo con `data-movimiento="completo"`) y `fino:` (ratón o trackpad). El foco es un anillo tinta
-de 2 px con un halo de latón (`--anillo`) que pintan las sombras; con la puerta abierta, aterriza de 9 a 3 px. Sobre
-tinta, la clase `en-tinta` pasa el anillo a latón. Bucles infinitos: solo con `data-bucle` en su contenedor.
+de 2 px con un halo de latón (`--anillo`) que pintan las sombras (también en los enlaces de cabecera, menús y pie; no en
+los enlaces en prosa); con la puerta abierta, aterriza de 9 a 3 px. Sobre tinta, la clase `en-tinta` pasa el anillo y
+el `accent-color` a latón (en el resto del sitio, `accent-color` es tinta: el latón no llega a 3:1 en casillas y
+radios). Bucles infinitos: solo con `data-bucle` en su contenedor; se pausan sus descendientes, no el contenedor.
 
 Reglas (las vigila `src/lib/design/motion.test.ts`):
 
