@@ -1544,6 +1544,26 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   }
 }
 
+/* Arriba del todo la isla no solo es transparente: está oculta. Chromium captura mal, para la view transition, una
+   capa con la opacidad animada justo en 0 y una sombra que desborda la cabecera: estiraba en vertical la imagen vieja
+   de la cabecera (una copia deformada de la navegación unos 18 px más abajo). Va en una animación aparte para que
+   `cab-isla` siga entera en el compositor. */
+@keyframes cab-isla-ver {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
+
+/* El avance aparece con la isla, no antes: sin ella sería una raya suelta bajo el logo. */
+@keyframes cab-progreso-ver {
+  from {
+    opacity: 0;
+  }
+}
+
 @keyframes cab-logo {
   to {
     translate: var(--cab-dx-logo) 0;
@@ -1879,19 +1899,30 @@ html[data-movimiento="completo"] {
     animation: otea-vt-entrar 420ms var(--ease-salida) 60ms both;
   }
 
-  /* La cabecera es el ancla: no se mueve. Si la página anterior estaba desplazada, su isla se disuelve (320 ms) sobre
-     la cabecera nueva, y el logo y las acciones vuelven a su sitio deslizándose (420 ms, curva de énfasis), cada uno
-     con su nombre. Los textos de la navegación no cambian de lugar: solo funden su color. */
+  /* La cabecera es el ancla: no se mueve. Si la página anterior estaba desplazada, su isla espera a que el contenido
+     viejo se haya ido (160 ms) y entonces se disuelve (200 ms) sobre la cabecera nueva, que arriba es transparente:
+     así el texto viejo nunca cruza las etiquetas de la navegación. El logo y las acciones vuelven a su sitio
+     deslizándose (420 ms, curva de énfasis), cada uno con su nombre. Los textos de la navegación no cambian de lugar. */
   &::view-transition-group(site-header) {
     animation: none;
   }
 
   &::view-transition-old(site-header) {
-    animation: otea-vt-fundir var(--dur-3) var(--ease-salida) both;
+    animation: otea-vt-fundir var(--dur-2) var(--ease-salida) 160ms both;
   }
 
   &::view-transition-new(site-header) {
     animation: none;
+  }
+
+  /* La página que entra es un grupo que React crea después de los de la cabecera, así que se pintaba encima: la luz
+     de su `main` (que sube bajo la cabecera transparente) velaba la navegación y la CTA mientras entraba. Las piezas de
+     la cabecera van siempre por encima del contenido, como fuera de la transición. */
+  &::view-transition-group(site-header),
+  &::view-transition-group(cab-logo),
+  &::view-transition-group(cab-acciones),
+  &::view-transition-group(nav-subrayado) {
+    z-index: 1;
   }
 
   .cabecera-logo {
@@ -1927,9 +1958,14 @@ html[data-movimiento="completo"] {
     animation: otea-vt-salto 280ms var(--ease-salida) 40ms both;
   }
 
-  /* En el salto la cabecera no cambia: sus piezas con nombre no esperan los 420 ms de la navegación entre páginas. */
+  /* En el salto la cabecera no cambia: sus piezas con nombre no esperan los 420 ms de la navegación entre páginas, ni
+     su imagen vieja espera al contenido. */
   &[data-salto]::view-transition-group(*) {
     animation-duration: var(--dur-3);
+  }
+
+  &[data-salto]::view-transition-old(site-header) {
+    animation-delay: 0s;
   }
 
   /* Menú del teléfono: la hoja entra desde 12 px arriba (desde la derecha en el panel) en 320 ms, opaca a los 200 ms,
@@ -2093,27 +2129,33 @@ html[data-movimiento="completo"] {
           inset 0 1px 0 rgb(255 255 255 / 0.9),
           0 1px 2px rgb(15 27 45 / 0.06),
           0 18px 40px -22px rgb(15 27 45 / 0.34);
-        animation: cab-isla var(--ease-salida) both;
-        animation-timeline: scroll(root);
+        /* Curva de cámara (énfasis) y no de aterrizaje: ligada al dedo, la isla se condensa a lo largo de los
+           120 px en vez de formarse casi entera en los primeros 30. */
+        animation:
+          cab-isla var(--ease-enfasis) both,
+          cab-isla-ver linear both;
+        animation-timeline: scroll(root), scroll(root);
         animation-range: 0px 120px;
       }
 
       /* La cabecera es transparente arriba: el fondo de la página sube por debajo de ella (un borde transparente
-         de 72 px conserva la posición del contenido y deja pintar la luz del lienzo), sin costura a los 72 px. */
+         de 72 px conserva la posición del contenido y deja pintar la luz del lienzo). `border-box`: los degradados
+         de `fondo-luz` se extienden por la banda del borde en vez de repetir el mosaico, sin escalón a los 72 px. */
       .cabecera ~ main {
         margin-top: -72px;
         border-top: 72px solid transparent;
+        background-origin: border-box;
       }
 
       .cabecera-logo {
         transform-origin: left center;
-        animation: cab-logo var(--ease-salida) both;
+        animation: cab-logo var(--ease-enfasis) both;
         animation-timeline: scroll(root);
         animation-range: 0px 120px;
       }
 
       .cabecera-acciones {
-        animation: cab-acciones var(--ease-salida) both;
+        animation: cab-acciones var(--ease-enfasis) both;
         animation-timeline: scroll(root);
         animation-range: 0px 120px;
       }
@@ -2122,8 +2164,11 @@ html[data-movimiento="completo"] {
         display: block;
         inset: auto calc(max(16px, 50% - 600px) + 28px) 11px;
         border-radius: 1px;
-        animation: cab-progreso linear both;
-        animation-timeline: scroll(root);
+        animation:
+          cab-progreso linear both,
+          cab-progreso-ver var(--ease-enfasis) both;
+        animation-timeline: scroll(root), scroll(root);
+        animation-range: normal, 0px 120px;
       }
     }
   }

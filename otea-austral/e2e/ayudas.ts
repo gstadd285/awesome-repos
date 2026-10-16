@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { inflateSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 
 /** Junta errores de consola y de página (incluidas violaciones de la CSP). */
@@ -60,4 +61,64 @@ export async function ultimaRespuestaDelAsistente(page: Page): Promise<string> {
     const copias = (window as VentanaConCapturas).__respuestasAsistente ?? [];
     return (await Promise.all(copias)).at(-1) ?? "";
   });
+}
+
+/** Imagen decodificada de una captura: píxeles RGB(A) de 8 bits, fila a fila. */
+export type Pixeles = { ancho: number; alto: number; canales: number; datos: Uint8Array };
+
+/**
+ * Decodifica el PNG que devuelve `page.screenshot()` (8 bits, RGB o RGBA, sin entrelazado: lo que produce Chromium)
+ * sin dependencias, para leer píxeles de un fotograma en las pruebas.
+ */
+export function leerPng(png: Buffer): Pixeles {
+  let pos = 8;
+  let ancho = 0;
+  let alto = 0;
+  let canales = 0;
+  const idat: Buffer[] = [];
+  while (pos < png.length) {
+    const largo = png.readUInt32BE(pos);
+    const tipo = png.toString("ascii", pos + 4, pos + 8);
+    const cuerpo = png.subarray(pos + 8, pos + 8 + largo);
+    if (tipo === "IHDR") {
+      ancho = cuerpo.readUInt32BE(0);
+      alto = cuerpo.readUInt32BE(4);
+      if (cuerpo[8] !== 8 || cuerpo[12] !== 0) throw new Error("PNG no admitido");
+      canales = cuerpo[9] === 6 ? 4 : cuerpo[9] === 2 ? 3 : 0;
+      if (!canales) throw new Error("PNG no admitido");
+    } else if (tipo === "IDAT") idat.push(cuerpo);
+    else if (tipo === "IEND") break;
+    pos += 12 + largo;
+  }
+  const crudo = inflateSync(Buffer.concat(idat));
+  const fila = ancho * canales;
+  const datos = new Uint8Array(alto * fila);
+  for (let y = 0; y < alto; y++) {
+    const filtro = crudo[y * (fila + 1)];
+    for (let x = 0; x < fila; x++) {
+      const v = crudo[y * (fila + 1) + 1 + x];
+      const a = x >= canales ? datos[y * fila + x - canales] : 0;
+      const b = y > 0 ? datos[(y - 1) * fila + x] : 0;
+      const c = x >= canales && y > 0 ? datos[(y - 1) * fila + x - canales] : 0;
+      let pred = 0;
+      if (filtro === 1) pred = a;
+      else if (filtro === 2) pred = b;
+      else if (filtro === 3) pred = (a + b) >> 1;
+      else if (filtro === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a);
+        const pb = Math.abs(p - b);
+        const pc = Math.abs(p - c);
+        pred = pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      }
+      datos[y * fila + x] = (v + pred) & 0xff;
+    }
+  }
+  return { ancho, alto, canales, datos };
+}
+
+/** Color [r, g, b] de un píxel. */
+export function pixel(img: Pixeles, x: number, y: number): [number, number, number] {
+  const i = (y * img.ancho + x) * img.canales;
+  return [img.datos[i], img.datos[i + 1], img.datos[i + 2]];
 }

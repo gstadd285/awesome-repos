@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { sinScrollHorizontal, vigilarErrores } from "./ayudas";
+import { leerPng, pixel, sinScrollHorizontal, vigilarErrores } from "./ayudas";
 
 /**
  * Oficio de la interfaz (rediseño «Horizonte», T1): botón magnético con puerta, foco que aterriza, salto al
@@ -313,6 +313,22 @@ test.describe("cabecera isla", () => {
     await expect.poll(() => pastilla.evaluate((e) => getComputedStyle(e).opacity)).toBe("0");
   });
 
+  test("arriba del todo el fondo sigue sin escalón bajo la cabecera transparente (72 px)", async ({ page }, info) => {
+    soloEscritorio(info.project.name);
+    for (const ruta of ["/metodologia", "/fuentes", "/no-existe"]) {
+      await page.goto(ruta);
+      await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+      expect(await opacidadIsla(page)).toBeLessThan(0.05);
+      const img = leerPng(await page.screenshot({ clip: { x: 0, y: 64, width: 1440, height: 16 } }));
+      for (const x of [300, 1000, 1400]) {
+        const arriba = pixel(img, x, 71 - 64);
+        const abajo = pixel(img, x, 72 - 64);
+        const salto = Math.max(...arriba.map((v, i) => Math.abs(v - abajo[i])));
+        expect(salto, `${ruta} x=${x}: ${arriba} → ${abajo}`).toBeLessThanOrEqual(2);
+      }
+    }
+  });
+
   test("con movimiento reducido la barra es sólida y quieta, sin pastilla ni avance", async ({ browser }, info) => {
     soloEscritorio(info.project.name);
     const contexto = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
@@ -480,6 +496,61 @@ test.describe("navegación con continuidad", () => {
     await expect(
       page.getByRole("navigation", { name: "Principal", exact: true }).getByRole("link", { name: "Fuentes" }),
     ).toHaveAttribute("aria-current", "page");
+  });
+
+  test("a mitad de la transición la cabecera queda intacta: sin copia estirada de la navegación ni velo encima", async ({
+    page,
+  }, info) => {
+    soloEscritorio(info.project.name);
+    // Congela la transición a los 150 ms (la imagen vieja de la cabecera sigue entera y la página nueva va entrando).
+    await page.addInitScript(() => {
+      const ventana = window as Window & { __congelada?: boolean };
+      const original = document.startViewTransition?.bind(document);
+      if (!original) return;
+      document.startViewTransition = ((...args: Parameters<typeof original>) => {
+        const transicion = original(...args);
+        transicion.ready.then(() => {
+          for (const a of document.getAnimations()) {
+            if (String((a.effect as KeyframeEffect | null)?.pseudoElement).includes("view-transition")) {
+              a.pause();
+              a.currentTime = 150;
+            }
+          }
+          ventana.__congelada = true;
+        });
+        return transicion;
+      }) as typeof document.startViewTransition;
+    });
+    await page.goto("/metodologia");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+    const nav = page.getByRole("navigation", { name: "Principal", exact: true });
+    const etiquetas = [
+      (await nav.getByRole("link", { name: "Cómo funciona" }).boundingBox())!,
+      (await nav.getByRole("link", { name: "Alertas" }).boundingBox())!,
+    ];
+    const cta = (await page.locator("header").getByRole("link", { name: "Recibir alertas" }).boundingBox())!;
+    const puntoCta = { x: Math.round(cta.x + 10), y: Math.round(cta.y + cta.height / 2) };
+    await page.waitForTimeout(400);
+    const antes = leerPng(await page.screenshot({ clip: { x: 0, y: 0, width: 1440, height: 72 } }));
+
+    // Clic sin pasar el ratón (sin pastilla), como un toque o un lector de pantalla.
+    await nav.getByRole("link", { name: "Fuentes" }).evaluate((e) => (e as HTMLElement).click());
+    await page.waitForFunction(() => (window as Window & { __congelada?: boolean }).__congelada === true);
+    await page.waitForTimeout(150);
+    const durante = leerPng(await page.screenshot({ clip: { x: 0, y: 0, width: 1440, height: 72 } }));
+
+    // Bajo las etiquetas solo hay fondo: ninguna copia estirada de la navegación (antes aparecía 18 px más abajo).
+    for (const caja of etiquetas) {
+      let minimo = 255;
+      for (let x = Math.ceil(caja.x); x < caja.x + caja.width; x += 2) {
+        for (let y = Math.ceil(caja.y + caja.height) - 6; y < 70; y++) minimo = Math.min(minimo, ...pixel(durante, x, y));
+      }
+      expect(minimo, `bajo la etiqueta en x=${Math.round(caja.x)}`).toBeGreaterThan(190);
+    }
+    // La CTA conserva su color: la página que entra pasa por debajo de la cabecera, no la vela.
+    const [r0, g0, b0] = pixel(antes, puntoCta.x, puntoCta.y);
+    const [r1, g1, b1] = pixel(durante, puntoCta.x, puntoCta.y);
+    expect(Math.max(Math.abs(r0 - r1), Math.abs(g0 - g1), Math.abs(b0 - b1)), `${[r0, g0, b0]} → ${[r1, g1, b1]}`).toBeLessThanOrEqual(4);
   });
 
   test("«Ver una alerta de ejemplo» llega en un fundido de menos de 400 ms, sin cruzar la historia, y «Atrás» vuelve", async ({
