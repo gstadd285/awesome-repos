@@ -552,6 +552,18 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   no existen y la página sale sin CSS.
 - Una regla `html { … @media { … } }` anidada rompe la expresión de `contrast.test.ts` que busca `accent-color`: las
   variantes por ancho de `html` van en un bloque aparte.
+- **Chromium captura mal una capa con la opacidad animada justo en 0 y una sombra que desborda**: la imagen vieja de la
+  cabecera salía estirada 1,5 veces (una copia deformada de la navegación). Arriba del todo la isla va además
+  `visibility: hidden` (`cab-isla-ver`, animación aparte para no sacar `cab-isla` del compositor). La e2e congela la
+  transición a los 150 ms y lee píxeles (`leerPng` en `e2e/ayudas.ts`, sin dependencias).
+- **Los grupos de la view transition se apilan en el orden en que se crean**, no como en la página: la página que entra
+  quedaba encima de la cabecera y la velaba. Los grupos de la cabecera llevan `z-index: 1`.
+- **Un popover que se funde con `allow-discrete` deja de cumplir `:popover-open` durante el fundido**: lo que deba
+  verse igual hasta el último fotograma (como `flex-direction`) va en la regla base, no en `:popover-open`.
+- **`:is()` toma la especificidad de su argumento más fuerte**: un atajo `transition` dentro de `:is(a > b, c)` pisa los
+  `transition-delay` más débiles de `c`.
+- **El borde transparente que sube el `main` bajo la cabecera necesita `background-origin: border-box`**: si no, los
+  degradados repiten su mosaico en la banda y queda un escalón de color a los 72 px.
 
 ## Lo aprendido (cuentas de personas usuarias)
 
