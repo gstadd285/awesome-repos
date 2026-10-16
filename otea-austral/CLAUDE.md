@@ -77,7 +77,7 @@ Tokens en `src/app/globals.css` (`@theme`, con la paleta de Tailwind reiniciada)
 | `gana`, `condicionado`, `pierde` | estado | Solo alertas y sus piezas |
 
 Utilidades propias: `superficie` (porcelana con borde fino y sombra suave),
-`superficie-interactiva` (solo en lo clicable), `vidrio` (cabecera: porcelana al 98,5 %, **sin `backdrop-filter`**),
+`superficie-interactiva` (solo en lo clicable), `vidrio` (porcelana al 98,5 %, **sin `backdrop-filter`**; la cabecera usa el mismo material en `header::before`),
 `boton-laton` (latón como material), `campo` (campos con el foco del sitio), `salto-contenido` (píldora en la cabecera que ocupa el lugar del logo), `cifras`,
 `linea-fina`, `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
 pantalla de error), `fondo-luz`,
@@ -95,8 +95,15 @@ Reglas:
   inicial mayúscula (no versalitas) y 44 px de alto (`md`), cómodas al tacto; `primary` es `boton-laton` (degradado
   `laton-claro → brass → laton-oscuro` con texto tinta, filos de luz y sombra). Las CTA principales llevan
   `data-magnetico` y su texto en `<span className="boton-etiqueta">`; el secundario de contorno puede llevar `<Flecha />`.
-- Cabecera: logo, cuatro enlaces (`NAV_CABECERA`) y «Recibir alertas»; la página actual lleva `aria-current`
-  (`<SiteHeader actual="/ruta" />`). Las páginas interiores usan `ContentPage` (ruta de navegación `Migas`).
+- Cabecera (`SiteHeader`, de servidor): logo, cuatro enlaces (`NAV_CABECERA`) y «Recibir alertas»; la página actual
+  lleva `aria-current` (`<SiteHeader actual="/ruta" />`) y un filete `.nav-subrayado` de 2 px en `brass-deep`. 72 px en
+  escritorio y 60 px bajo 1024 px (`scroll-padding-top` 88 / 76 px). El material es `header::before`: barra sólida por
+  defecto; con la puerta abierta, ≥ 1024 px y `animation-timeline`, transparente arriba y **isla** de 1200 px en los
+  primeros 120 px de `scroll(root)` (logo y acciones se acercan; `.cabecera-progreso` es el avance de lectura). La
+  pastilla de hover (`.nav-indicador`) lee `--nx --nw --nv` de `DirectorEscena`. Bajo 1024 px, botón «Menú» de 44 px que
+  abre `<nav id="menu-movil" popover>` (pantalla completa bajo 640 px, panel de 440 px encima; sin `@supports`); bajo
+  400 px «Alertas» vive solo en el menú. El pie lleva la navegación completa (`#pie-navegacion`). Las páginas
+  interiores usan `ContentPage` (ruta de navegación `Migas`).
 - Contraste mínimo AA: lo verifica `src/lib/design/contrast.test.ts` leyendo `globals.css`. El
   latón y la bruma no sirven para texto chico sobre el fondo claro.
 - Página inicial objetivo < 1 MB.
@@ -143,8 +150,8 @@ movimiento»):
 | `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
 | `otea-ola`, `otea-flotar` | La cinta ondea y los rótulos flotan (bucles con `data-bucle`: se pausan fuera de vista) |
 | `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
-| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista y escribe `--mx --my --tx --ty --rx --ry` bajo el puntero |
-| `<PageTransition>` | Transición entre páginas (React `ViewTransition`); la cabecera queda fija |
+| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista; escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
+| `<PageTransition>` | Transición entre páginas (React `ViewTransition`), **solo en `src/app/template.tsx`**: dentro de un `page.tsx` React nunca la iniciaba. La cabecera no se mueve; el subrayado, el logo y las acciones viajan con nombre propio |
 | `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
 
 ### Texto en movimiento (`src/components/motion/TextoEnMovimiento.tsx`)
@@ -529,6 +536,22 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   se colgaba): evita reutilizar nombres dentro de un manejador largo.
 - **Condiciones de uso**: la ruta sigue siendo `/terminos` (no cambia enlaces), pero todo lo que ve la persona dice
   «Condiciones de uso»; los textos legales son provisionales y no se presentan como definitivos.
+
+## Lo aprendido (cabecera isla y view transitions)
+
+- **`<ViewTransition>` dentro de cada `page.tsx` no corre nunca** con esta CSP dinámica: la marca estática de React no
+  sube por el `<main>` que llega del servidor y el segmento que se cambia no la lleva (0 llamadas a
+  `startViewTransition`, medido instrumentando el commit). En `src/app/template.tsx` sí: Next lo vuelve a montar en cada
+  navegación. `motion.test.ts` vigila que siga ahí.
+- **Playwright `locator.click()` desplaza la página para mostrar el elemento** aunque esté en una cabecera fija: antes de
+  una navegación eso deja la página arriba y la captura de la view transition sale distinta. Para probar transiciones,
+  clic por coordenadas (`page.mouse.click`, ayudante `clicEnSitio` en `artesania.spec.ts`).
+- **`getComputedStyle(…, "::before")` da el valor animado por `scroll(root)`**: así mide la e2e la opacidad de la isla.
+  Para congelar fotogramas, solo las animaciones con `DocumentTimeline` admiten `currentTime` en ms.
+- **El servidor de 3410 hay que reiniciarlo tras cada `npm run build`**: sigue sirviendo el HTML viejo con hojas que ya
+  no existen y la página sale sin CSS.
+- Una regla `html { … @media { … } }` anidada rompe la expresión de `contrast.test.ts` que busca `accent-color`: las
+  variantes por ancho de `html` van en un bloque aparte.
 
 ## Lo aprendido (cuentas de personas usuarias)
 
