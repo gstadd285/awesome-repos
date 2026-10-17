@@ -1565,7 +1565,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   .tablero-tarjeta-chip,
   .tablero-corregida,
   .tablero-nueva {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .tablero-nueva {
@@ -1580,7 +1580,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 
   .tablero-aviso {
     right: 12px;
-    top: -26px;
+    top: -44px;
     gap: 10px;
     padding: 10px 14px 10px 10px;
     border-radius: 14px;
@@ -2821,11 +2821,9 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     grid-area: p2;
   }
 
-  /* Junto al paso 01 el plano se sale un poco de su celda (hacia el hueco entre columnas y el margen): inclinado, su
-     dibujo mide bastante menos que su caja. */
   .h-plano {
     grid-area: plano;
-    --plano-ancho: min(620px, 118%);
+    --plano-ancho: min(620px, 100%);
     margin-block: 0;
   }
 
@@ -2842,6 +2840,24 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
   .h-paso-4 {
     grid-area: p4;
+    align-self: start;
+  }
+}
+
+/* Tableta vertical: en zigzag. El paso 01 junto al plano; el tablero, ancho (con sus tres columnas y el menú), entre el
+   paso 02 a la izquierda y el 03 a la derecha. Párrafos a 60ch. */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .historia-escenario {
+    grid-template-areas:
+      "heroe heroe"
+      "p2 plano"
+      "p3 ."
+      "tablero tablero"
+      ". p4";
+  }
+
+  .h-paso-3,
+  .h-paso-4 {
     align-self: start;
   }
 

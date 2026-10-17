@@ -100,11 +100,12 @@ test.describe("ventana estrecha", () => {
     const tamanos = await page
       .locator(".h-tablero")
       .evaluate((t) => [...t.querySelectorAll(".tablero-tarjeta p, .tablero-tarjeta span")].map((e) => parseFloat(getComputedStyle(e).fontSize)));
-    expect(Math.min(...tamanos)).toBeGreaterThanOrEqual(11);
-    const lectura = await page
-      .locator(".h-tablero")
-      .evaluate((t) => [...t.querySelectorAll(".tablero-tarjeta-sector, .tablero-tarjeta-evento")].map((e) => parseFloat(getComputedStyle(e).fontSize)));
-    expect(Math.min(...lectura)).toBeGreaterThanOrEqual(12);
+    expect(Math.min(...tamanos)).toBeGreaterThanOrEqual(12);
+    // «Datos de ejemplo» se ve: el aviso no lo tapa.
+    const [chip, aviso] = await page.evaluate(() =>
+      [".tablero-chip", ".tablero-aviso"].map((s) => document.querySelector(s)!.getBoundingClientRect().toJSON()),
+    );
+    expect(aviso.bottom <= chip.top || aviso.right <= chip.left).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     await contexto.close();
   });
