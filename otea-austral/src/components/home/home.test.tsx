@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { TEMAS, TEMA_ETIQUETA } from "@/lib/domain/temas";
 import { AlertaViva } from "./AlertaViva";
+import { Blueprint } from "./Blueprint";
 import { Board } from "./Board";
 import { Horizonte } from "./Horizonte";
 import { Story } from "./Story";
@@ -55,6 +56,16 @@ describe("Story", () => {
     }
   });
 
+  it("el riel 01 · 02 · 03 lleva a tres anclas de la historia fija, y el alba y el velo son decorativos", () => {
+    const { container } = render(<Story />);
+    const riel = screen.getByRole("navigation", { name: "Pasos de la historia" });
+    const enlaces = within(riel).getAllByRole("link");
+    expect(enlaces.map((a) => a.textContent)).toEqual(["01Verificación", "02Impacto", "03Tu panel"]);
+    expect(enlaces.map((a) => a.getAttribute("href"))).toEqual(["#paso-verificar", "#paso-impacto", "#paso-panel"]);
+    for (const id of ["paso-verificar", "paso-impacto", "paso-panel"]) expect(container.querySelector(`#${id}`)).not.toBeNull();
+    for (const pieza of [".h-alba", ".h-velo"]) expect(container.querySelector(pieza)).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("la cinta tiene 24 láminas con clases fijas y cuatro rótulos", () => {
     const { container } = render(<Story />);
     const laminas = [...container.querySelectorAll(".lamina")];
@@ -97,9 +108,55 @@ describe("Board", () => {
   it("toma las tarjetas de las alertas de ejemplo y se marca como ejemplo", () => {
     const { container } = render(<Board />);
     expect(container).toHaveTextContent("Datos de ejemplo");
+    expect(container.querySelectorAll(".tablero-tarjeta")).toHaveLength(9);
     expect(container.querySelectorAll(".tablero-tarjeta-gana").length).toBeGreaterThan(0);
     expect(container.querySelectorAll(".tablero-tarjeta-pierde").length).toBeGreaterThan(0);
-    expect(container).toHaveTextContent("Aerolíneas");
+    // «Aerolíneas» entre las tres primeras de «Pierde».
+    const pierde = [...container.querySelectorAll(".tablero-tarjeta-pierde .tablero-tarjeta-sector")].map((p) => p.textContent);
+    expect(pierde.slice(0, 3)).toContain("Aerolíneas");
+    expect(container.querySelector("[style]")).toBeNull();
+  });
+
+  it("el tablero que respira sale de los datos: contadores, «Corregida», una sola «Nueva», tres corrientes y el aviso", () => {
+    const { container } = render(<Board />);
+    // Cuántas filas de cada dirección tienen las alertas de ejemplo (gana, condicionado, pierde).
+    expect([...container.querySelectorAll(".tablero-contador")].map((c) => c.textContent)).toEqual(["3", "3", "4"]);
+    // «Corregida» es el estado real de la alerta del cobre, y solo marca sus tarjetas.
+    const corregidas = [...container.querySelectorAll(".tablero-corregida")].map((c) =>
+      c.closest(".tablero-tarjeta")!.querySelector(".tablero-tarjeta-evento")!.textContent,
+    );
+    expect(corregidas.length).toBeGreaterThan(0);
+    for (const evento of corregidas) expect(evento).toMatch(/cobre/);
+    expect(container.querySelectorAll(".tablero-nueva")).toHaveLength(1);
+    expect(container.querySelectorAll(".tablero-corrientes .tablero-corriente")).toHaveLength(3);
+    const aviso = container.querySelector(".tablero-aviso")!;
+    expect(aviso).toHaveTextContent("Resumen pre-apertura");
+    expect(aviso).toHaveTextContent("Datos de ejemplo");
+  });
+});
+
+describe("Blueprint", () => {
+  it("es decorativo y sale de los datos y las reglas reales: evento, medidor y tres comprobaciones", () => {
+    const { container } = render(<Blueprint />);
+    const plano = container.firstElementChild!;
+    expect(plano).toHaveClass("plano");
+    expect(plano).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector("[style]")).toBeNull();
+    expect(plano).toHaveTextContent("Datos de ejemplo");
+    expect(container.querySelector(".plano-evento-titulo")).toHaveTextContent("Tensión en el estrecho de Ormuz");
+    expect([...container.querySelectorAll(".plano-ficha-titulo")].map((p) => p.textContent)).toEqual([
+      "Fuente primaria",
+      "Dos organismos",
+      "Aprobación humana",
+    ]);
+    expect(container.querySelector(".plano-ficha-1 .plano-ficha-detalle")).toHaveTextContent("(ejemplo)");
+    expect(container.querySelector(".plano-ficha-2 .plano-ficha-detalle")).toHaveTextContent("2 organismos distintos");
+    // Confianza calculada (hay una primaria): alta, los tres tramos llenos.
+    expect(container.querySelectorAll(".plano-lleno")).toHaveLength(3);
+    // Sin la gota de metal de antes; la lente es un anillo con mango, no el emblema (ni disco ni horizonte).
+    expect(container.querySelector(".gota")).toBeNull();
+    expect(container.querySelector(".plano-lente")!.children).toHaveLength(1);
+    expect(container.querySelector(".plano-lente svg, .plano-lente circle")).toBeNull();
   });
 });
 

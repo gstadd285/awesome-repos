@@ -874,79 +874,381 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   text-underline-offset: 4px;
 }
 
-/* ── Plano técnico ─────────────────────────────────────────────────────────── */
-
+/* ── Plano técnico (paso 01) ────────────────────────────────────────────────
+ * Estado final: la ficha del evento tendida en el centro, tres fichas de pie al frente (perpendiculares al plano, con
+ * su check), hilos de latón hacia el evento, la lente en reposo junto a la última ficha y las cotas trazadas. Todo se
+ * mide en `cqw` del propio plano (alto = 0,7 × ancho), así que conserva su dibujo a cualquier tamaño. Las fichas y la
+ * lente están de pie (`rotateX(-90deg)` sobre su borde inferior). `.plano` es plana y lleva su propia perspectiva, la
+ * opacidad y la posición; `.plano-mundo` (`preserve-3d`), la postura: ningún ancestro 3D lleva `overflow`, opacidad ni
+ * filtros (aplanarían las fichas de pie).
+ */
 .plano {
+  --plano-ancho: min(560px, 100%);
   position: relative;
-  aspect-ratio: 1;
-  width: min(560px, 82vw);
+  width: var(--plano-ancho);
+  aspect-ratio: 10 / 7;
   margin-inline: auto;
+  container-type: inline-size;
+  perspective: 1500px;
+  perspective-origin: 50% 10%;
+  pointer-events: none;
+}
+
+.plano-mundo {
+  position: absolute;
+  inset: 0;
   transform-style: preserve-3d;
-  transform: rotateX(56deg) rotateZ(-36deg);
+  transform: rotateX(52deg) rotateZ(-6deg);
+}
+
+.plano-mundo > * {
+  position: absolute;
 }
 
 .plano-superficie {
-  position: absolute;
   inset: 0;
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 1px var(--color-linea-fuerte);
+  border-radius: 1.4cqw;
+  background-color: rgb(252 250 246 / 0.5);
+  box-shadow:
+    inset 0 0 0 1px var(--color-linea-fuerte),
+    inset 0 0 0 2.2cqw rgb(252 250 246 / 0.35),
+    0 4cqw 7cqw -3cqw rgb(15 27 45 / 0.2);
 }
 
+/* Marco interior del dibujo. */
+.plano-superficie::before {
+  content: "";
+  position: absolute;
+  inset: 2.2cqw;
+  border-radius: 0.8cqw;
+  box-shadow: inset 0 0 0 1px var(--color-linea);
+}
+
+.plano-cotas {
+  inset: 0;
+  transform: translateZ(0.1cqw);
+}
+
+/* Cotas: líneas de 1 px con remates, como en un dibujo técnico. */
 .plano-cota {
   position: absolute;
   background-color: var(--color-linea-fuerte);
 }
 
+.plano-cota::before,
+.plano-cota::after {
+  content: "";
+  position: absolute;
+  background-color: inherit;
+}
+
+.plano-cota-arriba {
+  left: 0;
+  top: -4cqw;
+  width: 100%;
+  height: 1px;
+  transform-origin: 0 50%;
+}
+
+.plano-cota-arriba::before,
+.plano-cota-arriba::after {
+  top: -0.9cqw;
+  width: 1px;
+  height: 1.8cqw;
+}
+
+.plano-cota-arriba::after {
+  right: 0;
+}
+
+.plano-cota-izquierda {
+  left: -4cqw;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  transform-origin: 50% 0;
+}
+
+.plano-cota-izquierda::before,
+.plano-cota-izquierda::after {
+  left: -0.9cqw;
+  width: 1.8cqw;
+  height: 1px;
+}
+
+.plano-cota-izquierda::after {
+  bottom: 0;
+}
+
 .plano-etiqueta {
   position: absolute;
-  color: var(--color-apoyo);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: max(10px, 1.3cqw);
   letter-spacing: 0.04em;
+  color: var(--color-apoyo);
+  white-space: nowrap;
 }
 
-/* Gota de metal: gradiente cromado. Quieta (la deformación animaba `border-radius` y `background-position`,
-   fuera del compositor y sin pausa); el plano se reescribe en T4. */
-.gota {
+.plano-etiqueta-n {
+  left: 50%;
+  top: -7.6cqw;
+  translate: -50% 0;
+}
+
+.plano-etiqueta-e {
+  right: -7.5cqw;
+  top: 50%;
+}
+
+.plano-etiqueta-lat {
+  right: 3.2cqw;
+  bottom: 3cqw;
+}
+
+/* Hilos de latón: de la base de cada ficha al centro del evento, tendidos sobre el plano. Ángulo y largo salen de su
+   vector (`atan2`, `hypot`), así que el dibujo cambia con solo mover la ficha. */
+.plano-hilos {
+  inset: 0;
+  transform: translateZ(0.15cqw);
+}
+
+.plano-hilo {
   position: absolute;
-  left: 22%;
-  top: 28%;
-  width: 56%;
-  height: 44%;
-  border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
-  background-image:
-    radial-gradient(60% 40% at 35% 30%, rgb(255 255 255 / 0.95), transparent 60%),
-    conic-gradient(
-      from 210deg at 50% 50%,
-      #F7F4EE,
-      #9AA3AD,
-      #FDFBF7,
-      #6F7884,
-      #EFE9DD,
-      #B8BFC7,
-      #F7F4EE
-    );
-  box-shadow:
-    inset 0 -18px 40px rgb(15 27 45 / 0.25),
-    inset 0 10px 24px rgb(255 255 255 / 0.7),
-    0 30px 50px -20px rgb(15 27 45 / 0.45);
-  transform: translateZ(26px);
+  left: calc(var(--hx) * 1cqw);
+  top: 62cqw;
+  width: 0.32cqw;
+  height: hypot(calc(var(--hdx) * 1cqw), 40cqw);
+  margin-left: -0.16cqw;
+  translate: 0 -100%;
+  transform-origin: 50% 100%;
+  rotate: atan2(calc(var(--hdx) * 1cqw), 40cqw);
+  border-radius: 1cqw;
+  background-image: linear-gradient(0deg, rgb(176 141 87 / 0.95), rgb(226 191 131 / 0.75) 70%, rgb(176 141 87 / 0.2));
 }
 
-/* ── Tablero (tableta con el panel de ejemplo) ─────────────────────────────── */
+.plano-hilo-1 { --hx: 16; --hdx: 34; }
+.plano-hilo-2 { --hx: 50; --hdx: 0; }
+.plano-hilo-3 { --hx: 84; --hdx: -34; }
 
+/* La ficha del evento: tendida sobre el plano, levantada unos milímetros, con su filo de latón. */
+.plano-evento {
+  left: 27cqw;
+  top: 8cqw;
+  width: 46cqw;
+  padding: 2.4cqw 2.6cqw 2.2cqw;
+  border-radius: 1.6cqw;
+  background-color: var(--color-papel-alto);
+  box-shadow:
+    inset 0 0 0 1px var(--color-linea),
+    0 0.6cqw 1.2cqw -0.4cqw rgb(15 27 45 / 0.18),
+    0 3cqw 5cqw -2cqw rgb(15 27 45 / 0.28);
+  transform: translateZ(1.2cqw);
+}
+
+.plano-evento::before {
+  content: "";
+  position: absolute;
+  left: 2.6cqw;
+  right: 2.6cqw;
+  top: 0;
+  height: 1px;
+  background-image: linear-gradient(90deg, rgb(176 141 87 / 0), rgb(176 141 87 / 0.9) 50%, rgb(176 141 87 / 0));
+}
+
+.plano-evento-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1cqw;
+  font-family: var(--font-mono);
+  font-size: max(9px, 1.25cqw);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-apoyo);
+}
+
+.plano-evento-chip {
+  padding: 0.3cqw 0.8cqw;
+  border-radius: 0.6cqw;
+  background-color: var(--color-fondo);
+  font-family: var(--font-sans);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--color-texto-suave);
+}
+
+.plano-evento-titulo {
+  margin-top: 1.2cqw;
+  font-family: var(--font-serif);
+  font-size: max(12px, 2.7cqw);
+  line-height: 1.15;
+  color: var(--color-texto);
+  text-wrap: balance;
+}
+
+/* Medidor de confianza: tres tramos (baja · media · alta) con su relleno tinta en `::after`. */
+.plano-medidor {
+  display: grid;
+  grid-template-columns: auto repeat(3, 1fr);
+  align-items: end;
+  gap: 0.6cqw;
+  margin-top: 1.8cqw;
+  padding-top: 1.6cqw;
+  border-top: 1px solid var(--color-linea);
+}
+
+.plano-medidor-rotulo {
+  margin-right: 0.8cqw;
+  font-family: var(--font-mono);
+  font-size: max(9px, 1.2cqw);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-apoyo);
+}
+
+.plano-segmento {
+  position: relative;
+  padding-top: 1.4cqw;
+  font-size: max(9px, 1.2cqw);
+  color: var(--color-texto-suave);
+}
+
+.plano-segmento::before,
+.plano-segmento::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0.7cqw;
+  border-radius: 1cqw;
+  background-color: var(--color-fondo-sombra);
+}
+
+.plano-segmento::after {
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background-color: var(--color-texto);
+}
+
+.plano-lleno::after {
+  transform: none;
+}
+
+/* Fichas de pie: perpendiculares al plano sobre su borde inferior (mirando a la cámara, inclinadas hacia atrás). */
+.plano-ficha {
+  left: calc(var(--fx) * 1cqw - 11cqw);
+  top: 47cqw;
+  width: 22cqw;
+  height: 15cqw;
+  padding: 2cqw 1.8cqw 1.6cqw;
+  border-radius: 1.4cqw;
+  background-image: linear-gradient(170deg, var(--color-papel-alto), var(--color-papel) 80%);
+  box-shadow:
+    inset 0 0 0 1px var(--color-linea),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1.6cqw 2.4cqw -1.4cqw rgb(15 27 45 / 0.4);
+  transform-origin: 50% 100%;
+  transform: translateZ(0.4cqw) rotateX(-90deg);
+}
+
+.plano-ficha-1 { --fx: 16; }
+.plano-ficha-2 { --fx: 50; }
+.plano-ficha-3 { --fx: 84; }
+
+.plano-ficha-titulo {
+  margin-top: 1.1cqw;
+  font-size: max(11px, 1.85cqw);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--color-texto);
+}
+
+.plano-ficha-detalle {
+  margin-top: 0.6cqw;
+  font-size: max(9px, 1.3cqw);
+  line-height: 1.3;
+  color: var(--color-texto-suave);
+}
+
+/* Check en un círculo tinta (dibujado con bordes, sin nodos extra), como el de la alerta viva. */
+.plano-check {
+  position: relative;
+  display: block;
+  width: 3.2cqw;
+  height: 3.2cqw;
+  border-radius: 50%;
+  background-color: var(--color-texto);
+}
+
+.plano-check::after {
+  content: "";
+  position: absolute;
+  left: 36%;
+  top: 22%;
+  width: 26%;
+  height: 44%;
+  border: solid var(--color-ivory);
+  border-width: 0 0.4cqw 0.4cqw 0;
+  rotate: 45deg;
+}
+
+/* Lente: un anillo de latón con mango (una lupa; no es el emblema: sin disco, sin horizonte, sin sol). Verifica de pie
+   delante de las fichas; quieta, descansa tendida sobre el plano, junto a la ficha del evento. */
+.plano-lente {
+  left: 9.5cqw;
+  top: 51cqw;
+  width: 13cqw;
+  height: 18cqw;
+  transform-origin: 50% 100%;
+  transform: translateZ(0.4cqw) rotateX(0deg) translate(70cqw, -41cqw);
+}
+
+.plano-lente-anillo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 13cqw;
+  height: 13cqw;
+  border-radius: 50%;
+  background-image: radial-gradient(circle at 36% 30%, rgb(255 255 255 / 0.55), rgb(255 248 232 / 0.12) 46%, rgb(214 178 118 / 0.1) 70%);
+  box-shadow:
+    inset 0 0 0 0.85cqw #B08D57,
+    inset 0.3cqw 0.3cqw 0 0.85cqw rgb(255 240 205 / 0.55),
+    inset 0 0 0 1.25cqw rgb(122 94 51 / 0.35),
+    0 1.2cqw 2.4cqw -0.8cqw rgb(15 27 45 / 0.35);
+}
+
+/* Mango: sale del anillo hacia abajo y a la derecha. */
+.plano-lente-anillo::after {
+  content: "";
+  position: absolute;
+  left: 78%;
+  top: 82%;
+  width: 1.3cqw;
+  height: 6.4cqw;
+  border-radius: 1cqw;
+  rotate: -40deg;
+  transform-origin: 50% 0;
+  background-image: linear-gradient(90deg, #7A5E33, #C7A570 45%, #A6834D);
+}
+
+/* ── Tablero (paso 02 y 03: la tableta con el panel de ejemplo) ───────────
+ * Estado final: de frente (sin transformación, texto nítido), tarjetas en su sitio, corrientes de color detrás de cada
+ * columna y el aviso del resumen pre-apertura. Tipografía en `cqw` con suelo de 12 px donde se lee en el teléfono.
+ * La tableta es una sola capa plana (sin `preserve-3d`): las tarjetas caen en 2D y su postura 3D la lleva el conjunto.
+ */
 .tablero {
   position: relative;
   width: min(820px, 100%);
-  aspect-ratio: 820 / 520;
   margin-inline: auto;
   container-type: inline-size;
-  transform-style: preserve-3d;
+  pointer-events: none;
 }
 
 .tablero-marco {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  padding: 1.7cqw;
   border-radius: 4.4cqw;
   background-image: linear-gradient(150deg, #FBFAF7, #E6E3DD 60%, #D8D5CF);
   box-shadow:
@@ -954,36 +1256,31 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
     inset 0 -2px 0 rgb(15 27 45 / 0.08),
     0 3cqw 6cqw -2cqw rgb(15 27 45 / 0.35),
     0 0.4cqw 1cqw rgb(15 27 45 / 0.12);
-  transform-style: preserve-3d;
 }
 
 .tablero-pantalla {
-  position: absolute;
-  inset: 1.7cqw;
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 1.6cqw;
-  padding: 2.2cqw;
+  gap: 1.8cqw;
+  padding: 2.4cqw;
   border-radius: 3.2cqw;
   background-color: var(--color-papel-alto);
   box-shadow: inset 0 0 0 1px var(--color-linea);
-  transform-style: preserve-3d;
 }
 
 .tablero-cabecera {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 1.9cqw;
+  font-size: max(14px, 2.2cqw);
   font-weight: 600;
   color: var(--color-texto);
 }
 
 .tablero-chip {
-  padding: 0.35cqw 0.9cqw;
+  padding: 0.4cqw 1cqw;
   border-radius: 0.8cqw;
   background-color: var(--color-fondo);
-  font-size: 1.1cqw;
+  font-size: max(11px, 1.3cqw);
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -992,26 +1289,33 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 
 .tablero-cuerpo {
   display: grid;
-  grid-template-columns: 22% 1fr;
+  grid-template-columns: 19% 1fr;
   gap: 2cqw;
-  min-height: 0;
-  transform-style: preserve-3d;
 }
 
 .tablero-menu {
   display: flex;
   flex-direction: column;
-  gap: 1.15cqw;
-  padding-right: 1.6cqw;
+  gap: 0.5cqw;
+  padding-right: 1.4cqw;
   border-right: 1px solid var(--color-linea);
-  font-size: 1.25cqw;
+  font-size: 1.4cqw;
   color: var(--color-texto-suave);
 }
 
 .tablero-menu li {
   display: flex;
   align-items: center;
-  gap: 0.9cqw;
+  gap: 0.8cqw;
+  padding: 0.7cqw 0.8cqw;
+  border-radius: 0.9cqw;
+}
+
+/* El tema de la alerta más reciente, encendido. */
+.tablero-menu-activo {
+  background-color: var(--color-fondo);
+  font-weight: 600;
+  color: var(--color-texto);
 }
 
 .tablero-menu svg {
@@ -1021,36 +1325,74 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 }
 
 .tablero-columnas {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.6cqw;
-  transform-style: preserve-3d;
 }
 
 .tablero-columna {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1.1cqw;
-  transform-style: preserve-3d;
 }
 
+/* Corrientes: una banda de su color detrás de cada columna, desde el filo superior (por donde «llegan» del evento). */
+.tablero-corrientes {
+  position: absolute;
+  inset: -0.8cqw -0.8cqw 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8cqw;
+}
+
+.tablero-corriente {
+  border-radius: 1.6cqw;
+  transform-origin: 50% 0;
+  background-image: linear-gradient(180deg, var(--corriente) 0%, rgb(252 250 246 / 0) 92%);
+}
+
+.tablero-corriente-gana { --corriente: rgb(127 191 158 / 0.3); }
+.tablero-corriente-condicionado { --corriente: rgb(176 141 87 / 0.28); }
+.tablero-corriente-pierde { --corriente: rgb(224 138 114 / 0.3); }
+
 .tablero-columna-titulo {
-  font-size: 1.1cqw;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 0.4cqw;
+  font-size: max(11px, 1.3cqw);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-texto-suave);
+  color: var(--color-texto);
+}
+
+/* Contador mono: cuántas filas de esa dirección tienen los datos de ejemplo. */
+.tablero-contador {
+  min-width: 2.4cqw;
+  padding: 0.15cqw 0.6cqw;
+  border-radius: 1cqw;
+  background-color: rgb(252 250 246 / 0.85);
+  box-shadow: inset 0 0 0 1px var(--color-linea);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-align: center;
 }
 
 .tablero-tarjeta {
+  position: relative;
   display: grid;
   gap: 0.5cqw;
-  padding: 1.2cqw 1.3cqw;
+  padding: 1.3cqw 1.4cqw 1.2cqw;
   border-radius: 1.6cqw;
   color: var(--color-ink);
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 0.35),
-    0 1.2cqw 2.4cqw -1cqw rgb(15 27 45 / 0.45);
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    0 1.2cqw 2.4cqw -1.2cqw rgb(15 27 45 / 0.45);
 }
 
 .tablero-tarjeta-gana {
@@ -1064,25 +1406,243 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 }
 
 .tablero-tarjeta-sector {
-  font-size: 1.3cqw;
+  font-size: max(12px, 1.75cqw);
   font-weight: 600;
   line-height: 1.2;
 }
 
 .tablero-tarjeta-evento {
-  font-size: 1.05cqw;
+  font-size: max(12px, 1.4cqw);
   line-height: 1.3;
 }
 
-.tablero-tarjeta-chip {
-  justify-self: start;
+.tablero-tarjeta-pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5cqw;
+  margin-top: 0.2cqw;
+}
+
+.tablero-tarjeta-chip,
+.tablero-corregida {
   padding: 0.25cqw 0.7cqw;
   border-radius: 0.7cqw;
-  background-color: rgb(252 250 246 / 0.6);
-  font-size: 0.95cqw;
+  font-size: max(10px, 1.2cqw);
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+.tablero-tarjeta-chip {
+  background-color: rgb(252 250 246 / 0.6);
+}
+
+/* «Corregida»: el estado real de la alerta del cobre, en tinta sobre su tarjeta (sin color nuevo). */
+.tablero-corregida {
+  box-shadow: inset 0 0 0 1px rgb(15 27 45 / 0.45);
+}
+
+/* «Nueva»: un punto de latón en la esquina (con un pulso de dos vueltas en la historia). */
+.tablero-nueva {
+  position: absolute;
+  right: 1.2cqw;
+  top: 1.2cqw;
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+  font-size: max(10px, 1.15cqw);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tablero-nueva::before {
+  content: "";
+  width: 1.1cqw;
+  height: 1.1cqw;
+  border-radius: 50%;
+  background-color: var(--color-ink);
+  box-shadow: 0 0 0 0.35cqw rgb(252 250 246 / 0.7);
+}
+
+/* Aviso del resumen pre-apertura: una notificación de porcelana que se posa sobre la esquina de la tableta. */
+.tablero-aviso {
+  position: absolute;
+  right: -2.4cqw;
+  top: -4.2cqw;
+  display: flex;
+  align-items: center;
+  gap: 1.4cqw;
+  padding: 1.4cqw 2.2cqw 1.4cqw 1.6cqw;
+  border-radius: 2.2cqw;
+  background-color: rgb(252 250 246 / 0.98);
+  box-shadow:
+    inset 0 0 0 1px var(--color-linea),
+    inset 0 1px 0 #fff,
+    0 1cqw 2cqw -0.8cqw rgb(15 27 45 / 0.25),
+    0 3.2cqw 5cqw -2.4cqw rgb(15 27 45 / 0.35);
+}
+
+.tablero-aviso-sol {
+  flex: none;
+  width: 3.6cqw;
+  height: 3.6cqw;
+  border-radius: 50%;
+  background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+  box-shadow: 0 0 1.6cqw 0.2cqw rgb(232 200 140 / 0.55);
+}
+
+.tablero-aviso-texto {
+  display: grid;
+  gap: 0.2cqw;
+}
+
+.tablero-aviso-titulo {
+  font-family: var(--font-serif);
+  font-size: max(13px, 1.9cqw);
+  color: var(--color-texto);
+}
+
+.tablero-aviso-detalle {
+  font-size: max(11px, 1.3cqw);
+  color: var(--color-texto-suave);
+}
+
+/* El tablero en el teléfono (o en una celda estrecha): si las tres columnas no caben con 12 px, se apilan en una sola,
+   como un panel de teléfono, sin el menú de temas. */
+@container (max-width: 479.98px) {
+  .tablero-cuerpo {
+    grid-template-columns: 1fr;
+  }
+
+  .tablero-menu {
+    display: none;
+  }
+
+  .tablero-columnas,
+  .tablero-corrientes {
+    grid-template-columns: 1fr;
+  }
+
+  .tablero-columnas {
+    gap: 18px;
+  }
+
+  .tablero-columna {
+    gap: 8px;
+  }
+
+  .tablero-corrientes {
+    display: none;
+  }
+
+  .tablero-marco {
+    padding: 8px;
+    border-radius: 28px;
+  }
+
+  .tablero-pantalla {
+    gap: 16px;
+    padding: 16px 14px;
+    border-radius: 22px;
+  }
+
+  .tablero-tarjeta {
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+
+  .tablero-tarjeta-sector {
+    font-size: 15px;
+    padding-right: 60px;
+  }
+
+  .tablero-tarjeta-evento {
+    font-size: 13px;
+  }
+
+  .tablero-tarjeta-chip,
+  .tablero-corregida,
+  .tablero-nueva {
+    font-size: 11px;
+  }
+
+  .tablero-nueva {
+    right: 12px;
+    top: 13px;
+  }
+
+  .tablero-nueva::before {
+    width: 7px;
+    height: 7px;
+  }
+
+  .tablero-aviso {
+    right: 12px;
+    top: -26px;
+    gap: 10px;
+    padding: 10px 14px 10px 10px;
+    border-radius: 14px;
+  }
+
+  .tablero-aviso-sol {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* El plano en el teléfono: fichas más anchas, sin el detalle, y el evento ocupando más del plano. */
+@container (max-width: 519.98px) {
+  .plano-evento {
+    left: 12cqw;
+    width: 76cqw;
+    top: 4cqw;
+    padding: 12px 14px;
+  }
+
+  .plano-evento-titulo {
+    font-size: 15px;
+  }
+
+  .plano-ficha {
+    left: calc(var(--fx) * 1cqw - 15.5cqw);
+    width: 31cqw;
+    height: 18cqw;
+    padding: 8px 9px;
+  }
+
+  .plano-ficha-1 { --fx: 17; }
+  .plano-ficha-3 { --fx: 83; }
+
+  .plano-ficha-detalle,
+  .plano-etiqueta-lat,
+  .plano-etiqueta-e {
+    display: none;
+  }
+
+  .plano-ficha-titulo {
+    margin-top: 6px;
+    font-size: 12px;
+  }
+
+  .plano-check {
+    width: 16px;
+    height: 16px;
+  }
+
+  .plano-check::after {
+    border-width: 0 2px 2px 0;
+  }
+
+  /* Menos inclinado, para que el evento y las fichas se lean; la lente no cabe en reposo. */
+  .plano-mundo {
+    transform: rotateX(44deg) rotateZ(-4deg);
+  }
+
+  .plano-lente {
+    opacity: 0;
+  }
 }
 
 /* ── Historia (portada): disposición base, sin animación ──────────────────
@@ -2186,22 +2746,108 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-/* Historia: las demás piezas siguen en el marco de 1440 px. */
+/* Historia apilada (teléfono, tableta, sin línea de tiempo, movimiento reducido y sin JS): las piezas en orden de
+   lectura. Desde 768 px, una rejilla alternada: paso 01 junto al plano y el tablero junto a los pasos 02 y 03. Los
+   márgenes negativos del plano devuelven el aire que deja su caja al inclinarse (proyectado mide ~60 % de su alto). */
 .historia-escenario {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(40px, 6vw, 72px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: clamp(36px, 6vw, 64px);
   padding: 0 max(24px, (100% - 1392px) / 2) 96px;
   perspective: 1600px;
 }
 
+.h-hero {
+  grid-column: 1 / -1;
+}
+
 .h-plano {
-  margin-block: -6%;
+  --plano-ancho: min(560px, 100vw - 48px);
+  justify-self: center;
+  margin-block: -6% -1%;
 }
 
 .h-tablero {
-  margin-block: 2% 7%;
-  transform: rotateX(30deg) rotateZ(-12deg) scale(0.86);
+  width: calc(100vw - 16px);
+  max-width: 820px;
+  justify-self: center;
+  margin-top: 28px;
+}
+
+.h-paso-titulo {
+  margin-top: 16px;
+  font-size: var(--text-titulo);
+  line-height: var(--text-titulo--line-height);
+  color: var(--color-texto);
+}
+
+.h-paso-texto {
+  max-width: 68ch;
+  margin-top: 20px;
+  font-size: var(--text-lede);
+  line-height: 1.55;
+  color: var(--color-texto-suave);
+}
+
+.h-paso-numero {
+  color: var(--color-brass-deep);
+}
+
+/* Piezas que solo existen en la historia fija. */
+.h-alba,
+.h-riel,
+.h-velo,
+.h-ancla {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .historia-escenario {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "heroe heroe"
+      "p2 plano"
+      "tablero p3"
+      "tablero p4";
+    column-gap: clamp(32px, 5vw, 80px);
+    align-items: center;
+  }
+
+  .h-hero {
+    grid-area: heroe;
+  }
+
+  .h-paso-2 {
+    grid-area: p2;
+  }
+
+  /* Junto al paso 01 el plano se sale un poco de su celda (hacia el hueco entre columnas y el margen): inclinado, su
+     dibujo mide bastante menos que su caja. */
+  .h-plano {
+    grid-area: plano;
+    --plano-ancho: min(620px, 118%);
+    margin-block: 0;
+  }
+
+  .h-tablero {
+    grid-area: tablero;
+    width: 100%;
+    margin-top: 0;
+  }
+
+  .h-paso-3 {
+    grid-area: p3;
+    align-self: end;
+  }
+
+  .h-paso-4 {
+    grid-area: p4;
+    align-self: start;
+  }
+
+  .h-paso-texto {
+    max-width: 60ch;
+  }
 }
 
 /* ── Texto en movimiento: estructura ──────────────────────────────────────
@@ -2269,136 +2915,428 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-/* Historia: cada pieza recorre la línea de tiempo del scroll (0–100 %). */
-/* `pointer-events` también se anima: lo que se desvanece deja de interceptar clics (un bloque
-   invisible no debe tapar botones ni enlaces de otro paso). Foco y lectores de pantalla no cambian. */
+/* Historia fija: un plano-secuencia sobre `--historia` (470vh). Cada pieza tiene su propio tramo (`animation-range`),
+   la curva va en cada clave (cámara con `--ease-enfasis`, lo que aterriza con `--ease-salida`, lo que se va con
+   `--ease-entrada`) y nada anima `pointer-events` salvo la clave discreta de `.h-hero`: lo que ya salió (o aún no
+   entra) se aparta 200vh en el último instante de su tramo, así no tapa clics ni pinta bajo una capa invisible. */
 @keyframes h-hero {
-  0%,
-  14% {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
+  1%,
+  99% {
+    pointer-events: none;
+    visibility: visible;
   }
-  24%,
+  100% {
+    pointer-events: none;
+    visibility: hidden;
+  }
+}
+
+/* El titular «se pone»: la línea 1 baja tras el horizonte y la 2 sube hacia él (la entrada al revés, con su recorte). */
+@keyframes h-poner-1 {
+  to {
+    transform: translateY(108%);
+  }
+}
+
+@keyframes h-poner-2 {
+  to {
+    transform: translateY(-108%);
+  }
+}
+
+/* Salida genérica: se va hacia arriba (`--salida`) mientras se apaga y, ya invisible, se aparta. */
+@keyframes h-salir {
+  70% {
+    opacity: 0;
+  }
+  97% {
+    opacity: 0;
+    translate: 0 calc(-1 * var(--salida, 16px));
+  }
   100% {
     opacity: 0;
-    transform: translateY(-56px);
-    pointer-events: none;
+    translate: 0 -200vh;
+  }
+}
+
+/* Entrada genérica: apartada hasta su tramo, llega desde `--entrada` (abajo) mientras se enciende. */
+@keyframes h-entrar {
+  0% {
+    opacity: 0;
+    translate: 0 -200vh;
+    animation-timing-function: steps(1, end);
+  }
+  1% {
+    opacity: 0;
+    translate: 0 var(--entrada, 24px);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* Se apaga en su sitio y, ya invisible, se aparta. */
+@keyframes h-apagar {
+  97% {
+    opacity: 0;
+    translate: none;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -200vh;
+  }
+}
+
+@keyframes h-retroceder {
+  to {
+    translate: 0 -6vh;
+  }
+}
+
+/* El cielo respira (0–3 %) y, cuando la cámara se inclina, sale por arriba con el sol (8–20 %). */
+@keyframes h-cielo {
+  0% {
+    scale: 1;
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  20% {
+    scale: 1.02;
+    translate: 0 0;
+  }
+  40% {
+    scale: 1.02;
+    translate: 0 0;
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    scale: 1.02;
+    translate: 0 -62vh;
+  }
+}
+
+@keyframes h-horizonte {
+  40% {
+    translate: 0 0;
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    translate: 0 -62vh;
+  }
+}
+
+/* La cinta: respira con el cielo y, por grupos de color, se tiende sobre el suelo y se junta hacia el centro, donde nace
+   la ficha del evento. */
+@keyframes h-tender {
+  0% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  37% {
+    transform: scale(1.02);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    transform: translateY(-6%) rotateX(80deg) scale3d(0.3, 1, 0.05);
   }
 }
 
 @keyframes h-cinta {
-  0%,
+  55% {
+    opacity: 1;
+    translate: 0 0;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  97% {
+    opacity: 0;
+    translate: var(--cinta-dx, 0) var(--cinta-dy, 0);
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -200vh;
+  }
+}
+
+/* El plano: presencia (en `.plano`, plana) y postura (en `.plano-mundo`, 3D). Nace como el suelo del héroe
+   (`rotateX(82deg)`, grande y bajo), la cámara se inclina hasta `58deg` con `-8deg` de giro y orbita lenta hasta `-2deg`
+   mientras se verifica. Tramo 8–48 %: al final la tableta ya lo cubre entero y desaparece de una vez. */
+@keyframes h-plano {
+  0% {
+    opacity: 0;
+    translate: 0 -200vh;
+    animation-timing-function: steps(1, end);
+  }
+  1.25% {
+    opacity: 0;
+    translate: none;
+    animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
+  }
+  8.75% {
+    opacity: 1;
+  }
+  98.5% {
+    opacity: 1;
+    translate: none;
+    animation-timing-function: steps(1, end);
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -200vh;
+  }
+}
+
+@keyframes h-plano-mundo {
+  0% {
+    transform: translateY(34%) rotateX(82deg) rotateZ(0deg) scale(2.6);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  30% {
+    transform: translateY(0) rotateX(58deg) rotateZ(-8deg) scale(1);
+    animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
+  }
+  100% {
+    transform: translateY(0) rotateX(58deg) rotateZ(-2deg) scale(1);
+  }
+}
+
+/* La ficha del evento nace de las franjas de la cinta: angosta y tenue, se abre a su ancho. */
+@keyframes h-evento {
+  from {
+    opacity: 0;
+    transform: translateZ(1.2cqw) scale(0.3, 0.7);
+  }
+}
+
+/* Las cotas se tienden desde la esquina del dibujo (una sola capa: el grupo entero). */
+@keyframes h-cotas {
+  from {
+    opacity: 0;
+    transform: translateZ(0.1cqw) scale(0.94);
+  }
+}
+
+@keyframes h-trazar-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Fichas: de tendidas a de pie (como las láminas, al revés) y, al final del paso, se pliegan sobre el plano. */
+@keyframes h-ficha {
+  from {
+    opacity: 0;
+    transform: translateZ(0.4cqw) rotateX(0deg);
+  }
+  45% {
+    opacity: 1;
+  }
+}
+
+@keyframes h-ficha-plegar {
+  to {
+    opacity: 0;
+    transform: translateZ(0.4cqw) rotateX(0deg);
+  }
+}
+
+/* La lente entra por la izquierda, se detiene sobre cada ficha (28, 33 y 38 % de la historia) y se deja tendida junto
+   al evento (su opacidad final es la de la regla: en el teléfono, donde no cabe en reposo, se apaga). Tramo 25–40 %. */
+@keyframes h-lente {
+  0% {
+    opacity: 0;
+    transform: translateZ(0.4cqw) rotateX(-90deg) translate(-14cqw, 0);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
   13% {
     opacity: 1;
+    transform: translateZ(0.4cqw) rotateX(-90deg) translate(0, 0);
+  }
+  23% {
+    transform: translateZ(0.4cqw) rotateX(-90deg) translate(0.8cqw, 0);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  40% {
+    transform: translateZ(0.4cqw) rotateX(-90deg) translate(34cqw, 0);
+  }
+  53% {
+    transform: translateZ(0.4cqw) rotateX(-90deg) translate(34.8cqw, 0);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  73% {
+    transform: translateZ(0.4cqw) rotateX(-90deg) translate(68cqw, 0);
+  }
+  85% {
+    opacity: 1;
+    transform: translateZ(0.4cqw) rotateX(-90deg) translate(68.8cqw, 0);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    transform: translateZ(0.4cqw) rotateX(0deg) translate(70cqw, -41cqw);
+  }
+}
+
+@keyframes h-lente-salir {
+  to {
+    opacity: 0;
+    transform: translateZ(0.4cqw) rotateX(0deg) translate(70cqw, -50cqw);
+  }
+}
+
+/* Sello: el check aparece con resorte cuando la lente lo deja. */
+@keyframes h-sello {
+  from {
+    opacity: 0;
+    transform: scale(0.2) rotate(-30deg);
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+}
+
+/* La tableta: aparece encajada en el plano (misma postura, `--encaje` = ancho del plano / ancho de la tableta), gana
+   bisel y se endereza, queda de frente y nítida en el 84 % (`transform: none`), se acerca despacio y retrocede en el
+   relevo. Tramo 46–100 %. */
+@keyframes h-tablero {
+  0% {
+    opacity: 0;
+    translate: 0 -200vh;
+    transform: rotateX(58deg) rotateZ(-2deg) scale(var(--encaje));
+    animation-timing-function: steps(1, end);
+  }
+  0.4% {
+    opacity: 0;
+    translate: none;
+    transform: rotateX(58deg) rotateZ(-2deg) scale(var(--encaje));
+  }
+  2.6% {
+    opacity: 1;
+    transform: rotateX(58deg) rotateZ(-2deg) scale(var(--encaje));
+  }
+  4.4% {
+    opacity: 1;
+    transform: rotateX(58deg) rotateZ(-2deg) scale(var(--encaje));
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  26% {
+    transform: rotateX(32deg) rotateZ(-3deg) scale(1);
+    animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
+  }
+  52% {
+    transform: rotateX(27deg) rotateZ(-2deg) scale(1);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  68.5% {
     transform: none;
   }
-  25% {
-    opacity: 0.45;
-    transform: translateY(16%) rotateX(66deg) scale(0.74);
+  72% {
+    transform: none;
+    translate: none;
+    animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
   }
-  31%,
+  92.6% {
+    transform: scale(1.03);
+    translate: none;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
   100% {
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(22%) rotateX(82deg) scale(0.6);
+    opacity: 1;
+    transform: scale(1.03);
+    translate: 0 -6vh;
   }
 }
 
-@keyframes h-plano {
-  0%,
-  17% {
-    opacity: 0;
-    transform: translate(-50%, -50%) rotateX(8deg) rotateZ(-6deg) scale(0.55);
-  }
-  31%,
-  56% {
-    opacity: 1;
-    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) scale(1);
-  }
-  78%,
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) scale(1.08);
-  }
-}
-
-@keyframes h-gota {
-  0%,
-  22% {
-    opacity: 0;
-    transform: translateZ(0) scale(0.3);
-  }
-  32%,
-  44% {
-    opacity: 1;
-    transform: translateZ(26px) scale(1);
-  }
-  52%,
-  100% {
-    opacity: 0;
-    transform: translateZ(4px) scale(0.45);
-  }
-}
-
-@keyframes h-tablero {
-  0%,
-  42% {
-    opacity: 0;
-    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) translateZ(-160px) scale(0.86);
-  }
-  50%,
-  70% {
-    opacity: 1;
-    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) translateZ(0) scale(0.9);
-  }
-  88%,
-  100% {
-    opacity: 1;
-    transform: translate(-20%, -48%) rotateX(20deg) rotateY(-28deg) rotateZ(5deg) scale(1.22);
-  }
-}
-
+/* Las alertas caen sobre su columna y se asientan con resorte. */
 @keyframes h-tarjeta {
   from {
     opacity: 0;
-    transform: translate3d(0, -40px, 240px) rotateX(-22deg) rotateZ(7deg);
-  }
-  to {
-    opacity: 1;
-    transform: none;
+    transform: translateY(-3.5cqw) scale(1.12);
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
   }
 }
 
-@keyframes h-paso {
-  0% {
-    opacity: 0;
-    transform: translateY(36px);
-    pointer-events: none;
-  }
-  22%,
-  78% {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-36px);
-    pointer-events: none;
-  }
-}
-
-@keyframes h-paso-final {
+@keyframes h-corriente {
   from {
     opacity: 0;
-    transform: translateY(36px);
-    pointer-events: none;
+    transform: scaleY(0);
   }
-  to {
-    opacity: 1;
+}
+
+/* «Nueva»: el punto late dos veces (dos iteraciones, nunca un bucle). */
+@keyframes h-nueva {
+  0%,
+  100% {
     transform: none;
-    pointer-events: auto;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  40% {
+    transform: scale(1.8);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+}
+
+/* El aviso se posa sobre la tableta con resorte. */
+@keyframes h-aviso {
+  from {
+    opacity: 0;
+    transform: translateY(3cqw) scale(0.9);
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+}
+
+/* El alba: el horizonte y el sol vuelven desde arriba, detrás del panel. */
+@keyframes h-alba {
+  0% {
+    opacity: 0;
+    translate: 0 -200vh;
+    animation-timing-function: steps(1, end);
+  }
+  1% {
+    opacity: 0;
+    translate: 0 -34vh;
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+}
+
+@keyframes h-avance {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes h-velo {
+  0% {
+    opacity: 0;
+    translate: 0 -200vh;
+    animation-timing-function: steps(1, end);
+  }
+  1% {
+    opacity: 0;
+    translate: none;
+    animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
+  }
+  100% {
+    opacity: 1;
+    translate: none;
+  }
+}
+
+/* Pantallas estrechas y respaldo: el plano y la tableta se arman al entrar. Parten del estado «armándose» y terminan en
+   el diseño base (el `to` implícito): sin animación quedan exactamente como en la disposición apilada. */
+@keyframes m-plano {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes m-plano-mundo {
+  from {
+    transform: translateY(8%) rotateX(74deg) rotateZ(-2deg) scale(0.9);
+  }
+}
+
+/* La tableta solo se inclina 18°: el texto de las tarjetas se lee desde que entra. */
+@keyframes m-tablero {
+  from {
+    opacity: 0;
+    transform: translateY(8%) rotateX(18deg) scale(0.96);
   }
 }
 
@@ -2467,34 +3405,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 @keyframes hz-velar {
   from {
     visibility: hidden;
-  }
-}
-
-/* En la historia fija el escenario nunca sale de vista, así que la pausa de `data-bucle` no actúa: los pulsos dejan de
-   existir cuando el héroe ya se apagó (y vuelven a entrar al subir), y «Desliza» se apaga antes del 2 %. Un bucle
-   vivo bajo una capa invisible seguía costando ~60 recálculos por segundo durante toda la historia. */
-@keyframes hz-retirar {
-  0%,
-  99% {
-    display: block;
-  }
-  100% {
-    display: none;
-  }
-}
-
-@keyframes hz-desliza-salir {
-  0% {
-    opacity: 1;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
-  }
-  99% {
-    opacity: 0;
-    display: block;
-  }
-  100% {
-    opacity: 0;
-    display: none;
   }
 }
 
@@ -2716,27 +3626,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-@keyframes m-plano {
-  from {
-    opacity: 0;
-    transform: rotateX(8deg) rotateZ(-6deg) scale(0.55);
-  }
-}
-
-@keyframes m-gota {
-  from {
-    opacity: 0;
-    transform: translateZ(0) scale(0.3);
-  }
-}
-
-@keyframes m-tablero {
-  from {
-    opacity: 0;
-    transform: rotateX(62deg) rotateZ(-28deg) translateZ(-140px) scale(0.7);
-  }
-}
-
 /* Texto en movimiento: la unidad sube desde la máscara; la palabra pasa de tenue a plena. */
 @keyframes kx-subir {
   from {
@@ -2904,7 +3793,10 @@ html[data-movimiento="completo"] {
     .anim-escalonado > *,
     .kx-l,
     .kx-p,
-    .kx-w {
+    .kx-w,
+    .historia-escenario > :not(.h-hero),
+    .historia-escenario > :not(.h-hero) *,
+    .historia-escenario > :not(.h-hero) *::after {
       animation: none !important;
     }
   }
@@ -2939,22 +3831,25 @@ html[data-movimiento="completo"] {
   /* Texto en movimiento al bajar: ligado al scroll, así que se revierte al subir. Cada bloque de texto
      define UNA línea de tiempo (`--kx`) y sus unidades la comparten (antes, una por unidad: mucho más caro).
      Los rangos van en `vh` y terminan antes de que el bloque llegue a la zona de lectura (≈ 60 % de la
-     pantalla), para que nada quede a medio aparecer; las pruebas e2e lo vigilan. */
-  @supports (animation-timeline: view()) {
-    .kx-scroll {
-      view-timeline: --kx block;
-    }
+     pantalla), para que nada quede a medio aparecer; las pruebas e2e lo vigilan. En táctil o bajo 1024 px
+     (`data-texto="unico"`) el texto se revela una sola vez, por tiempo (ver el bloque del revelado único). */
+  &:not([data-texto="unico"]) {
+    @supports (animation-timeline: view()) {
+      .kx-scroll {
+        view-timeline: --kx block;
+      }
 
-    .kx-scroll.kx-palabras .kx-p {
-      animation: kx-subir linear both;
-      animation-timeline: --kx;
-      animation-range: entry calc(var(--i, 0) * 1.8vh) entry calc(16vh + var(--i, 0) * 1.8vh);
-    }
+      .kx-scroll.kx-palabras .kx-p {
+        animation: kx-subir linear both;
+        animation-timeline: --kx;
+        animation-range: entry calc(var(--i, 0) * 1.8vh) entry calc(16vh + var(--i, 0) * 1.8vh);
+      }
 
-    .kx-scroll.kx-lectura .kx-w {
-      animation: kx-palabra linear both;
-      animation-timeline: --kx;
-      animation-range: entry calc(var(--i, 0) * 1.5vh) entry calc(10vh + var(--i, 0) * 1.5vh);
+      .kx-scroll.kx-lectura .kx-w {
+        animation: kx-palabra linear both;
+        animation-timeline: --kx;
+        animation-range: entry calc(var(--i, 0) * 1.5vh) entry calc(10vh + var(--i, 0) * 1.5vh);
+      }
     }
   }
 
@@ -3568,7 +4463,8 @@ html[data-movimiento="completo"] {
 
 /* Pantallas estrechas (< 1024 px) con soporte de líneas de tiempo: la historia fija no cabe, así que cada
    pieza 3D se arma al entrar en pantalla, ligada al scroll (y se desarma al subir). Mismo lenguaje que la
-   historia fija, con la línea de tiempo de cada pieza. Sin soporte, lo mismo lo dispara el motor (abajo). */
+   historia fija, con la línea de tiempo de cada pieza. Sin soporte, lo mismo lo dispara el motor (abajo). Los
+   textos se revelan una sola vez, por tiempo (`data-texto="unico"`), y las fichas del plano se sellan por tiempo. */
 html[data-movimiento="completo"] {
   @media (max-width: 1023.98px) {
     @supports (animation-timeline: view()) {
@@ -3580,56 +4476,103 @@ html[data-movimiento="completo"] {
       }
 
       .h-plano {
-        view-timeline: --plano block;
         animation: m-plano linear both;
         animation-timeline: view();
         animation-range: entry 5% entry 80%;
       }
 
-      .h-plano .gota {
-        animation: m-gota linear both;
-        animation-timeline: --plano;
-        animation-range: entry 35% entry 90%;
+      .h-plano .plano-mundo {
+        animation: m-plano-mundo var(--ease-salida) both;
+        animation-timeline: view();
+        animation-range: entry 5% entry 90%;
       }
 
       .h-tablero {
-        view-timeline: --tablero block;
         animation: m-tablero linear both;
         animation-timeline: view();
-        animation-range: entry 0% entry 75%;
+        animation-range: entry 0% entry 40vh;
       }
 
-      /* Las alertas caen sobre el tablero una tras otra, antes de que esté entero a la vista. */
+      /* Aquí el tablero es una sola columna (un panel de teléfono, más alto que la pantalla): cada alerta cae al entrar
+         en pantalla, con su propia línea de tiempo, y queda asentada antes de llegar a la zona de lectura. */
       .h-tablero .tablero-tarjeta {
         animation: h-tarjeta linear both;
-        animation-timeline: --tablero;
+        animation-timeline: view();
+        animation-range: entry 10% cover 30%;
       }
-      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
-        animation-range: entry 30% entry 60%;
+    }
+  }
+}
+
+/* Orden de llegada de cada tarjeta (columna × 3 + fila) y de cada corriente. */
+.tablero-columna:nth-child(2) { --col: 0; }
+.tablero-columna:nth-child(3) { --col: 1; }
+.tablero-columna:nth-child(4) { --col: 2; }
+.tablero-tarjeta { --k: calc(var(--col, 0) * 3 + var(--fila, 0)); }
+.tablero-tarjeta:nth-of-type(2) { --fila: 1; }
+.tablero-tarjeta:nth-of-type(3) { --fila: 2; }
+.tablero-corriente:nth-child(2) { --col: 1; }
+.tablero-corriente:nth-child(3) { --col: 2; }
+
+/* Revelado único por tiempo: el motor marca `kx-visto` / `escena-vista` al entrar en pantalla, tanto sin línea de
+   tiempo (`data-timeline="no"`) como en pantallas táctiles o estrechas (`data-texto="unico"`), donde un texto ligado al
+   scroll quedaba a medias si se dejaba de deslizar. Todo lo que oculta algo cuelga de `[data-motor]`. */
+html[data-movimiento="completo"][data-motor] {
+  &[data-texto="unico"],
+  &[data-timeline="no"][data-motor] {
+    .kx-scroll.kx-palabras:not(.kx-visto) .kx-p {
+      transform: translateY(1.35em);
+    }
+    .kx-scroll.kx-lectura:not(.kx-visto) .kx-w {
+      opacity: 0.16;
+    }
+    .kx-scroll.kx-palabras.kx-visto:not(.mov-quieto) .kx-p {
+      animation: kx-subir 800ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+      animation-delay: calc(var(--i, 0) * 70ms);
+    }
+    .kx-scroll.kx-lectura.kx-visto:not(.mov-quieto) .kx-w {
+      animation: kx-palabra 700ms ease-out backwards;
+      animation-delay: calc(var(--i, 0) * 45ms);
+    }
+
+    /* El plano se verifica por tiempo al entrar: las fichas se ponen de pie, los hilos se trazan, la lente recorre las
+       tres y cada una se sella; el medidor sube por tramos. */
+    .h-plano:not(.escena-vista) :is(.plano-ficha, .plano-lente, .plano-check) {
+      opacity: 0;
+    }
+    .h-plano:not(.escena-vista) .plano-hilo,
+    .h-plano:not(.escena-vista) .plano-segmento::after {
+      transform: scale(0);
+    }
+    .h-plano.escena-vista:not(.mov-quieto) {
+      .plano-ficha {
+        animation: h-ficha 700ms var(--ease-salida) backwards;
+        animation-delay: calc(250ms + (var(--fx) - 16) * 4ms);
       }
-      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
-        animation-range: entry 34% entry 64%;
+      .plano-hilo {
+        animation: h-trazar-y 600ms var(--ease-salida) backwards;
+        animation-delay: calc(500ms + (var(--hx) - 16) * 4ms);
       }
-      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
-        animation-range: entry 38% entry 68%;
+      .plano-lente {
+        animation: h-lente 2200ms linear 700ms backwards;
       }
-      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
-        animation-range: entry 42% entry 72%;
+      .plano-check {
+        animation: h-sello 560ms backwards;
       }
-      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
-        animation-range: entry 46% entry 76%;
+      .plano-segmento::after {
+        animation: hz-llenar 380ms var(--ease-enfasis) backwards;
       }
-      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
-        animation-range: entry 50% entry 80%;
+      .plano-ficha-1 .plano-check,
+      .plano-segmento-1::after {
+        animation-delay: 1080ms;
       }
-      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
-        animation-range: entry 54% entry 84%;
+      .plano-ficha-2 .plano-check,
+      .plano-segmento-2::after {
+        animation-delay: 1680ms;
       }
-      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
-        animation-range: entry 58% entry 88%;
-      }
-      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
-        animation-range: entry 62% entry 92%;
+      .plano-ficha-3 .plano-check,
+      .plano-segmento-3::after {
+        animation-delay: 2380ms;
       }
     }
   }
@@ -3641,78 +4584,53 @@ html[data-movimiento="completo"] {
    de `[data-motor]`, que el motor escribe solo cuando está listo para revelarlo: si el motor no arranca, el
    contenido se queda completo y quieto. Lo que ya estaba a la vista al empezar lleva `mov-quieto` (sin animar). */
 html[data-movimiento="completo"][data-timeline="no"][data-motor] {
-  .kx-scroll.kx-palabras:not(.kx-visto) .kx-p {
-    transform: translateY(1.35em);
-  }
-  .kx-scroll.kx-lectura:not(.kx-visto) .kx-w {
-    opacity: 0.16;
-  }
-  .kx-scroll.kx-palabras.kx-visto:not(.mov-quieto) .kx-p {
-    animation: kx-subir 800ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
-    animation-delay: calc(var(--i, 0) * 70ms);
-  }
-  .kx-scroll.kx-lectura.kx-visto:not(.mov-quieto) .kx-w {
-    animation: kx-palabra 700ms ease-out backwards;
-    animation-delay: calc(var(--i, 0) * 45ms);
-  }
-
   .escena:not(.escena-vista) {
     opacity: 0;
   }
   .h-plano.escena-vista:not(.mov-quieto) {
     animation: m-plano 1100ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
-  .h-plano.escena-vista:not(.mov-quieto) .gota {
-    animation: m-gota 900ms ease-out 500ms backwards;
+  .h-plano.escena-vista:not(.mov-quieto) .plano-mundo {
+    animation: m-plano-mundo 1100ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
   .h-tablero.escena-vista:not(.mov-quieto) {
     animation: m-tablero 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
   .h-tablero.escena-vista:not(.mov-quieto) .tablero-tarjeta {
-    animation: h-tarjeta 600ms ease-out backwards;
+    animation: h-tarjeta 600ms backwards;
     animation-delay: calc(450ms + var(--k, 0) * 90ms);
-  }
-  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
-    --k: 0;
-  }
-  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
-    --k: 1;
-  }
-  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
-    --k: 2;
-  }
-  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
-    --k: 3;
-  }
-  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
-    --k: 4;
-  }
-  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
-    --k: 5;
-  }
-  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
-    --k: 6;
-  }
-  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
-    --k: 7;
-  }
-  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
-    --k: 8;
   }
 }
 
-/* Historia fija en pantalla (escritorio): la cinta se pliega sobre un plano
-   técnico, del plano surge un tablero y las alertas caen sobre él. */
+/* Historia fija en pantalla (escritorio): un plano-secuencia. El héroe se pone (3–10 %), la cinta se tiende y se junta
+   en la ficha del evento mientras la cámara se inclina sobre el suelo, que se vuelve plano técnico (6–20 %); la lente
+   verifica tres fuentes (22–48 %); el plano se vuelve tableta, las corrientes bajan y las alertas caen (48–74 %); la
+   tableta queda de frente y nítida con el alba detrás (74–86 %), se acerca despacio y retrocede en el relevo. */
 html[data-movimiento="completo"] {
   @media (min-width: 1024px) {
     @supports (animation-timeline: view()) {
       .historia {
+        position: relative;
         height: 470vh;
         view-timeline-name: --historia;
+        /* El recorrido empieza con la página arriba (el escenario ya está fijo bajo la cabecera de 72 px) y no con el
+           margen de `scroll-padding-top`, que por omisión adelantaba la historia 16 px. */
+        view-timeline-inset: 72px 0px;
       }
 
+      /* Escenario a sangre: los textos en la columna del marco de 1440 px y las piezas en todo lo que queda a la
+         derecha (`--piezas-*`), centradas allí. */
       .historia-escenario {
+        --marco-x: max(24px, (100% - 1392px) / 2);
+        --col-w: min(440px, 31vw);
+        --piezas-x: calc(var(--marco-x) + var(--col-w) + clamp(32px, 4vw, 72px));
+        --piezas-w: calc(100% - var(--piezas-x) - var(--marco-x));
+        --piezas-cx: calc(var(--piezas-x) + var(--piezas-w) / 2);
+        /* La tableta de frente cabe entera también en pantallas bajas (≈ 0,75 de alto por ancho, con su aviso). */
+        --tab-w: min(760px, 52vw, var(--piezas-w), (100svh - 212px) * 1.3);
+        --encaje: 1;
         position: sticky;
+        perspective-origin: var(--piezas-cx) 52%;
         top: 72px;
         display: block;
         height: calc(100svh - 72px);
@@ -3720,177 +4638,446 @@ html[data-movimiento="completo"] {
         overflow: hidden;
       }
 
-      /* El héroe llena el escenario (a sangre): su cuadrícula deja la cinta apoyada en el borde inferior. */
-      .h-hero {
+      .historia-escenario > * {
         position: absolute;
+      }
+
+      /* El héroe llena el escenario (a sangre): su cuadrícula deja la cinta apoyada en el borde inferior. Solo deja de
+         recibir clics (la única animación que no es del compositor: una clave discreta al 12 %). */
+      .h-hero {
         inset: 0;
         min-height: 0;
         margin: 0;
         animation: h-hero linear both;
         animation-timeline: --historia;
-        animation-range: contain 0% contain 100%;
+        animation-range: contain 11.9% contain 21%;
       }
 
-      .h-pulsos {
+      /* Ya fuera de cuadro, el héroe decorativo no se dibuja (`visibility` heredada de la misma clave): sus capas dejan de
+         pintar. Las acciones siguen visibles para el foco. */
+      .hero-mando,
+      .hero-aviso {
+        visibility: visible;
+      }
+
+      .h1-linea-1 {
         animation:
-          hz-velar 1ms 599ms backwards,
-          hz-retirar linear both;
+          hz-subir var(--dur-5) var(--ease-salida) 220ms backwards,
+          h-poner-1 var(--ease-entrada) forwards;
         animation-timeline: auto, --historia;
-        animation-range: normal, contain 0% contain 24%;
+        animation-range: normal, contain 5.2% contain 10%;
       }
 
-      /* Apagado el héroe, el cielo, el suelo y el grano dejan de existir (y vuelven al subir): el suelo es un plano 3D de
-         4320×1600 px con máscara que el compositor seguía dibujando bajo una capa invisible en cada cuadro de la historia
-         (medido con rasterizado por software: de ~18 a ~30 fps). */
-      .h-cielo,
-      .h-suelo,
-      .h-grano {
-        animation: hz-retirar linear both;
+      /* La línea 2 sube antes y más rápido: nunca están las dos a medio recortar contra el horizonte a la vez. */
+      .h1-linea-2 {
+        animation:
+          hz-bajar var(--dur-5) var(--ease-salida) 340ms backwards,
+          h-poner-2 var(--ease-entrada) forwards;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 2.6% contain 6.2%;
+      }
+
+      .hero-antetitulo {
+        animation:
+          hz-asomar 520ms var(--ease-salida) 120ms backwards,
+          h-salir var(--ease-entrada) forwards;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 3% contain 7%;
+      }
+
+      .hero-texto {
+        animation:
+          hz-asentar 600ms var(--ease-salida) 760ms backwards,
+          h-salir var(--ease-entrada) forwards;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 4% contain 9%;
+      }
+
+      .hero-mando {
+        animation:
+          hz-asentar 600ms var(--ease-salida) 880ms backwards,
+          h-salir var(--ease-entrada) forwards;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 4.5% contain 9.5%;
+      }
+
+      .hero-desliza {
+        animation: h-apagar linear forwards;
         animation-timeline: --historia;
-        animation-range: contain 0% contain 24%;
+        animation-range: contain 0% contain 2%;
+      }
+
+      /* El cielo y el horizonte salen por arriba cuando la cámara se inclina; el suelo y el grano se apagan. Ya fuera de
+         vista, la pausa de `data-bucle` detiene los pulsos (antes vivían bajo una capa invisible). */
+      .h-cielo {
+        transform-origin: 50% 100%;
+        animation: h-cielo linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 15%;
       }
 
       .h-horizonte {
         animation:
           hz-trazar 1100ms var(--ease-salida) backwards,
-          hz-retirar linear both;
+          h-horizonte linear forwards;
         animation-timeline: auto, --historia;
-        animation-range: normal, contain 0% contain 24%;
+        animation-range: normal, contain 0% contain 15%;
       }
 
-      .hero-desliza {
-        animation: hz-desliza-salir linear both;
+      /* El grano solo tiene sentido quieto: se va con el titular. El suelo cede su lugar al plano. */
+      .h-grano {
+        animation: h-apagar var(--ease-entrada) forwards;
         animation-timeline: --historia;
-        animation-range: contain 0% contain 2%;
+        animation-range: contain 2% contain 6%;
+      }
+
+      .h-suelo {
+        animation: h-apagar var(--ease-entrada) forwards;
+        animation-timeline: --historia;
+        animation-range: contain 7% contain 12%;
+      }
+
+      .cinta-rotulo {
+        animation:
+          hz-rotulo 500ms var(--ease-salida) backwards,
+          h-apagar var(--ease-entrada) forwards;
+        animation-delay: var(--dr), 0s;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 3% contain 6%;
+      }
+
+      .cinta-pista {
+        transform-origin: 50% 88%;
+        animation:
+          hz-velar 1ms 1649ms backwards,
+          h-tender linear forwards;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 0% contain 16%;
       }
 
       .h-cinta {
-        animation: h-cinta linear both;
+        --cinta-dx: calc(var(--piezas-cx) - 50%);
+        --cinta-dy: -30vh;
+        animation: h-cinta linear forwards;
         animation-timeline: --historia;
-        animation-range: contain 0% contain 100%;
+        animation-range: contain 6% contain 15%;
       }
 
+      /* Plano técnico: centrado en las piezas, 1,12 veces el ancho de la tableta (que encaja en él al 48 %). */
       .h-plano {
-        pointer-events: none;
-        position: absolute;
-        left: 63%;
-        top: 54%;
-        width: min(560px, 40vw);
-        margin: 0;
+        --plano-ancho: calc(var(--tab-w) * var(--encaje));
+        left: var(--piezas-cx);
+        top: 52%;
+        margin: calc(var(--plano-ancho) * -0.35) 0 0 calc(var(--plano-ancho) * -0.5);
+        perspective: 1600px;
+        perspective-origin: 50% 50%;
         animation: h-plano linear both;
         animation-timeline: --historia;
-        animation-range: contain 0% contain 100%;
+        animation-range: contain 8% contain 48%;
       }
 
-      .h-plano .gota {
-        animation: h-gota linear both;
+      .h-plano .plano-mundo {
+        animation: h-plano-mundo linear both;
         animation-timeline: --historia;
-        animation-range: contain 0% contain 100%;
+        animation-range: contain 8% contain 48%;
       }
 
+      .h-plano .plano-evento {
+        animation: h-evento var(--ease-salida) backwards;
+        animation-timeline: --historia;
+        animation-range: contain 13% contain 19%;
+      }
+
+      .h-plano .plano-cotas {
+        animation: h-cotas var(--ease-salida) backwards;
+        animation-timeline: --historia;
+        animation-range: contain 13% contain 20%;
+      }
+
+      /* Las fichas se ponen de pie una tras otra (22–26,6 %) y, al cerrar el paso, se pliegan sobre el plano (44–47 %):
+         el plano queda liso antes de volverse tableta. */
+      .h-plano .plano-ficha {
+        --f: calc((var(--fx) - 16) / 34);
+        animation:
+          h-ficha var(--ease-salida) backwards,
+          h-ficha-plegar var(--ease-entrada) forwards;
+        animation-timeline: --historia;
+        animation-range:
+          contain calc(22% + var(--f) * 0.8%) contain calc(25% + var(--f) * 0.8%),
+          contain calc(44.2% + var(--f) * 0.4%) contain calc(46.6% + var(--f) * 0.4%);
+      }
+
+      .h-plano .plano-hilo {
+        --f: calc((var(--hx) - 16) / 34);
+        animation: h-trazar-y var(--ease-salida) backwards;
+        animation-timeline: --historia;
+        animation-range: contain calc(23.5% + var(--f) * 0.8%) contain calc(27% + var(--f) * 0.8%);
+      }
+
+      .h-plano .plano-lente {
+        animation:
+          h-lente linear backwards,
+          h-lente-salir var(--ease-entrada) forwards;
+        animation-timeline: --historia;
+        animation-range:
+          contain 25% contain 40%,
+          contain 43.6% contain 46%;
+      }
+
+      .h-plano .plano-check {
+        animation: h-sello backwards;
+        animation-timeline: --historia;
+      }
+      .h-plano .plano-ficha-1 .plano-check {
+        animation-range: contain 29% contain 30.6%;
+      }
+      .h-plano .plano-ficha-2 .plano-check {
+        animation-range: contain 34% contain 35.6%;
+      }
+      .h-plano .plano-ficha-3 .plano-check {
+        animation-range: contain 39% contain 40.6%;
+      }
+
+      .h-plano .plano-segmento::after {
+        animation: hz-llenar var(--ease-enfasis) backwards;
+        animation-timeline: --historia;
+      }
+      .h-plano .plano-segmento-1::after {
+        animation-range: contain 29.6% contain 31%;
+      }
+      .h-plano .plano-segmento-2::after {
+        animation-range: contain 34.6% contain 36%;
+      }
+      .h-plano .plano-segmento-3::after {
+        animation-range: contain 39.6% contain 41%;
+      }
+
+      /* Tableta: en las piezas, centrada en vertical. */
       .h-tablero {
-        pointer-events: none;
-        position: absolute;
-        left: 66%;
-        top: 52%;
-        width: min(820px, 56vw);
+        left: var(--piezas-cx);
+        top: 4%;
+        bottom: 0;
+        width: var(--tab-w);
+        max-width: none;
+        height: fit-content;
+        margin: auto 0 auto calc(var(--tab-w) * -0.5);
         animation: h-tablero linear both;
         animation-timeline: --historia;
-        animation-range: contain 0% contain 100%;
+        animation-range: contain 46% contain 100%;
+      }
+
+      .h-tablero .tablero-corriente {
+        animation: h-corriente var(--ease-salida) backwards;
+        animation-timeline: --historia;
+        animation-range: contain calc(49% + var(--col, 0) * 4.8%) contain calc(52.5% + var(--col, 0) * 4.8%);
       }
 
       .h-tablero .tablero-tarjeta {
-        animation: h-tarjeta linear both;
+        animation: h-tarjeta backwards;
         animation-timeline: --historia;
-      }
-      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
-        animation-range: contain 50.0% contain 57.0%;
-      }
-      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
-        animation-range: contain 51.4% contain 58.4%;
-      }
-      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
-        animation-range: contain 52.8% contain 59.8%;
-      }
-      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
-        animation-range: contain 54.2% contain 61.2%;
-      }
-      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
-        animation-range: contain 55.6% contain 62.6%;
-      }
-      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
-        animation-range: contain 57.0% contain 64.0%;
-      }
-      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
-        animation-range: contain 58.4% contain 65.4%;
-      }
-      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
-        animation-range: contain 59.8% contain 66.8%;
-      }
-      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
-        animation-range: contain 61.2% contain 68.2%;
+        animation-range: contain calc(50% + var(--k) * 1.6%) contain calc(53.2% + var(--k) * 1.6%);
       }
 
-      /* El escenario es a sangre: los pasos siguen alineados con el marco de 1440 px. */
-      .h-paso {
+      .h-tablero .tablero-nueva::before {
+        animation: h-nueva 2 both;
+        animation-timeline: --historia;
+        animation-range: contain 63% contain 69%;
+      }
+
+      .h-tablero .tablero-aviso {
+        animation: h-aviso backwards;
+        animation-timeline: --historia;
+        animation-range: contain 80% contain 84%;
+      }
+
+      /* El alba detrás de la tableta: horizonte y sol, de vuelta desde arriba. */
+      .h-alba {
+        display: block;
+        z-index: -1;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 74%;
+        overflow: clip;
+        animation: h-alba linear both;
+        animation-timeline: --historia;
+        animation-range: contain 74% contain 86%;
+      }
+
+      .h-alba::before {
+        content: "";
         position: absolute;
-        left: max(24px, (100% - 1392px) / 2);
-        top: 50%;
-        width: min(440px, 31vw);
-        translate: 0 -50%;
-        animation: h-paso linear both;
+        inset: 0;
+        background-image:
+          radial-gradient(40% 70% at var(--alba-x) 100%, rgb(232 200 140 / 0.42), rgb(232 200 140 / 0) 70%),
+          linear-gradient(180deg, rgb(236 231 221 / 0) 30%, rgb(241 232 216 / 0.85) 100%);
+      }
+
+      .h-alba::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 1px;
+        background-image: linear-gradient(
+          90deg,
+          rgb(122 94 51 / 0) 0%,
+          rgb(122 94 51 / 0.5) 12%,
+          #E2BF83 var(--alba-x),
+          rgb(122 94 51 / 0.5) 94%,
+          rgb(122 94 51 / 0) 100%
+        );
+      }
+
+      .h-alba {
+        --alba-x: calc(var(--piezas-cx) + var(--tab-w) * 0.5 + 24px);
+      }
+
+      .h-alba-sol {
+        position: absolute;
+        left: var(--alba-x);
+        bottom: 0;
+        width: clamp(110px, 10vw, 170px);
+        aspect-ratio: 1;
+        translate: -50% 46%;
+        border-radius: 50%;
+        background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+        box-shadow:
+          0 0 0 1px rgb(122 94 51 / 0.18),
+          0 0 60px 10px rgb(232 200 140 / 0.42);
+      }
+
+      /* Pasos: textos 2D en la columna del marco, centrados en vertical. Entran desde 24 px mientras el anterior sale
+         hacia arriba (con un pequeño solape) y, fuera de su tramo, se apartan: nunca tapan clics de otro paso. */
+      .h-paso {
+        --salida: 24px;
+        left: var(--marco-x);
+        top: 0;
+        bottom: 0;
+        width: var(--col-w);
+        height: fit-content;
+        margin-block: auto;
+        animation:
+          h-entrar linear backwards,
+          h-salir var(--ease-entrada) forwards;
         animation-timeline: --historia;
       }
       .h-paso-2 {
-        animation-range: contain 24% contain 50%;
+        animation-range:
+          contain 21% contain 23.4%,
+          contain 44.8% contain 47%;
       }
       .h-paso-3 {
-        animation-range: contain 50% contain 76%;
+        animation-range:
+          contain 46.2% contain 48.6%,
+          contain 70.8% contain 73%;
       }
       .h-paso-4 {
-        animation-name: h-paso-final;
-        animation-range: contain 76% contain 86%;
+        animation-name: h-entrar, h-retroceder;
+        animation-timing-function: linear, var(--ease-entrada);
+        animation-range:
+          contain 72.2% contain 74.6%,
+          contain 96% contain 100%;
       }
 
-      /* Texto de cada paso: el titular sube y el texto se ilumina durante la primera parte de su tramo,
-         antes de que el paso empiece a salir. Más específico que `.kx-scroll …` para ganarle sin depender
-         del orden. */
-      .historia .h-paso-2 .kx-palabras .kx-p,
-      .historia .h-paso-3 .kx-palabras .kx-p,
-      .historia .h-paso-4 .kx-palabras .kx-p {
-        animation: kx-subir linear both;
-        animation-timeline: --historia;
-      }
-      .historia .h-paso-2 .kx-palabras .kx-p {
-        animation-range: contain calc(24.4% + var(--i, 0) * 0.5%) contain calc(28.4% + var(--i, 0) * 0.5%);
-      }
-      .historia .h-paso-3 .kx-palabras .kx-p {
-        animation-range: contain calc(50.4% + var(--i, 0) * 0.5%) contain calc(54.4% + var(--i, 0) * 0.5%);
-      }
-      .historia .h-paso-4 .kx-palabras .kx-p {
-        animation-range: contain calc(76.4% + var(--i, 0) * 0.5%) contain calc(80.4% + var(--i, 0) * 0.5%);
+      /* En la historia fija los textos de los pasos entran enteros (el paso es la unidad): sin palabras a medio subir. */
+      .historia .h-paso .kx-scroll {
+        view-timeline: none;
       }
 
-      .historia .h-paso-2 .kx-lectura .kx-w,
-      .historia .h-paso-3 .kx-lectura .kx-w,
-      .historia .h-paso-4 .kx-lectura .kx-w {
-        animation: kx-palabra linear both;
+      .historia .h-paso .kx-scroll .kx-p,
+      .historia .h-paso .kx-scroll .kx-w {
+        animation: none;
+      }
+
+      /* Riel 01 · 02 · 03: abajo a la izquierda, aparece con el primer paso. Cada tramo se llena con su paso. */
+      .h-riel {
+        display: block;
+        left: var(--marco-x);
+        bottom: clamp(12px, 2.6vh, 28px);
+        z-index: 2;
+        animation: h-entrar linear backwards;
         animation-timeline: --historia;
+        animation-range: contain 17% contain 20%;
+        --entrada: 12px;
       }
-      .historia .h-paso-2 .kx-lectura .kx-w {
-        animation-range: contain calc(26% + var(--i, 0) * 0.28%) contain calc(28% + var(--i, 0) * 0.28%);
+
+      .h-riel ol {
+        position: relative;
+        display: flex;
+        gap: clamp(16px, 2.2vw, 32px);
       }
-      .historia .h-paso-3 .kx-lectura .kx-w {
-        animation-range: contain calc(52% + var(--i, 0) * 0.28%) contain calc(54% + var(--i, 0) * 0.28%);
+
+      .h-riel-paso {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding-bottom: 6px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        color: var(--color-apoyo);
       }
-      .historia .h-paso-4 .kx-lectura .kx-w {
-        animation-range: contain calc(78% + var(--i, 0) * 0.28%) contain calc(80% + var(--i, 0) * 0.28%);
+
+      .h-riel-numero {
+        color: var(--color-brass-deep);
+      }
+
+      /* Una sola línea de 1 px bajo los tres pasos, que se llena en latón oscuro con la historia (una capa). */
+      .h-riel-linea {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 6px;
+        height: 1px;
+        background-color: var(--color-linea-fuerte);
+      }
+
+      .h-riel-avance {
+        position: absolute;
+        inset: 0;
+        transform-origin: 0 50%;
+        background-color: var(--color-brass-deep);
+        animation: h-avance linear both;
+        animation-timeline: --historia;
+        animation-range: contain 21% contain 92%;
+      }
+
+      /* Anclas del riel: dejan la historia en el 30, 60 y 86 % de su recorrido. El recorrido mide `100% − 100vh + 72px`
+         y el salto deja el ancla a 88 px del borde (`scroll-padding-top`), 16 px por debajo del inicio del escenario. */
+      .h-ancla {
+        display: block;
+        position: absolute;
+        left: 0;
+        width: 1px;
+        height: 1px;
+        top: calc(var(--p) * (100% - 100vh + 72px) + 16px);
+      }
+      .h-ancla-1 { --p: 0.3; }
+      .h-ancla-2 { --p: 0.6; }
+      .h-ancla-3 { --p: 0.86; }
+
+      /* Velo del relevo: apaga el escenario mientras sube la sección siguiente. Hermano de las piezas, nunca su ancestro. */
+      .h-velo {
+        display: block;
+        inset: 0;
+        z-index: 3;
+        background-color: var(--color-fondo);
+        animation: h-velo linear both;
+        animation-timeline: --historia;
+        animation-range: contain 92% contain 100%;
       }
 
       /* Lo que recibe foco siempre se ve, aunque su paso no esté en pantalla. */
       .h-paso:focus-within,
-      .h-hero:focus-within {
+      .h-hero:focus-within,
+      .h-hero:focus-within .hero-mando,
+      .h-riel:focus-within {
         opacity: 1 !important;
+        translate: none !important;
         transform: none !important;
       }
     }

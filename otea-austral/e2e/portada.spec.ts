@@ -114,8 +114,12 @@ test.describe("movimiento", () => {
     expect(pendientes).toBe(0);
   });
 
-  test("al llegar a la zona de lectura, titulares y textos de entrada están completos", async ({ page }) => {
+  test("al llegar a la zona de lectura, titulares y textos de entrada están completos", async ({ page }, info) => {
+    // En escritorio el texto va ligado al scroll y ya está completo al 60 %; en táctil (`data-texto="unico"`) se revela una
+    // sola vez, por tiempo, al entrar: se espera a que termine (nunca queda a medias).
+    const tactil = info.project.name === "movil";
     await page.goto("/");
+    if (tactil) await expect(page.locator("html")).toHaveAttribute("data-texto", "unico");
     // El bloque con su borde superior al 60 % de la pantalla: posición normal de lectura.
     for (const [titulo, parrafo] of [
       ["Así se ve una alerta.", /Quién gana, quién pierde y bajo qué condición, con la confianza calculada/],
@@ -128,15 +132,23 @@ test.describe("movimiento", () => {
         window.scrollTo({ top: y, behavior: "instant" });
       });
       await page.waitForTimeout(400);
-      const desplazos = await h.evaluate((e) =>
-        [...e.querySelectorAll(".kx-p")].map((p) => Math.abs(new DOMMatrix(getComputedStyle(p).transform).f)),
-      );
+      const leerDesplazos = () =>
+        h.evaluate((e) => [...e.querySelectorAll(".kx-p")].map((p) => Math.abs(new DOMMatrix(getComputedStyle(p).transform).f)));
+      const leerTenues = () =>
+        page
+          .locator("p.kx-lectura")
+          .filter({ has: page.locator(".sr-only", { hasText: parrafo }) })
+          .evaluate((p) => [...p.querySelectorAll(".kx-w")].filter((w) => Number(getComputedStyle(w).opacity) < 0.98).length);
+      if (tactil) {
+        await expect(h).toHaveClass(/kx-visto/);
+        await expect.poll(async () => Math.max(...(await leerDesplazos())), { timeout: 4000 }).toBeLessThan(0.5);
+        await expect.poll(leerTenues, { timeout: 4000 }).toBe(0);
+        continue;
+      }
+      const desplazos = await leerDesplazos();
       expect(desplazos.length).toBeGreaterThan(1);
       expect(Math.max(...desplazos), `titular «${titulo}»: desplazamientos ${desplazos.join(", ")}`).toBeLessThan(0.5);
-      const tenues = await page
-        .locator("p.kx-lectura")
-        .filter({ has: page.locator(".sr-only", { hasText: parrafo }) })
-        .evaluate((p) => [...p.querySelectorAll(".kx-w")].filter((w) => Number(getComputedStyle(w).opacity) < 0.98).length);
+      const tenues = await leerTenues();
       expect(tenues, `texto de «${titulo}»: palabras aún tenues`).toBe(0);
     }
   });

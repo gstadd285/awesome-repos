@@ -32,7 +32,9 @@ class ObservadorFalso {
 
 let sistemaReduce = false;
 let soportaTimeline = true;
+let tactil = false;
 let oyentesSistema: (() => void)[] = [];
+let oyentesTactil: (() => void)[] = [];
 const registrados: [string, EventListenerOrEventListenerObject][] = [];
 
 /** Arma un elemento sin pasar por innerHTML (la regla de seguridad del proyecto lo prohíbe, también en pruebas). */
@@ -43,9 +45,10 @@ function el(etiqueta: string, atributos: Record<string, string> = {}, ...hijos: 
   return e;
 }
 
-function preparar({ reduce = false, timeline = true }: { reduce?: boolean; timeline?: boolean } = {}) {
+function preparar({ reduce = false, timeline = true, estrecha = false }: { reduce?: boolean; timeline?: boolean; estrecha?: boolean } = {}) {
   sistemaReduce = reduce;
   soportaTimeline = timeline;
+  tactil = estrecha;
 }
 
 function ponerEnVista(el: Element, top: number) {
@@ -55,20 +58,26 @@ function ponerEnVista(el: Element, top: number) {
 beforeEach(() => {
   sistemaReduce = false;
   soportaTimeline = true;
+  tactil = false;
   oyentesSistema = [];
+  oyentesTactil = [];
   ObservadorFalso.instancias = [];
   vi.stubGlobal("IntersectionObserver", ObservadorFalso);
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     writable: true,
-    value: (consulta: string) => ({
-      media: consulta,
-      get matches() {
-        return sistemaReduce;
-      },
-      addEventListener: (_: string, f: () => void) => oyentesSistema.push(f),
-      removeEventListener: () => {},
-    }),
+    // La preferencia del sistema y la consulta de pantalla táctil o estrecha responden por separado.
+    value: (consulta: string) => {
+      const esSistema = consulta.includes("prefers-reduced-motion");
+      return {
+        media: consulta,
+        get matches() {
+          return esSistema ? sistemaReduce : tactil;
+        },
+        addEventListener: (_: string, f: () => void) => (esSistema ? oyentesSistema : oyentesTactil).push(f),
+        removeEventListener: () => {},
+      };
+    },
   });
   Object.defineProperty(window, "CSS", {
     configurable: true,
@@ -83,7 +92,7 @@ beforeEach(() => {
   });
   localStorage.clear();
   document.body.replaceChildren();
-  for (const a of ["data-movimiento", "data-sistema", "data-mov-ui", "data-timeline", "data-motor"]) raiz.removeAttribute(a);
+  for (const a of ["data-movimiento", "data-sistema", "data-mov-ui", "data-timeline", "data-motor", "data-texto"]) raiz.removeAttribute(a);
 });
 
 afterEach(() => {
@@ -215,6 +224,7 @@ describe("respaldo sin líneas de tiempo", () => {
     motorMovimiento(OPCIONES);
     expect(raiz.hasAttribute("data-timeline")).toBe(false);
     expect(raiz.hasAttribute("data-motor")).toBe(false);
+    expect(raiz.hasAttribute("data-texto")).toBe(false);
     expect(ObservadorFalso.instancias).toHaveLength(0);
   });
 
@@ -277,6 +287,62 @@ describe("respaldo sin líneas de tiempo", () => {
   });
 });
 
+describe("revelado único en pantallas táctiles o estrechas (data-texto)", () => {
+  function pagina() {
+    const visible = el("h2", { class: "kx kx-palabras kx-scroll" });
+    const abajo = el("p", { class: "kx kx-lectura kx-scroll" });
+    const plano = el("div", { class: "plano h-plano escena" });
+    document.body.replaceChildren(visible, abajo, plano);
+    ponerEnVista(visible, 100);
+    ponerEnVista(abajo, 5000);
+    ponerEnVista(plano, 6000);
+    return { visible, abajo, plano };
+  }
+
+  it("aunque haya líneas de tiempo, marca data-texto=\"unico\" y revela cada texto una sola vez al entrar", () => {
+    preparar({ estrecha: true });
+    const { visible, abajo, plano } = pagina();
+    motorMovimiento(OPCIONES);
+    expect(raiz.getAttribute("data-texto")).toBe("unico");
+    expect(raiz.hasAttribute("data-timeline")).toBe(false);
+    expect(raiz.getAttribute("data-motor")).toBe("listo");
+    // Lo que ya se ve no parpadea; lo demás espera a entrar.
+    expect(visible.classList.contains("kx-visto") && visible.classList.contains("mov-quieto")).toBe(true);
+    const [observador] = ObservadorFalso.instancias;
+    expect(observador.observados.has(abajo) && observador.observados.has(plano)).toBe(true);
+    observador.entra(abajo);
+    observador.entra(plano);
+    expect(abajo.classList.contains("kx-visto") && !abajo.classList.contains("mov-quieto")).toBe(true);
+    // El plano se marca para sellar sus fichas por tiempo.
+    expect(plano.classList.contains("escena-vista")).toBe(true);
+    expect(observador.observados.has(abajo)).toBe(false);
+  });
+
+  it("al pasar a una pantalla ancha (cambio de la consulta) retira la marca y el motor; al volver, los repone", () => {
+    preparar({ estrecha: true });
+    pagina();
+    motorMovimiento(OPCIONES);
+    expect(raiz.getAttribute("data-motor")).toBe("listo");
+    tactil = false;
+    oyentesTactil.forEach((f) => f());
+    expect(raiz.hasAttribute("data-texto")).toBe(false);
+    expect(raiz.hasAttribute("data-motor")).toBe(false);
+    tactil = true;
+    oyentesTactil.forEach((f) => f());
+    expect(raiz.getAttribute("data-texto")).toBe("unico");
+    expect(raiz.getAttribute("data-motor")).toBe("listo");
+  });
+
+  it("con movimiento reducido no arranca el motor: nada se oculta", () => {
+    preparar({ estrecha: true, reduce: true });
+    pagina();
+    motorMovimiento(OPCIONES);
+    expect(raiz.getAttribute("data-movimiento")).toBe("reducido");
+    expect(raiz.hasAttribute("data-motor")).toBe(false);
+    expect(ObservadorFalso.instancias).toHaveLength(0);
+  });
+});
+
 describe("código del script de cabecera", () => {
   it("es autocontenido: serializado y ejecutado en un contexto aparte (solo con el DOM mínimo) hace lo mismo", () => {
     const atributos = new Map<string, string>();
@@ -313,6 +379,8 @@ describe("código del script de cabecera", () => {
     expect(atributos.get("data-movimiento")).toBe("reducido");
     expect(atributos.get("data-sistema")).toBe("reduce");
     expect(atributos.get("data-mov-ui")).toBe("1");
+    // La consulta de pantalla táctil o estrecha también se lee desde `window` (aquí responde que sí).
+    expect(atributos.get("data-texto")).toBe("unico");
     expect(ventana.__oteaMovimiento).toBeDefined();
   });
 

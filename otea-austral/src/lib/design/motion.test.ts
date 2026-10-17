@@ -126,6 +126,7 @@ describe("movimiento", () => {
       "data-timeline",
       "data-sistema",
       "data-mov-ui",
+      "data-texto",
       "kx-scroll",
       ".escena",
     ];

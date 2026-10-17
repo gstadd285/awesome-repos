@@ -50,41 +50,88 @@ test.describe("ventana estrecha", () => {
     await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
     expect(await page.locator(".historia-escenario").evaluate((e) => getComputedStyle(e).position)).not.toBe("sticky");
 
-    // Plano técnico: invisible al asomar por abajo y completo antes de llegar a la zona de lectura.
+    // Plano técnico: invisible al asomar por abajo y completo antes de llegar a la zona de lectura. Su postura vive en
+    // `.plano-mundo` (3D); la opacidad, en `.h-plano` (plana: una opacidad en el mundo 3D aplanaría las fichas).
+    const mundo = () => page.locator(".h-plano .plano-mundo").evaluate((e) => getComputedStyle(e).transform);
     await colocar(page, ".h-plano", 0.97);
     expect(await opacidad(page, ".h-plano")).toBeLessThan(0.3);
+    const armandose = await mundo();
     await colocar(page, ".h-plano", 0.35);
     expect(await opacidad(page, ".h-plano")).toBeCloseTo(1, 2);
-    const final = await page.locator(".h-plano").evaluate((e) => getComputedStyle(e).transform);
+    const final = await mundo();
+    expect(final).not.toBe(armandose);
+    // Las fichas se sellan por tiempo al entrar (revelado único, `escena-vista`): tres checks visibles.
+    await expect(page.locator(".h-plano")).toHaveClass(/escena-vista/);
+    await expect
+      .poll(() => page.locator(".plano-check").evaluateAll((cs) => Math.min(...cs.map((c) => Number(getComputedStyle(c).opacity)))), { timeout: 6000 })
+      .toBeCloseTo(1, 2);
 
-    // Tablero: lo mismo, y las alertas caen sobre él una tras otra.
+    // Tablero: lo mismo (solo se inclina 18°), y cada alerta cae sobre él al entrar en pantalla.
     await colocar(page, ".h-tablero", 0.97);
     expect(await opacidad(page, ".h-tablero")).toBeLessThan(0.3);
     expect(await opacidad(page, ".tablero-tarjeta")).toBeLessThan(0.3);
     await colocar(page, ".h-tablero", 0.2);
     expect(await opacidad(page, ".h-tablero")).toBeCloseTo(1, 2);
-    const tarjetas = await page.locator(".tablero-tarjeta").evaluateAll((ts) => ts.map((t) => Number(getComputedStyle(t).opacity)));
-    expect(tarjetas).toHaveLength(9);
-    expect(Math.min(...tarjetas)).toBeCloseTo(1, 2);
+    const tarjetas = page.locator(".tablero-tarjeta");
+    await expect(tarjetas).toHaveCount(9);
+    for (let i = 0; i < 9; i++) {
+      await colocar(page, `.tablero-tarjeta >> nth=${i}`, 0.5);
+      expect(Number(await tarjetas.nth(i).evaluate((t) => getComputedStyle(t).opacity)), `tarjeta ${i}`).toBeCloseTo(1, 2);
+    }
 
     // Al subir otra vez, la pieza se desarma (es reversible) y al volver a bajar recupera su pose final.
     await colocar(page, ".h-plano", 0.97);
     expect(await opacidad(page, ".h-plano")).toBeLessThan(0.3);
     await colocar(page, ".h-plano", 0.35);
-    expect(await page.locator(".h-plano").evaluate((e) => getComputedStyle(e).transform)).toBe(final);
+    expect(await mundo()).toBe(final);
     await contexto.close();
   });
 
-  test("en teléfono, las piezas se arman igual y no hay scroll horizontal", async ({ browser }) => {
-    const contexto = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  test("en teléfono, las piezas se arman igual, se leen y no hay scroll horizontal", async ({ browser }) => {
+    const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
     const page = await contexto.newPage();
     await page.goto("/");
     await colocar(page, ".h-tablero", 0.97);
     expect(await opacidad(page, ".h-tablero")).toBeLessThan(0.3);
     await colocar(page, ".h-tablero", 0.25);
     expect(await opacidad(page, ".h-tablero")).toBeCloseTo(1, 2);
+    // El tablero casi a sangre (≥ 340 px) y su texto de 12 px o más.
+    expect(await page.locator(".h-tablero").evaluate((e) => e.getBoundingClientRect().width)).toBeGreaterThanOrEqual(340);
+    const tamanos = await page
+      .locator(".h-tablero")
+      .evaluate((t) => [...t.querySelectorAll(".tablero-tarjeta p, .tablero-tarjeta span")].map((e) => parseFloat(getComputedStyle(e).fontSize)));
+    expect(Math.min(...tamanos)).toBeGreaterThanOrEqual(11);
+    const lectura = await page
+      .locator(".h-tablero")
+      .evaluate((t) => [...t.querySelectorAll(".tablero-tarjeta-sector, .tablero-tarjeta-evento")].map((e) => parseFloat(getComputedStyle(e).fontSize)));
+    expect(Math.min(...lectura)).toBeGreaterThanOrEqual(12);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     await contexto.close();
+  });
+
+  test("en táctil el texto se revela una sola vez, por tiempo: al dejar de deslizar nunca queda a medias", async ({ browser }) => {
+    for (const ancho of [390, 768]) {
+      const contexto = await browser.newContext({ viewport: { width: ancho, height: 900 }, hasTouch: true, isMobile: ancho < 700 });
+      const page = await contexto.newPage();
+      await page.goto("/");
+      await expect(page.locator("html")).toHaveAttribute("data-texto", "unico");
+      await expect(page.locator("html")).toHaveAttribute("data-motor", "listo");
+      const titular = page.getByRole("heading", { name: "Quién gana, quién pierde y bajo qué condición." });
+      const desplazos = () =>
+        titular.evaluate((e) => [...e.querySelectorAll(".kx-p")].map((p) => Math.abs(new DOMMatrix(getComputedStyle(p).transform).f)));
+      // Asomando por abajo, aún sin revelar: entero oculto (no a medias).
+      await colocar(page, "#paso-3-titulo", 0.95);
+      expect(Math.min(...(await desplazos()))).toBeGreaterThan(5);
+      // Se deja de deslizar con el titular a media pantalla: termina solo y queda completo.
+      await colocar(page, "#paso-3-titulo", 0.7);
+      await expect(titular).toHaveClass(/kx-visto/);
+      await expect.poll(async () => Math.max(...(await desplazos())), { timeout: 4000 }).toBeLessThan(0.5);
+      // Subir y bajar no lo vuelve a esconder (se reveló una vez).
+      await colocar(page, "#paso-3-titulo", 1.4);
+      await colocar(page, "#paso-3-titulo", 0.7);
+      expect(Math.max(...(await desplazos()))).toBeLessThan(0.5);
+      await contexto.close();
+    }
   });
 });
 

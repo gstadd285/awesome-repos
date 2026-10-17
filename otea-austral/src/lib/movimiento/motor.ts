@@ -11,6 +11,8 @@
  * 2. **Respaldo sin líneas de tiempo.** Donde el navegador no soporta `animation-timeline` (Firefox, Safari
  *    anterior al 26), anota `data-timeline="no"` y observa los bloques de texto y las piezas 3D: al entrar
  *    en pantalla les añade `kx-visto` o `escena-vista` y el CSS ejecuta la animación una vez, con el tiempo.
+ *    Lo mismo en pantallas táctiles o estrechas (`data-texto="unico"`, con `(max-width: 1023.98px), (pointer: coarse)`):
+ *    ahí el texto ligado al scroll quedaba a medias si se dejaba de deslizar, así que se revela una sola vez, por tiempo.
  * 3. **Conmutador.** Alterna el modo, lo guarda y mantiene el botón en su sitio al cambiar el diseño. Un
  *    vigilante del DOM mantiene al día `aria-pressed` de los conmutadores que llegan después (otra página).
  *
@@ -37,9 +39,11 @@ export function motorMovimiento(opciones: OpcionesMotor): void {
   let sistemaReduce = false;
   let soportaTimeline = false;
   let consulta: MediaQueryList | null = null;
+  let tactil: MediaQueryList | null = null;
   try {
     consulta = window.matchMedia("(prefers-reduced-motion: reduce)");
     sistemaReduce = consulta.matches;
+    tactil = window.matchMedia("(max-width: 1023.98px), (pointer: coarse)");
   } catch {
     sistemaReduce = false;
   }
@@ -146,8 +150,11 @@ export function motorMovimiento(opciones: OpcionesMotor): void {
     else raiz.removeAttribute("data-mov-ui");
     if (soportaTimeline) raiz.removeAttribute("data-timeline");
     else raiz.setAttribute("data-timeline", "no");
+    const unico = Boolean(tactil && tactil.matches);
+    if (unico) raiz.setAttribute("data-texto", "unico");
+    else raiz.removeAttribute("data-texto");
     sincronizarConmutadores(doc);
-    if (modo === "completo" && !soportaTimeline) quiereRespaldo = true;
+    if (modo === "completo" && (!soportaTimeline || unico)) quiereRespaldo = true;
     else detenerRespaldo();
     if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", alEstarListo, { once: true });
     else alEstarListo();
@@ -184,6 +191,7 @@ export function motorMovimiento(opciones: OpcionesMotor): void {
       aplicar();
     });
   }
+  if (tactil && typeof tactil.addEventListener === "function") tactil.addEventListener("change", aplicar);
 
   (window as VentanaOtea).__oteaMovimiento = { aplicar };
   aplicar();
