@@ -37,6 +37,20 @@ async function medir(browser: Browser, opciones: (typeof VENTANAS)[number]["opci
   });
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(800);
+  // La entrada del héroe (T3) dura ~5 s: se mide cuando terminó (solo quedan bucles y lo ligado al scroll).
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            document
+              .getAnimations()
+              .filter((a) => a.timeline instanceof DocumentTimeline && a.effect?.getTiming().iterations !== Infinity)
+              .filter((a) => a.playState === "running").length,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(0);
   // Animaciones que existen a la vez de vuelta arriba (ligadas al scroll y bucles; las entradas ya terminaron),
   // como `peso.mjs`.
   const animaciones = await page.evaluate(() => document.getAnimations().length);

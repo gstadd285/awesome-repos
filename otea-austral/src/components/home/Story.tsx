@@ -3,8 +3,10 @@ import { AvisoMovimiento } from "@/components/motion/ControlesMovimiento";
 import { TextoEnMovimiento } from "@/components/motion/TextoEnMovimiento";
 import { buttonClasses } from "@/components/ui/button";
 import { Flecha } from "@/components/ui/Flecha";
+import { AlertaViva } from "./AlertaViva";
 import { Blueprint } from "./Blueprint";
 import { Board } from "./Board";
+import { Horizonte } from "./Horizonte";
 import { Ribbon } from "./Ribbon";
 
 /**
@@ -20,44 +22,55 @@ import { Ribbon } from "./Ribbon";
 export function Story() {
   return (
     <section id="como-funciona" aria-label="Cómo funciona Otea Austral" className="historia">
-      <div className="historia-escenario mx-auto max-w-[1440px] px-6">
-        <div className="h-luz luz-ventana" aria-hidden="true" />
-
-        {/* Héroe: qué es, en una frase; una acción principal. En escritorio el texto va a la derecha. */}
-        <div className="h-hero hero-rejilla">
-          <div className="hero-titulo">
-            <p className="anim-aparecer flex items-center gap-2.5 text-sm text-texto-suave">
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-acento" />
-              Próximamente · Inteligencia de eventos para mercados
+      <div className="historia-escenario">
+        {/* Héroe «Horizonte vivo»: el H1 partido por el horizonte, la entrada y la acción principal debajo, y la
+            cinta de pie sobre el suelo. Bajo 1024 px, además, una alerta de ejemplo en el primer pliegue. */}
+        <div className="h-hero">
+          <Horizonte />
+          <p className="hero-antetitulo">
+            <span aria-hidden="true" className="hero-punto" />
+            Próximamente · Inteligencia de eventos para mercados
+          </p>
+          <h1 className="titular h1-horizonte">
+            <span className="sr-only">Del horizonte al mercado.</span>
+            <span aria-hidden="true" className="h1-caja h1-caja-1">
+              <span className="h1-linea-1">
+                <span className="h1-palabra">Del</span> <span className="h1-palabra">horizonte</span>
+              </span>
+            </span>
+            <span aria-hidden="true" className="h1-caja h1-caja-2">
+              <span className="h1-linea-2">al mercado.</span>
+            </span>
+          </h1>
+          <div className="hero-debajo">
+            <p className="hero-texto">
+              Te avisamos de los eventos globales que importan y explicamos qué sectores y activos podrían verse
+              afectados: quién gana, quién pierde y bajo qué condición, con nivel de confianza y fuentes.
             </p>
-            <TextoEnMovimiento
-              como="h1"
-              efecto="letras"
-              disparo="carga"
-              texto="Del horizonte al mercado."
-              className="titular mt-5 text-display text-texto"
-            />
+            <div className="hero-mando">
+              <div className="hero-acciones">
+                <Link href="#lista-de-espera" data-magnetico className={buttonClasses("primary")}>
+                  <span className="boton-etiqueta">Recibir alertas</span>
+                </Link>
+                <Link href="#ejemplos" className={buttonClasses("outline")}>
+                  Ver una alerta de ejemplo
+                  <Flecha direccion="abajo" />
+                </Link>
+              </div>
+            </div>
+          </div>
+          {/* Solo si el sistema pide menos movimiento: va en el cielo (escritorio) o en su propia fila, sin mover el
+              héroe, que así queda idéntico al fotograma final de la entrada. */}
+          <div className="hero-aviso">
             <AvisoMovimiento />
           </div>
-          <TextoEnMovimiento
-            como="p"
-            efecto="lectura"
-            disparo="carga"
-            texto="Te avisamos de los eventos globales que importan y explicamos qué sectores y activos podrían verse afectados: quién gana, quién pierde y bajo qué condición, con nivel de confianza y fuentes."
-            className="hero-texto max-w-[470px] text-lede text-texto-suave"
-          />
-          <div className="hero-acciones anim-aparecer anim-retraso-4 flex flex-wrap items-center gap-3">
-            <Link href="#lista-de-espera" data-magnetico className={buttonClasses("primary")}>
-              <span className="boton-etiqueta">Recibir alertas</span>
-            </Link>
-            <Link href="#ejemplos" className={buttonClasses("outline")}>
-              Ver una alerta de ejemplo
-              <Flecha direccion="abajo" />
-            </Link>
-          </div>
+          <AlertaViva />
+          <Ribbon className="h-cinta" />
+          <p className="hero-desliza" aria-hidden="true" data-bucle>
+            Desliza
+            <span className="hero-gota" />
+          </p>
         </div>
-
-        <Ribbon className="h-cinta anim-aparecer anim-retraso-3" />
 
         <section aria-labelledby="paso-2-titulo" className="h-paso h-paso-2">
           <p className="contador text-apoyo">01 — Verificación</p>

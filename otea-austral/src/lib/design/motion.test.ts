@@ -280,16 +280,23 @@ describe("movimiento", () => {
   });
 
   it("los bucles infinitos son pocos y conocidos, y se pausan fuera de vista ([data-bucle][data-fuera])", () => {
+    // Cada animación de cada lista `animation: a …, b … infinite`.
     const infinitos = new Set(
-      [...css.matchAll(/animation:\s*([\w-]+)[^;]*\binfinite\b/g)].map((m) => m[1]),
+      [...css.matchAll(/animation:\s*([^;{}]+);/g)]
+        .flatMap((m) => m[1].split(/,(?![^(]*\))/))
+        .filter((a) => /\binfinite\b/.test(a))
+        .map((a) => a.trim().split(/\s+/)[0]),
     );
-    expect([...infinitos].sort()).toEqual(["otea-flotar", "otea-ola", "otea-pulso"]);
+    // Los pulsos del héroe, la gota de «Desliza» y los puntos del asistente (solo mientras espera).
+    expect([...infinitos].sort()).toEqual(["hz-gota", "hz-pulso-bucle", "otea-pulso"]);
     // Solo los descendientes: las animaciones propias del contenedor (entrada, claves ligadas al scroll) no se
     // congelan al salir de vista.
     expect(css).toMatch(/\[data-bucle\]\[data-fuera\] \*\s*\{\s*animation-play-state:\s*paused;/);
     expect(css).not.toMatch(/\[data-bucle\]\[data-fuera\]\s*[,{]/);
-    const cinta = readFileSync(join(process.cwd(), "src/components/home/Ribbon.tsx"), "utf8");
-    expect(cinta).toMatch(/className=\{`cinta [^`]*`\}[^>]*data-bucle/);
+    const horizonte = readFileSync(join(process.cwd(), "src/components/home/Horizonte.tsx"), "utf8");
+    expect(horizonte).toMatch(/className="h-pulsos" data-bucle/);
+    const historia = readFileSync(join(process.cwd(), "src/components/home/Story.tsx"), "utf8");
+    expect(historia).toMatch(/className="hero-desliza" aria-hidden="true" data-bucle/);
   });
 
   it("los efectos de puntero solo viven en la puerta y, dentro de ella, con puntero fino", () => {

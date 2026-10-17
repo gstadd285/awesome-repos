@@ -294,20 +294,6 @@
     radial-gradient(900px 520px at 0% 110%, rgb(15 27 45 / 0.05), transparent 70%);
 }
 
-/* Sombras de persiana: franjas diagonales difusas de luz y sombra. */
-@utility luz-ventana {
-  background-image: repeating-linear-gradient(
-    118deg,
-    rgb(255 255 255 / 0.62) 0 70px,
-    rgb(255 255 255 / 0) 70px 105px,
-    rgb(15 27 45 / 0.07) 105px 150px,
-    rgb(255 255 255 / 0) 150px 190px
-  );
-  filter: blur(22px);
-  -webkit-mask-image: radial-gradient(ellipse 80% 75% at 55% 45%, #000 35%, transparent 80%);
-  mask-image: radial-gradient(ellipse 80% 75% at 55% 45%, #000 35%, transparent 80%);
-}
-
 /* Retícula de puntos de los planos técnicos. */
 @utility reticula-puntos {
   background-image: radial-gradient(circle, rgb(15 27 45 / 0.38) 1.1px, transparent 1.6px);
@@ -888,78 +874,6 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   text-underline-offset: 4px;
 }
 
-/* ── Cinta 3D (hero) ───────────────────────────────────────────────────────── */
-
-.cinta {
-  position: relative;
-  margin-inline: -24px;
-  height: clamp(220px, 34vw, 340px);
-  perspective: 1500px;
-  perspective-origin: 50% 35%;
-}
-
-.cinta-pista {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform-style: preserve-3d;
-  transform: rotateY(-16deg) rotateX(9deg);
-}
-
-.cinta-lamina {
-  flex: none;
-  width: clamp(34px, 4.2vw, 62px);
-  height: clamp(104px, 12vw, 176px);
-  margin-left: clamp(-26px, -1.8vw, -14px);
-  border-radius: 12px;
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.28),
-    inset 0 1px 0 rgb(255 255 255 / 0.45),
-    0 10px 24px -12px rgb(15 27 45 / 0.45);
-  /* Como fichas de dominó: giran sobre el eje vertical y nunca se atraviesan. */
-  transform: rotateY(38deg);
-}
-
-.cinta-lamina-pierde {
-  background-image: linear-gradient(150deg, #EFA48D, #E08A72 45%, #A8573F);
-}
-.cinta-lamina-condicionado {
-  background-image: linear-gradient(150deg, #D3B27D, #B08D57 45%, #7A5E33);
-}
-.cinta-lamina-tinta {
-  background-image: linear-gradient(150deg, #3C5574, #22354F 45%, #0F1B2D);
-}
-.cinta-lamina-gana {
-  background-image: linear-gradient(150deg, #A4D6BC, #7FBF9E 45%, #4E8B6C);
-}
-.cinta-lamina-bruma {
-  background-image: linear-gradient(150deg, #B5BECA, #8C97A6 45%, #5D6878);
-}
-
-.cinta-chip {
-  position: absolute;
-  padding: 3px 7px;
-  border-radius: 5px;
-  background-color: rgb(252 250 246 / 0.85);
-  box-shadow: inset 0 0 0 1px var(--color-linea);
-  color: var(--color-apoyo);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-@media (max-width: 767px) {
-  .cinta-lamina:nth-child(n + 23) {
-    display: none;
-  }
-  .cinta-chip:nth-child(n + 7) {
-    display: none;
-  }
-}
-
 /* ── Plano técnico ─────────────────────────────────────────────────────────── */
 
 .plano {
@@ -1181,52 +1095,996 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   overflow-x: clip;
 }
 
+/* Primer pintado ligero: hasta que la página termina de cargar, lo que queda bajo la historia no se maqueta ni se pinta
+   (salvo cerca de la pantalla). Medido en el perfil móvil lento (CPU ×4 y 4G lento), el primer pase de estilo y
+   maquetación de la portada entera retrasaba el LCP ~270 ms. Solo dura la carga: `DirectorEscena` marca
+   `data-maquetado` en `<html>` tras el evento `load` (o al primer clic en un ancla), porque con altos estimados los
+   saltos de ancla aterrizaban mal. Sin JavaScript (no hay `data-movimiento`) o si la dirección trae un ancla
+   (`:target`), no se aplica. */
+html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .historia ~ section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1100px;
+}
+
+/* ── Héroe «Horizonte vivo» (estructura y estado final) ──────────────────────
+ * El emblema hecho escena: un H1 monumental partido por una línea de horizonte a sangre, un sol de latón cortado
+ * por ella, un suelo en perspectiva con pulsos y la cinta de pie. Aquí vive el ESTADO FINAL (sol arriba, láminas de
+ * pie, sin pulsos): es lo que se ve con movimiento reducido, sin JS y al imprimir. La entrada vive en la puerta.
+ *
+ * `.h-hero` es una cuadrícula de filas con nombre (cielo · titulo · debajo · [aviso] · [alerta] · cinta) y
+ * columnas a sangre (`bleed`) con el marco de 1440 px dentro (`marco`). La fila `titulo` mide exactamente el H1, cuyas
+ * líneas tienen alto conocido (interlineado 0,9 y nunca se parten solas): `--c1` es la caja 1 con su margen y `--c2`
+ * la caja 2. Las piezas del horizonte son elementos de la misma cuadrícula (`Horizonte` es `display: contents`) que se
+ * apoyan en esos altos, así que la línea cae siempre entre las dos cajas, a cualquier ancho. Sin subcuadrículas: a
+ * CPU ×4 costaban ~250 ms de maquetación antes del primer pintado. La fila del cielo es `1fr`: absorbe lo que sobra y
+ * deja la cinta apoyada en el borde inferior de la primera pantalla (sin franja muerta). Las columnas se calculan con el ancho del propio héroe (sin unidades de contenedor: un
+ * `container-type` en `.historia` triplicaba la maquetación antes del primer pintado).
+ */
+.historia {
+  --cab: 72px;
+}
+
+.h-hero {
+  /* Posición del sol: número (para la trigonometría de los pulsos) y porcentaje (para el resto). */
+  --sol-n: 0.84;
+  --sol-x: calc(var(--sol-n) * 100%);
+  --sol: clamp(88px, 10.4vw, 200px);
+  --h1: clamp(3.1rem, min(9.6vw, 17svh), 9rem);
+  --cinta-alto: clamp(180px, 31svh, 360px);
+  /* Líneas de la caja 1 (2 en el teléfono: «DEL / HORIZONTE») y alto de cada caja con su margen. */
+  --l1: 1;
+  --c1: calc(var(--h1) * (0.9 * var(--l1) + 0.085));
+  --c2: var(--h1);
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    [bleed-start] minmax(24px, 1fr) [marco-start] minmax(0, 696px) [mitad] minmax(0, 696px)
+    [marco-end] minmax(24px, 1fr) [bleed-end];
+  /* La cinta cede hasta 150 px y el cielo hasta 64 px cuando la pantalla es baja (1280×720, 1024×768): en la historia
+     fija el héroe mide justo el escenario y la cinta nunca queda cortada por los pies. */
+  grid-template-rows:
+    [cielo] minmax(64px, 1fr) [titulo] auto [debajo] auto
+    [cinta] minmax(150px, var(--cinta-alto));
+  /* La primera pantalla entera (sin franja muerta), con un tope: en una ventana muy alta el cielo no crece sin fin y el
+     primer paso asoma debajo. */
+  min-height: min(calc(100svh - var(--cab)), 1240px);
+  /* A sangre desde el marco de la historia (en la historia fija, el héroe llena el escenario: ver más abajo). */
+  margin-inline: calc(50% - 50vw);
+}
+
+/* Todo lo que no es el horizonte va por encima de él (los elementos de la cuadrícula admiten z-index). */
+.h-hero > :not(.horizonte),
+.hero-debajo > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Horizonte: sus piezas son elementos de la cuadrícula del héroe, a sangre y por debajo del texto. */
+.horizonte {
+  display: contents;
+
+  & > * {
+    grid-column: bleed;
+    position: relative;
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+}
+
+/* Cielo: perla arriba (se funde con el lienzo bajo la cabecera transparente) que se entibia hacia el horizonte. */
+.h-cielo {
+  grid-row: cielo / debajo;
+  margin-bottom: var(--c2);
+  overflow: clip;
+}
+
+.h-cielo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(60% 120% at var(--sol-x) 100%, rgb(214 178 118 / 0.3), rgb(214 178 118 / 0) 62%),
+    linear-gradient(180deg, rgb(236 231 221 / 0) 0%, rgb(236 231 221 / 0.55) 62%, rgb(241 232 216 / 0.95) 100%);
+}
+
+.sol-halo {
+  position: absolute;
+  left: var(--sol-x);
+  top: 100%;
+  width: calc(var(--sol) * 6);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background-image: radial-gradient(
+    circle,
+    rgb(240 214 160 / 0.55) 0%,
+    rgb(214 178 118 / 0.22) 28%,
+    rgb(214 178 118 / 0) 60%
+  );
+}
+
+/* El sol: un disco de latón SIN anillo ni lente (no es el emblema). `.sol-paralaje` lleva el paralaje del cursor
+   (`translate`); `.sol`, el amanecer (`transform`): dos propiedades, nunca se pisan. */
+.sol-paralaje {
+  position: absolute;
+  left: var(--sol-x);
+  top: 100%;
+  width: var(--sol);
+  aspect-ratio: 1;
+  translate: -50% -46%;
+}
+
+.sol {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+  box-shadow:
+    0 0 0 1px rgb(122 94 51 / 0.18),
+    inset 0 -6px 14px -6px rgb(122 94 51 / 0.35),
+    0 0 60px 10px rgb(232 200 140 / 0.42);
+}
+
+/* Suelo en perspectiva: el punto de fuga está en el sol. La retícula y los pulsos son planos tendidos (`rotateX`
+   de 82°) dentro de la perspectiva del suelo; la máscara los apaga hacia el horizonte y a la izquierda, bajo el
+   texto. 300 % de ancho (no 400 %) y 1600 px de fondo: la capa justa para cubrir el encuadre. */
+.h-suelo {
+  grid-row: titulo / -1;
+  margin-top: var(--c1);
+  overflow: clip;
+  perspective: 420px;
+  perspective-origin: var(--sol-x) 0;
+  /* Los pulsos se apuntan al sol con su ancho y su alto (`cqw`, `cqh`). Su contenido es todo absoluto, así que la
+     contención de tamaño no cambia nada de la maquetación. */
+  container-type: size;
+}
+
+/* La luz del suelo junto al horizonte, en su propia capa: se entibia con el cielo (sin ella, antes del amanecer se veía
+   un escalón de color donde todavía no hay línea). */
+.h-suelo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(180deg, rgb(240 232 218 / 0.85) 0%, rgb(236 231 221 / 0) 46%);
+}
+
+.h-reflejo {
+  position: absolute;
+  left: var(--sol-x);
+  top: 0;
+  width: calc(var(--sol) * 1.5);
+  height: 62%;
+  translate: -50% 0;
+  background-image: radial-gradient(50% 100% at 50% 0%, rgb(214 178 118 / 0.42), rgb(214 178 118 / 0) 100%);
+}
+
+.h-reticula {
+  position: absolute;
+  left: -100%;
+  bottom: -2px;
+  width: 300%;
+  height: 1600px;
+  transform-origin: 50% 100%;
+  transform: rotateX(82deg);
+  background-image:
+    repeating-linear-gradient(90deg, rgb(122 94 51 / 0.16) 0 1.5px, transparent 1.5px 128px),
+    repeating-linear-gradient(0deg, rgb(122 94 51 / 0.08) 0 1.5px, transparent 1.5px 128px);
+  -webkit-mask-image:
+    linear-gradient(180deg, transparent 0%, #000 60%),
+    linear-gradient(90deg, transparent 27%, #000 53%, #000 80%, transparent 96%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(180deg, transparent 0%, #000 60%),
+    linear-gradient(90deg, transparent 27%, #000 53%, #000 80%, transparent 96%);
+  mask-composite: intersect;
+}
+
+/* Pulsos: trazos de luz planos (2D), cada uno apuntado al sol con `atan2` y lanzado hacia la cámara por su propio eje.
+   Sin máscaras ni planos 3D: la versión anterior (un plano inclinado de 4320×1600 px con dos máscaras) obligaba al
+   compositor a dibujar en cada cuadro una superficie del tamaño del héroe (medido con rasterizado por software: la
+   historia caía de ~37 a ~24 fps). La perspectiva se imita con la curva que acelera (`--ease-entrada`) y con el trazo,
+   que se alarga al acercarse.
+
+   Cada pulso cae en `--lx` (el centro de su grupo de láminas) a la altura `--ly` y solo recorre el último `--tramo` del
+   camino (en vertical): en escritorio, la franja de la cinta (nunca pasa por detrás de un texto); en la tableta, del sol
+   al filo de la alerta; en el teléfono, el hueco bajo los botones hasta el filo de la alerta. Quieto, no se ve. */
+.h-pulsos {
+  position: absolute;
+  inset: 0;
+  --pulsos-ancho: min(100cqw - 240px, 4.4 * var(--cinta-alto), 1240px);
+  --pulsos-y: calc(100cqh - 0.12 * var(--cinta-alto));
+  /* De la altura de las cabezas de las láminas (62 % de la cinta) a sus pies: por debajo de los botones y la entrada. */
+  --tramo: calc(0.5 * var(--cinta-alto));
+}
+
+.pulso {
+  --lx: calc(50cqw + (var(--p) - 0.5) * var(--pulsos-ancho));
+  --th: atan2(calc(var(--sol-n) * 100cqw - var(--lx)), var(--pulsos-y));
+  --largo: calc(var(--tramo) / cos(var(--th)));
+  position: absolute;
+  left: var(--lx);
+  bottom: calc(100cqh - var(--pulsos-y));
+  width: 6px;
+  height: calc(var(--largo) * 0.42);
+  margin-left: -3px;
+  border-radius: 6px;
+  transform-origin: 50% 100%;
+  transform: rotate(var(--th));
+  background-image: linear-gradient(
+    180deg,
+    rgb(176 141 87 / 0),
+    rgb(176 141 87 / 0.5) 62%,
+    #F2D69E 90%,
+    #FFF8E8 100%
+  );
+  box-shadow: 0 0 12px 2px rgb(240 210 150 / 0.4);
+  opacity: 0;
+}
+
+.pulso-0 { --p: 0.069; --k: 0; }
+.pulso-1 { --p: 0.182; --k: 1; }
+.pulso-2 { --p: 0.305; --k: 2; }
+.pulso-3 { --p: 0.434; --k: 3; }
+.pulso-4 { --p: 0.566; --k: 4; }
+.pulso-5 { --p: 0.695; --k: 5; }
+.pulso-6 { --p: 0.818; --k: 6; }
+.pulso-7 { --p: 0.931; --k: 7; }
+
+/* La línea de horizonte: filete de 1 px en latón, transparente en los extremos, con un punto incandescente bajo el
+   sol. Cae bajo la caja 1 del H1 (`--c1`), entre las dos cajas. */
+.h-horizonte {
+  grid-row: titulo;
+  align-self: start;
+  margin-top: var(--c1);
+  height: 1px;
+  translate: 0 -0.5px;
+  transform-origin: var(--sol-x) 50%;
+  background-image: linear-gradient(
+    90deg,
+    rgb(122 94 51 / 0) 0%,
+    rgb(122 94 51 / 0.5) 10%,
+    rgb(122 94 51 / 0.68) 64%,
+    #E2BF83 var(--sol-x),
+    rgb(122 94 51 / 0.6) 92%,
+    rgb(122 94 51 / 0) 100%
+  );
+}
+
+.h-horizonte::after {
+  content: "";
+  position: absolute;
+  left: var(--sol-x);
+  top: -3px;
+  width: calc(var(--sol) * 2.3);
+  height: 7px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background-image: radial-gradient(closest-side, rgb(255 240 205 / 0.95), rgb(255 240 205 / 0));
+}
+
+/* Grano de película estático: ruido en un SVG `data:` (permitido por `img-src`), sin modo de fusión. */
+.h-grano {
+  grid-row: 1 / -1;
+  opacity: 0.065;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.06 0 0 0 0 0.1 0 0 0 0 0.17 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Antetítulo: encima del H1, apoyado en el fondo de la fila del cielo. */
+.hero-antetitulo {
+  grid-column: marco;
+  grid-row: cielo;
+  align-self: end;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: clamp(14px, 1.5vw, 24px);
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--color-texto-suave);
+  text-wrap: balance;
+}
+
+/* El punto se alinea con la primera línea (en el teléfono el antetítulo ocupa dos). */
+.hero-punto {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: calc(0.675em - 3px);
+  border-radius: 50%;
+  background-color: var(--color-acento);
+}
+
+/* H1 monumental: ocupa la fila `titulo`. La caja 1 descansa sobre el horizonte y la 2 cuelga debajo; cada una recorta su línea (`overflow: clip`) con un margen para los remates, así que la línea sale
+   exactamente desde el horizonte. Nada de letras sueltas: se conserva el interletraje de Inter. */
+.h1-horizonte {
+  grid-column: marco;
+  grid-row: titulo;
+  /* Flex y no bloque: los márgenes de las dos cajas no se colapsan (el horizonte cae justo entre ellas). */
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: var(--h1);
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  color: var(--color-texto);
+}
+
+.h1-caja {
+  display: block;
+  overflow: clip;
+  overflow-clip-margin: 0.08em;
+}
+
+.h1-caja-1 {
+  margin-bottom: 0.085em;
+}
+
+.h1-caja-2 {
+  margin-top: 0.1em;
+}
+
+/* Ninguna línea se parte sola (el horizonte depende de cuántas hay): en el teléfono, «DEL» y «HORIZONTE» van en
+   dos líneas a propósito. */
+.h1-linea-1,
+.h1-palabra {
+  white-space: nowrap;
+}
+
+.h1-linea-1,
+.h1-linea-2 {
+  display: block;
+}
+
+/* «AL MERCADO.» nunca se parte (en el teléfono, «DEL HORIZONTE» sí: tres líneas con el horizonte entre la 2 y la 3). */
+.h1-linea-2 {
+  white-space: nowrap;
+}
+
+/* Entrada en Source Serif 4 (sin cursiva), 19 a 22 px, a lo sumo 44ch. */
+.hero-texto {
+  max-width: 44ch;
+  font-family: var(--font-serif);
+  font-size: clamp(1.1875rem, 1.06rem + 0.4vw, 1.375rem);
+  line-height: 1.5;
+  color: var(--color-texto-suave);
+}
+
+.hero-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* «Desliza»: mono de 12 px y una gota de 1 px que baja en bucle (contenedor con `data-bucle`). Solo en escritorio. */
+.hero-desliza {
+  display: none;
+}
+
+.hero-gota {
+  display: block;
+  width: 1px;
+  height: 28px;
+  margin: 8px auto 0;
+  transform-origin: top;
+  background-image: linear-gradient(var(--color-texto), rgb(15 27 45 / 0));
+}
+
+/* ── La cinta («mercado») ──────────────────────────────────────────────────
+ * Contenedor de tamaño: las láminas se miden en `cqh` (la fila de la cinta), así que la cinta conserva sus
+ * proporciones de 720 a 1080 px de alto. La pista es un plano 3D (`preserve-3d`, sin `overflow`, opacidad ni
+ * filtros en sus ancestros 3D) que mide 4,4 veces su alto, centrado y sin pasar del marco.
+ */
+.cinta {
+  grid-column: bleed;
+  grid-row: cinta;
+  container-type: size;
+  perspective: calc(var(--cinta-alto) * 5.6);
+  perspective-origin: 50% 0%;
+  pointer-events: none;
+}
+
+/* Sombra de contacto común: la cinta se apoya en el suelo. */
+.cinta::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4cqh;
+  width: min(100cqw - 240px, 440cqh, 1240px);
+  height: 18cqh;
+  translate: -50% 0;
+  border-radius: 50%;
+  background-image: radial-gradient(closest-side, rgb(15 27 45 / 0.16), rgb(15 27 45 / 0));
+}
+
+.cinta-pista {
+  position: absolute;
+  inset: 0;
+  /* Deja 120 px a cada lado: «Desliza» vive en la esquina inferior derecha sin pisar la última lámina. */
+  width: min(100cqw - 240px, 440cqh, 1240px);
+  margin-inline: auto;
+  transform-style: preserve-3d;
+}
+
+/* Lámina: canto (sombra interior de 5 px), filete de luz arriba a la izquierda, sombra de contacto y brillo
+   especular en `::after` (con la puerta abierta y un ratón, sigue a `--cx`). */
+.lamina {
+  position: absolute;
+  left: var(--x);
+  bottom: 12cqh;
+  width: 12.5cqh;
+  height: var(--alto);
+  margin-left: -6.25cqh;
+  border-radius: 2.6cqh;
+  transform-origin: 50% 100%;
+  transform: translateZ(var(--z)) rotateY(var(--giro));
+  background-image: linear-gradient(160deg, var(--c1), var(--c2));
+  box-shadow:
+    inset 1px 1px 0 rgb(255 255 255 / 0.5),
+    inset -5px 0 0 rgb(15 27 45 / 0.14),
+    inset 0 -1px 0 rgb(15 27 45 / 0.12),
+    0 18px 24px -18px rgb(15 27 45 / 0.55);
+}
+
+.lamina::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(100deg, rgb(255 255 255 / 0) 35%, rgb(255 255 255 / 0.4) 50%, rgb(255 255 255 / 0) 65%);
+  opacity: 0.35;
+}
+
+.lamina-gana { --c1: #A3D6BC; --c2: #5E9F7F; }
+.lamina-condicionado { --c1: #D2B07A; --c2: #93723F; }
+.lamina-pierde { --c1: #F0AE98; --c2: #C46C54; }
+.lamina-tinta { --c1: #2E405A; --c2: #0F1B2D; }
+.lamina-bruma { --c1: #B6BFCB; --c2: #7C8796; }
+
+/* Posición en la pista, profundidad, giro (30°–64°: nunca de canto; menor a la derecha, donde la perspectiva ya las
+   gira), altura y llegada de su pulso (grupo de 3). */
+.lamina-0 { --x: 2%; --z: -15cqh; --giro: 62deg; --alto: 34cqh; --d: 1950ms; }
+.lamina-1 { --x: 6.17%; --z: -9cqh; --giro: 63deg; --alto: 39.3cqh; --d: 2020ms; }
+.lamina-2 { --x: 10.35%; --z: -3.1cqh; --giro: 63.6deg; --alto: 38.8cqh; --d: 2090ms; }
+.lamina-3 { --x: 14.52%; --z: 2.5cqh; --giro: 63.5deg; --alto: 39.8cqh; --d: 2250ms; }
+.lamina-4 { --x: 18.7%; --z: 7.9cqh; --giro: 62.4deg; --alto: 45.9cqh; --d: 2320ms; }
+.lamina-5 { --x: 22.87%; --z: 12.8cqh; --giro: 60.4deg; --alto: 48.9cqh; --d: 2390ms; }
+.lamina-6 { --x: 27.04%; --z: 17.2cqh; --giro: 57.4deg; --alto: 47.1cqh; --d: 2550ms; }
+.lamina-7 { --x: 31.22%; --z: 20.9cqh; --giro: 53.9deg; --alto: 49.1cqh; --d: 2620ms; }
+.lamina-8 { --x: 35.39%; --z: 24.1cqh; --giro: 50.1deg; --alto: 54.3cqh; --d: 2690ms; }
+.lamina-9 { --x: 39.57%; --z: 26.5cqh; --giro: 46.4deg; --alto: 54.2cqh; --d: 2850ms; }
+.lamina-10 { --x: 43.74%; --z: 28.1cqh; --giro: 43.2deg; --alto: 51.5cqh; --d: 2920ms; }
+.lamina-11 { --x: 47.91%; --z: 28.9cqh; --giro: 40.8deg; --alto: 54cqh; --d: 2990ms; }
+.lamina-12 { --x: 52.09%; --z: 28.9cqh; --giro: 39.4deg; --alto: 56.9cqh; --d: 3150ms; }
+.lamina-13 { --x: 56.26%; --z: 28.1cqh; --giro: 39deg; --alto: 53.7cqh; --d: 3220ms; }
+.lamina-14 { --x: 60.43%; --z: 26.5cqh; --giro: 39.4deg; --alto: 50.7cqh; --d: 3290ms; }
+.lamina-15 { --x: 64.61%; --z: 24.1cqh; --giro: 40.3deg; --alto: 53cqh; --d: 3450ms; }
+.lamina-16 { --x: 68.78%; --z: 20.9cqh; --giro: 41.4deg; --alto: 52.9cqh; --d: 3520ms; }
+.lamina-17 { --x: 72.96%; --z: 17.2cqh; --giro: 42.1deg; --alto: 47.4cqh; --d: 3590ms; }
+.lamina-18 { --x: 77.13%; --z: 12.8cqh; --giro: 42.3deg; --alto: 45cqh; --d: 3750ms; }
+.lamina-19 { --x: 81.3%; --z: 7.9cqh; --giro: 41.6deg; --alto: 46.6cqh; --d: 3820ms; }
+.lamina-20 { --x: 85.48%; --z: 2.5cqh; --giro: 39.8deg; --alto: 43.4cqh; --d: 3890ms; }
+.lamina-21 { --x: 89.65%; --z: -3.1cqh; --giro: 37.2deg; --alto: 37.1cqh; --d: 4050ms; }
+.lamina-22 { --x: 93.83%; --z: -9cqh; --giro: 33.8deg; --alto: 36cqh; --d: 4120ms; }
+.lamina-23 { --x: 98%; --z: -15cqh; --giro: 30deg; --alto: 36.6cqh; --d: 4190ms; }
+
+/* Rótulos de temas: a la profundidad de su lámina y de frente, con una guía de 1 px que baja hasta ella. */
+.cinta-rotulo {
+  position: absolute;
+  left: var(--x);
+  bottom: calc(12cqh + var(--alto) + 1.5cqh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%) translateZ(var(--z));
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--color-apoyo);
+  white-space: nowrap;
+}
+
+.cinta-rotulo > span {
+  padding: 5px 8px;
+  border-radius: var(--radius-badge);
+  background-color: rgb(252 250 246 / 0.92);
+  box-shadow:
+    inset 0 0 0 1px var(--color-linea),
+    0 6px 14px -10px rgb(15 27 45 / 0.4);
+}
+
+.cinta-rotulo::after {
+  content: "";
+  width: 1px;
+  height: var(--guia);
+  transform-origin: bottom;
+  background-image: linear-gradient(var(--color-brass-deep), rgb(122 94 51 / 0.15));
+}
+
+.rotulo-0 { --x: 18.7%; --z: 7.9cqh; --alto: 45.9cqh; --guia: 11cqh; --dr: 2420ms; }
+.rotulo-1 { --x: 43.74%; --z: 28.1cqh; --alto: 51.5cqh; --guia: 6cqh; --dr: 3020ms; }
+.rotulo-2 { --x: 68.78%; --z: 20.9cqh; --alto: 52.9cqh; --guia: 9cqh; --dr: 3620ms; }
+.rotulo-3 { --x: 93.83%; --z: -9cqh; --alto: 36cqh; --guia: 13cqh; --dr: 4220ms; }
+
+/* ── Alerta viva (solo bajo 1024 px) ───────────────────────────────────────
+ * Decorativa y con los datos reales de la alerta de ejemplo de Ormuz (`AlertaViva.tsx`). Porcelana con un filo de
+ * latón arriba (donde «aterrizan» los pulsos). Los colores de estado solo como relleno, con texto tinta.
+ */
+.alerta-viva {
+  display: none;
+}
+
+.av-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.av-tema {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-apoyo);
+}
+
+.av-ejemplo {
+  padding: 3px 8px;
+  border-radius: var(--radius-badge);
+  background-color: var(--color-fondo);
+  box-shadow: inset 0 0 0 1px var(--color-linea);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-texto-suave);
+}
+
+.av-titulo {
+  margin-top: 10px;
+  font-family: var(--font-serif);
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--color-texto);
+  text-wrap: balance;
+}
+
+.av-fuente {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--color-texto-suave);
+}
+
+/* Check en un círculo tinta (dibujado con bordes: sin nodos extra). */
+.av-check,
+.av-sello-marca {
+  position: relative;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--color-ink);
+}
+
+.av-check::after,
+.av-sello-marca::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 4px;
+  width: 5px;
+  height: 8px;
+  border: solid var(--color-papel-alto);
+  border-width: 0 1.5px 1.5px 0;
+  rotate: 45deg;
+}
+
+.av-tipo {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--color-linea-fuerte);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-texto);
+}
+
+.av-confianza {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-block: 12px;
+  border-block: 1px solid var(--color-linea);
+}
+
+.av-rotulo {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-apoyo);
+}
+
+.av-medidor {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+/* Segmento: pista en `fondo-sombra` y relleno tinta en `::after` (se llena de izquierda a derecha). */
+.av-segmento {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: clip;
+  background-color: var(--color-fondo-sombra);
+}
+
+.av-lleno::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  background-color: var(--color-ink);
+}
+
+.av-nivel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.av-filas {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.av-fila {
+  display: grid;
+  grid-template-columns: 7.6rem minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.av-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-badge);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.av-chip-gana {
+  background-color: var(--color-gana);
+}
+.av-chip-condicionado {
+  background-color: var(--color-condicionado);
+}
+.av-chip-pierde {
+  background-color: var(--color-pierde);
+}
+
+.av-sector {
+  display: grid;
+  gap: 2px;
+  padding-top: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--color-texto);
+}
+
+/* La condición no cabe en el teléfono: solo desde 640 px. */
+.av-condicion {
+  display: none;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-texto-suave);
+}
+
+.av-sello {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-linea);
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+
+.av-sello-marca {
+  width: 22px;
+  height: 22px;
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--color-brass-deep);
+}
+
+.av-sello-marca::after {
+  left: 8px;
+  top: 5px;
+  border-color: var(--color-brass-deep);
+}
+
+.av-organismos {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-apoyo);
+  white-space: nowrap;
+}
+
+/* ── El héroe por anchos ─────────────────────────────────────────────────── */
+
+/* Escritorio: el H1 a todo el marco, la entrada a la derecha desde el horizonte (sin pisar «AL MERCADO.») y la
+   acción bajo la línea 2. La cinta, de pie en la última fila; «Desliza», abajo a la derecha. */
+@media (min-width: 1024px) {
+  .hero-debajo {
+    display: contents;
+  }
+
+  .hero-texto {
+    grid-column: marco;
+    grid-row: debajo;
+    align-self: start;
+    justify-self: end;
+    width: min(440px, 100% - 6.4 * var(--h1) - 40px);
+    /* Sube junto a la línea 2, desde el horizonte, sin agrandar la fila del título (que debe medir lo que el H1). */
+    margin-top: calc(clamp(22px, 2.4vw, 36px) - var(--c2));
+  }
+
+  .hero-mando {
+    grid-column: marco;
+    grid-row: debajo;
+    justify-self: start;
+    margin-top: clamp(26px, 2.8vw, 44px);
+  }
+
+  .hero-aviso {
+    grid-column: marco;
+    grid-row: cielo;
+    align-self: start;
+  }
+
+  .hero-desliza {
+    display: block;
+    grid-column: marco;
+    grid-row: cinta;
+    justify-self: end;
+    align-self: end;
+    margin-bottom: 22px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-apoyo);
+    pointer-events: none;
+  }
+}
+
+/* Teléfono y tableta: H1 algo más compacto, sol al 80 % y la alerta viva en el primer pliegue. */
+@media (max-width: 1023.98px) {
+  .historia {
+    --cab: 60px;
+  }
+
+  .h-hero {
+    --sol-n: 0.8;
+    --cinta-alto: clamp(150px, 24svh, 240px);
+    grid-template-rows:
+      [cielo] minmax(72px, 1fr) [titulo] auto [debajo] auto [aviso] auto
+      [cinta] var(--cinta-alto);
+  }
+
+  .hero-aviso {
+    grid-column: marco;
+    grid-row: aviso;
+  }
+
+  .hero-debajo {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-top: 24px;
+  }
+
+  .hero-texto {
+    max-width: 52ch;
+  }
+
+  .alerta-viva {
+    display: block;
+    padding: 18px 18px 16px;
+    border-radius: var(--radius-card);
+    background-color: var(--color-papel-alto);
+    box-shadow:
+      inset 0 0 0 1px var(--color-linea),
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      0 2px 6px -2px rgb(15 27 45 / 0.08),
+      0 24px 48px -24px rgb(15 27 45 / 0.32);
+  }
+
+  /* Filo de latón arriba: donde «aterrizan» los pulsos del horizonte. */
+  .alerta-viva::before {
+    content: "";
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    top: 0;
+    height: 1px;
+    background-image: linear-gradient(90deg, rgb(176 141 87 / 0), rgb(176 141 87 / 0.9) 50%, rgb(176 141 87 / 0));
+  }
+
+  /* La cinta sigue bajo el héroe, más alta que el marco: se ve un tramo, como una banda que continúa. */
+  .cinta-pista {
+    width: 440cqh;
+    margin-inline: calc(50cqw - 220cqh) auto;
+  }
+
+  .cinta::before {
+    width: 440cqh;
+  }
+
+  .cinta-rotulo {
+    display: none;
+  }
+
+  /* Aquí la cinta queda bajo la alerta, fuera del primer pliegue: no se maqueta ni se pinta hasta acercarse (su tamaño
+     ya lo fija la fila). */
+  .cinta {
+    content-visibility: auto;
+  }
+
+  /* El grano no se aprecia en una pantalla de alta densidad y su ruido (`feTurbulence`) se rasteriza a 3×: medido en el
+     perfil lento, retrasaba el primer pintado. Solo en escritorio. */
+  .h-grano {
+    display: none;
+  }
+}
+
+/* Tableta (768–1023 px): dos columnas bajo el horizonte, texto y acciones a la izquierda y la alerta a la derecha. */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .hero-debajo {
+    grid-column: marco-start / mitad;
+    grid-row: debajo;
+    padding-right: 12px;
+  }
+
+  .hero-aviso {
+    grid-column: marco-start / mitad;
+  }
+
+  .alerta-viva {
+    grid-column: mitad / marco-end;
+    grid-row: debajo;
+    align-self: start;
+    margin: 24px 0 32px 12px;
+  }
+
+  .av-condicion {
+    display: block;
+  }
+
+  /* Los pulsos bajan del sol y aterrizan en el filo de la alerta (columna derecha, 24 px bajo la línea 2). */
+  .h-pulsos {
+    --pulsos-ancho: calc(100cqw - 48px);
+    --pulsos-y: calc(var(--c2) + 24px);
+    --tramo: var(--pulsos-y);
+  }
+
+  .pulso-0 { --p: 0.56; }
+  .pulso-1 { --p: 0.615; }
+  .pulso-2 { --p: 0.67; }
+  .pulso-3 { --p: 0.725; }
+  .pulso-4 { --p: 0.78; }
+  .pulso-5 { --p: 0.835; }
+  .pulso-6 { --p: 0.89; }
+  .pulso-7 { --p: 0.945; }
+}
+
+/* Teléfono: botones a todo el ancho y la alerta bajo ellos, asomando en el primer pliegue. El suelo termina en el
+   borde superior de la alerta: los pulsos llegan a su filo de latón. */
+@media (max-width: 767.98px) {
+  .h-hero {
+    --h1: clamp(2.3rem, 12.6vw, 4.4rem);
+    --sol: clamp(76px, 22vw, 120px);
+    grid-template-rows:
+      [cielo] minmax(72px, 1fr) [titulo] auto [debajo] auto [aviso] auto [alerta] auto
+      [cinta] var(--cinta-alto);
+    --l1: 2;
+  }
+
+  .h-suelo {
+    grid-row: titulo / alerta;
+  }
+
+  /* El suelo llega hasta el filo de la alerta (que deja 28 px bajo los botones): los pulsos solo recorren ese hueco,
+     repartidos a lo ancho, y se apagan en el filo de latón. */
+  .h-suelo {
+    margin-bottom: -28px;
+  }
+
+  .h-pulsos {
+    --pulsos-ancho: calc(100cqw - 48px);
+    --pulsos-y: 100cqh;
+    --tramo: 34px;
+  }
+
+  .pulso-0 { --p: 0.08; }
+  .pulso-1 { --p: 0.2; }
+  .pulso-2 { --p: 0.32; }
+  .pulso-3 { --p: 0.44; }
+  .pulso-4 { --p: 0.56; }
+  .pulso-5 { --p: 0.68; }
+  .pulso-6 { --p: 0.8; }
+  .pulso-7 { --p: 0.92; }
+
+  /* La retícula, más tenue (aquí el texto ocupa todo el ancho) y más corta: el suelo mide unos 400 px y su fondo lejano
+     ya se apaga con la máscara. A 3× una capa de 1600 px de fondo pesaba en el primer pintado. */
+  .h-reticula {
+    height: 900px;
+    opacity: 0.55;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 55%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 55%);
+  }
+
+  .h1-palabra {
+    display: block;
+  }
+
+  .hero-antetitulo {
+    gap: 8px;
+    font-size: 13px;
+    letter-spacing: -0.005em;
+  }
+
+  .hero-debajo {
+    grid-column: marco;
+    grid-row: debajo;
+  }
+
+  .hero-acciones {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .alerta-viva {
+    grid-column: marco;
+    grid-row: alerta;
+    margin-block: 28px 24px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 767.98px) {
+  .av-condicion {
+    display: block;
+  }
+}
+
+/* Historia: las demás piezas siguen en el marco de 1440 px. */
 .historia-escenario {
   display: flex;
   flex-direction: column;
   gap: clamp(40px, 6vw, 72px);
-  padding-block: 40px 96px;
+  padding: 0 max(24px, (100% - 1392px) / 2) 96px;
   perspective: 1600px;
-}
-
-.h-luz {
-  display: none;
-}
-
-/* Héroe: apilado en móvil (titular, texto, acciones); en escritorio, titular y acciones a la izquierda y el
-   texto a la derecha, sin cambiar el orden de lectura del DOM. */
-.hero-rejilla {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 24px;
-}
-
-@media (min-width: 1024px) {
-  .hero-rejilla {
-    display: grid;
-    grid-template-columns: 1.25fr 1fr;
-    grid-template-areas:
-      "titulo texto"
-      "acciones texto";
-    align-items: start;
-    column-gap: 32px;
-    row-gap: 32px;
-  }
-
-  .hero-titulo {
-    grid-area: titulo;
-  }
-
-  .hero-texto {
-    grid-area: texto;
-    justify-self: end;
-    padding-top: 44px;
-  }
-
-  .hero-acciones {
-    grid-area: acciones;
-  }
 }
 
 .h-plano {
@@ -1303,29 +2161,6 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   }
 }
 
-/* La ola que recorre la cinta: cada lámina sube, baja y gira sobre su eje
-   vertical entre 28° y 152° (nunca de frente, para no cruzarse con las
-   vecinas). */
-@keyframes otea-ola {
-  0%,
-  100% {
-    transform: translateY(-44px) rotateY(28deg) rotateZ(-5deg);
-  }
-  50% {
-    transform: translateY(44px) rotateY(152deg) rotateZ(5deg);
-  }
-}
-
-@keyframes otea-flotar {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
 /* Historia: cada pieza recorre la línea de tiempo del scroll (0–100 %). */
 /* `pointer-events` también se anima: lo que se desvanece deja de interceptar clics (un bloque
    invisible no debe tapar botones ni enlaces de otro paso). Foco y lectores de pantalla no cambian. */
@@ -1357,6 +2192,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   31%,
   100% {
     opacity: 0;
+    visibility: hidden;
     transform: translateY(22%) rotateX(82deg) scale(0.6);
   }
 }
@@ -1458,12 +2294,261 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   }
 }
 
-@keyframes h-encender {
+/* Héroe «Horizonte vivo»: entrada en tres tiempos (la línea se traza, el titular sale de ella y amanece; los pulsos
+   arman la cinta). Todas parten de un estado y terminan en el diseño base (relleno `backwards`, sin residuo). */
+@keyframes hz-trazar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes hz-subir {
+  from {
+    transform: translateY(108%);
+  }
+}
+
+@keyframes hz-bajar {
+  from {
+    transform: translateY(-108%);
+  }
+}
+
+@keyframes hz-asomar {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* La entrada y los botones no parten de opacidad 0 (son el LCP y lo primero que se lee): solo se asientan. */
+@keyframes hz-asentar {
+  from {
+    transform: translateY(10px);
+  }
+}
+
+@keyframes hz-amanecer {
+  from {
+    transform: translateY(86%);
+  }
+}
+
+@keyframes hz-halo {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes hz-encender {
   from {
     opacity: 0;
   }
-  to {
+}
+
+/* Lo que no se ve en el primer pintado no se crea en él: la retícula (un plano 3D grande, a 3× en el teléfono) no
+   existe hasta que empieza a encenderse, y el plano de los pulsos no se pinta hasta el primer pulso. Medido a CPU ×4:
+   el plano de la retícula retrasaba el primer pintado (y el LCP, que es la entrada) en ~120 ms. */
+@keyframes hz-diferir {
+  from {
+    display: none;
+  }
+}
+
+@keyframes hz-velar {
+  from {
+    visibility: hidden;
+  }
+}
+
+/* En la historia fija el escenario nunca sale de vista, así que la pausa de `data-bucle` no actúa: los pulsos dejan de
+   existir cuando el héroe ya se apagó (y vuelven a entrar al subir), y «Desliza» se apaga antes del 2 %. Un bucle
+   vivo bajo una capa invisible seguía costando ~60 recálculos por segundo durante toda la historia. */
+@keyframes hz-retirar {
+  0%,
+  99% {
+    display: block;
+  }
+  100% {
+    display: none;
+  }
+}
+
+@keyframes hz-desliza-salir {
+  0% {
     opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  99% {
+    opacity: 0;
+    display: block;
+  }
+  100% {
+    opacity: 0;
+    display: none;
+  }
+}
+
+/* Barrido de brillo del botón principal, una sola vez. */
+@keyframes hz-barrido {
+  from {
+    --brillo: -30%;
+    opacity: 1;
+  }
+  to {
+    --brillo: 130%;
+    opacity: 1;
+  }
+}
+
+/* Pulso: entra en su tramo, acelera hacia la cámara (la curva que se va) mientras se alarga y llega a su grupo de
+   láminas al 90 % (1950 + 300·k ms, cuando se pone de pie el grupo k); después sigue un poco y se apaga. */
+@keyframes hz-pulso {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--th)) translateY(calc(-1 * var(--largo))) scaleY(0.2);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  14% {
+    opacity: 1;
+    animation-timing-function: linear;
+  }
+  90% {
+    opacity: 1;
+    transform: rotate(var(--th)) translateY(0) scaleY(1);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--th)) translateY(calc(0.16 * var(--largo))) scaleY(0.6);
+  }
+}
+
+/* El mismo viaje en un periodo de 7,2 s (un pulso cada 0,9 s entre los ocho): el resto del periodo, apagado. */
+@keyframes hz-pulso-bucle {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--th)) translateY(calc(-1 * var(--largo))) scaleY(0.2);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  2.9% {
+    opacity: 1;
+    animation-timing-function: linear;
+  }
+  18.7% {
+    opacity: 1;
+    transform: rotate(var(--th)) translateY(0) scaleY(1);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  20.8%,
+  100% {
+    opacity: 0;
+    transform: rotate(var(--th)) translateY(calc(0.16 * var(--largo))) scaleY(0.6);
+  }
+}
+
+/* Lámina: de tendida (hacia la cámara) a de pie, con resorte. */
+@keyframes hz-erguir {
+  0% {
+    opacity: 0;
+    transform: translateZ(var(--z)) rotateY(var(--giro)) rotateX(-88deg);
+  }
+  14% {
+    opacity: 1;
+  }
+}
+
+/* Destello especular al ponerse de pie. */
+@keyframes hz-destello {
+  0% {
+    opacity: 0.35;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  30% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes hz-rotulo {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px) translateZ(var(--z));
+  }
+}
+
+@keyframes hz-guia {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Gota de «Desliza»: baja, se asienta y se apaga (bucle de 1,8 s). */
+@keyframes hz-gota {
+  0% {
+    opacity: 1;
+    transform: scaleY(0);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+
+/* Alerta viva: sale de su línea de base (recortada solo mientras sube) y se arma pieza a pieza. */
+@keyframes hz-av-subir {
+  from {
+    transform: translateY(calc(100% + 28px));
+    clip-path: inset(-120px -120px calc(100% - 12px) -120px);
+  }
+  to {
+    transform: none;
+    clip-path: inset(-120px -120px -40px -120px);
+  }
+}
+
+@keyframes hz-pop {
+  from {
+    scale: 0.86;
+  }
+}
+
+@keyframes hz-llenar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Las filas esperan en tenue (la tarjeta nunca se ve vacía) y se encienden cuando llega su pulso. */
+@keyframes hz-fila {
+  from {
+    opacity: 0.16;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes hz-chip {
+  from {
+    opacity: 0.4;
+    scale: 0.8;
+  }
+}
+
+@keyframes hz-sello {
+  from {
+    opacity: 0;
+    scale: 0.4;
+    rotate: -30deg;
   }
 }
 
@@ -1646,172 +2731,6 @@ html[data-movimiento="completo"] {
   }
   .anim-escalonado > :nth-child(7) {
     animation-delay: calc(var(--retraso-base, 0ms) + 420ms);
-  }
-
-  /* La cinta ondea y los rótulos flotan. Son bucles: su contenedor lleva `data-bucle` y `DirectorEscena` los
-     pausa fuera de vista (regla `[data-bucle][data-fuera]`, al final de este bloque). */
-  .cinta-lamina {
-    animation: otea-ola 8s ease-in-out infinite;
-  }
-  .cinta-lamina:nth-child(1) {
-    animation-delay: -0.000s;
-  }
-  .cinta-lamina:nth-child(2) {
-    animation-delay: -0.267s;
-  }
-  .cinta-lamina:nth-child(3) {
-    animation-delay: -0.533s;
-  }
-  .cinta-lamina:nth-child(4) {
-    animation-delay: -0.800s;
-  }
-  .cinta-lamina:nth-child(5) {
-    animation-delay: -1.067s;
-  }
-  .cinta-lamina:nth-child(6) {
-    animation-delay: -1.333s;
-  }
-  .cinta-lamina:nth-child(7) {
-    animation-delay: -1.600s;
-  }
-  .cinta-lamina:nth-child(8) {
-    animation-delay: -1.867s;
-  }
-  .cinta-lamina:nth-child(9) {
-    animation-delay: -2.133s;
-  }
-  .cinta-lamina:nth-child(10) {
-    animation-delay: -2.400s;
-  }
-  .cinta-lamina:nth-child(11) {
-    animation-delay: -2.667s;
-  }
-  .cinta-lamina:nth-child(12) {
-    animation-delay: -2.933s;
-  }
-  .cinta-lamina:nth-child(13) {
-    animation-delay: -3.200s;
-  }
-  .cinta-lamina:nth-child(14) {
-    animation-delay: -3.467s;
-  }
-  .cinta-lamina:nth-child(15) {
-    animation-delay: -3.733s;
-  }
-  .cinta-lamina:nth-child(16) {
-    animation-delay: -4.000s;
-  }
-  .cinta-lamina:nth-child(17) {
-    animation-delay: -4.267s;
-  }
-  .cinta-lamina:nth-child(18) {
-    animation-delay: -4.533s;
-  }
-  .cinta-lamina:nth-child(19) {
-    animation-delay: -4.800s;
-  }
-  .cinta-lamina:nth-child(20) {
-    animation-delay: -5.067s;
-  }
-  .cinta-lamina:nth-child(21) {
-    animation-delay: -5.333s;
-  }
-  .cinta-lamina:nth-child(22) {
-    animation-delay: -5.600s;
-  }
-  .cinta-lamina:nth-child(23) {
-    animation-delay: -5.867s;
-  }
-  .cinta-lamina:nth-child(24) {
-    animation-delay: -6.133s;
-  }
-  .cinta-lamina:nth-child(25) {
-    animation-delay: -6.400s;
-  }
-  .cinta-lamina:nth-child(26) {
-    animation-delay: -6.667s;
-  }
-  .cinta-lamina:nth-child(27) {
-    animation-delay: -6.933s;
-  }
-  .cinta-lamina:nth-child(28) {
-    animation-delay: -7.200s;
-  }
-  .cinta-lamina:nth-child(29) {
-    animation-delay: -7.467s;
-  }
-  .cinta-lamina:nth-child(30) {
-    animation-delay: -7.733s;
-  }
-  .cinta-lamina:nth-child(31) {
-    animation-delay: -8.000s;
-  }
-  .cinta-lamina:nth-child(32) {
-    animation-delay: -8.267s;
-  }
-  .cinta-lamina:nth-child(33) {
-    animation-delay: -8.533s;
-  }
-  .cinta-lamina:nth-child(34) {
-    animation-delay: -8.800s;
-  }
-  .cinta-lamina:nth-child(35) {
-    animation-delay: -9.067s;
-  }
-  .cinta-lamina:nth-child(36) {
-    animation-delay: -9.333s;
-  }
-
-  .cinta-chip {
-    animation: otea-flotar 8s ease-in-out infinite;
-  }
-  .cinta-chip:nth-child(1) {
-    animation-delay: 0.00s;
-    animation-duration: 7.0s;
-  }
-  .cinta-chip:nth-child(2) {
-    animation-delay: 7.63s;
-    animation-duration: 8.5s;
-  }
-  .cinta-chip:nth-child(3) {
-    animation-delay: 6.26s;
-    animation-duration: 10.0s;
-  }
-  .cinta-chip:nth-child(4) {
-    animation-delay: 4.89s;
-    animation-duration: 11.5s;
-  }
-  .cinta-chip:nth-child(5) {
-    animation-delay: 3.52s;
-    animation-duration: 7.0s;
-  }
-  .cinta-chip:nth-child(6) {
-    animation-delay: 2.15s;
-    animation-duration: 8.5s;
-  }
-  .cinta-chip:nth-child(7) {
-    animation-delay: 0.78s;
-    animation-duration: 10.0s;
-  }
-  .cinta-chip:nth-child(8) {
-    animation-delay: 8.41s;
-    animation-duration: 11.5s;
-  }
-  .cinta-chip:nth-child(9) {
-    animation-delay: 7.04s;
-    animation-duration: 7.0s;
-  }
-  .cinta-chip:nth-child(10) {
-    animation-delay: 5.67s;
-    animation-duration: 8.5s;
-  }
-  .cinta-chip:nth-child(11) {
-    animation-delay: 4.30s;
-    animation-duration: 10.0s;
-  }
-  .cinta-chip:nth-child(12) {
-    animation-delay: 2.93s;
-    animation-duration: 11.5s;
   }
 
   .punto-escribiendo {
@@ -2234,19 +3153,251 @@ html[data-movimiento="completo"] {
   }
 }
 
+/* Héroe «Horizonte vivo»: la entrada en tres tiempos, por tiempo (igual con y sin línea de tiempo y a cualquier
+   ancho). 0–1,1 s la línea se traza desde el sol; 0,22–1,24 s el titular sale del horizonte (completo antes de 1,3 s);
+   0,26–2,2 s amanece; 0,6–4,9 s los pulsos cruzan el suelo y cada llegada pone de pie un grupo de láminas. En el
+   teléfono y la tableta, los pulsos encienden la alerta viva fila a fila. Retrasos con clases finitas (`--d`, `--k`,
+   `--dr`), nunca `style`. */
+html[data-movimiento="completo"] {
+  .h-horizonte {
+    animation: hz-trazar 1100ms var(--ease-salida) backwards;
+  }
+
+  .hero-antetitulo {
+    animation: hz-asomar 520ms var(--ease-salida) 120ms backwards;
+  }
+
+  .h1-linea-1 {
+    animation: hz-subir var(--dur-5) var(--ease-salida) 220ms backwards;
+  }
+
+  .h1-linea-2 {
+    animation: hz-bajar var(--dur-5) var(--ease-salida) 340ms backwards;
+  }
+
+  .sol {
+    animation: hz-amanecer 1700ms cubic-bezier(0.22, 1, 0.36, 1) 260ms backwards;
+  }
+
+  .sol-halo {
+    animation: hz-halo 1900ms var(--ease-salida) 300ms backwards;
+  }
+
+  .h-cielo::before,
+  .h-suelo::before {
+    animation: hz-encender 1900ms var(--ease-salida) 300ms backwards;
+  }
+
+  .h-reticula {
+    animation:
+      hz-diferir 1ms 519ms backwards,
+      hz-encender 1200ms var(--ease-enfasis) 520ms backwards;
+  }
+
+  .h-pulsos {
+    animation: hz-velar 1ms 599ms backwards;
+  }
+
+  .h-reflejo {
+    animation: hz-encender 1600ms var(--ease-salida) 700ms backwards;
+  }
+
+  .hero-texto {
+    animation: hz-asentar 600ms var(--ease-salida) 760ms backwards;
+  }
+
+  .hero-mando {
+    animation: hz-asentar 600ms var(--ease-salida) 880ms backwards;
+  }
+
+  /* Un barrido de brillo, una sola vez, cuando el botón ya está quieto. */
+  .hero-acciones .boton-laton::after {
+    animation: hz-barrido 1100ms var(--ease-enfasis) 1900ms backwards;
+  }
+
+  .pulso {
+    animation: hz-pulso 1500ms backwards;
+    animation-delay: calc(600ms + var(--k) * 300ms);
+  }
+
+  .lamina {
+    animation: hz-erguir 760ms backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+    animation-delay: var(--d);
+  }
+
+  .lamina::after {
+    animation: hz-destello 1200ms backwards;
+    animation-delay: var(--d);
+  }
+
+  /* Antes del primer grupo no hay nada que ver en la cinta: no se pinta (las láminas conservan su reloj). */
+  .cinta-pista {
+    animation: hz-velar 1ms 1899ms backwards;
+  }
+
+  /* La sombra común llega con el primer grupo (antes no hay nada que la proyecte). */
+  .cinta::before {
+    animation: hz-encender 2400ms var(--ease-salida) 1850ms backwards;
+  }
+
+  .cinta-rotulo {
+    animation: hz-rotulo 500ms var(--ease-salida) backwards;
+    animation-delay: var(--dr);
+  }
+
+  .cinta-rotulo::after {
+    animation: hz-guia 500ms var(--ease-salida) backwards;
+    animation-delay: calc(var(--dr) + 120ms);
+  }
+
+  .hero-desliza {
+    animation: hz-asomar 600ms var(--ease-salida) 3000ms backwards;
+  }
+
+  .hero-gota {
+    animation: hz-gota 1800ms 3200ms infinite;
+  }
+
+  /* Alerta viva (solo existe bajo 1024 px): sube de 0,6 a 1,6 s; el check hace pop; el medidor se llena por
+     segmentos; cada fila se enciende cuando llega un pulso (1,9 · 2,2 · 2,5 · 2,8 s) y al final aterriza el sello. */
+  .alerta-viva {
+    animation:
+      hz-velar 1ms 599ms backwards,
+      hz-av-subir 1000ms var(--ease-salida) 600ms backwards;
+  }
+
+  .alerta-viva::before {
+    animation: hz-trazar var(--dur-5) var(--ease-salida) 1880ms backwards;
+  }
+
+  .av-check {
+    animation: hz-pop 460ms 1350ms backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .av-lleno::after {
+    animation: hz-llenar 380ms var(--ease-enfasis) backwards;
+  }
+  .av-segmento:nth-child(1)::after {
+    animation-delay: 1700ms;
+  }
+  .av-segmento:nth-child(2)::after {
+    animation-delay: 1820ms;
+  }
+  .av-segmento:nth-child(3)::after {
+    animation-delay: 1940ms;
+  }
+
+  .av-nivel {
+    animation: hz-asomar var(--dur-3) var(--ease-salida) 2150ms backwards;
+  }
+
+  .av-fila {
+    animation: hz-fila var(--dur-4) var(--ease-salida) backwards;
+  }
+
+  .av-chip {
+    animation: hz-chip 520ms backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .av-fila:nth-child(1),
+  .av-fila:nth-child(1) .av-chip {
+    animation-delay: 2180ms;
+  }
+  .av-fila:nth-child(2),
+  .av-fila:nth-child(2) .av-chip {
+    animation-delay: 2480ms;
+  }
+  .av-fila:nth-child(3),
+  .av-fila:nth-child(3) .av-chip {
+    animation-delay: 2780ms;
+  }
+
+  .av-sello-marca {
+    animation: hz-sello 640ms 3080ms backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  /* En escritorio, ya armada la cinta, los pulsos siguen en un bucle tranquilo (uno cada 0,9 s). Es uno de los dos
+     únicos bucles del héroe; su contenedor lleva `data-bucle` y se pausa fuera de vista. En el teléfono y la
+     tableta no hay bucle: los pulsos pasarían por detrás del texto mientras se lee. */
+  @media (min-width: 1024px) {
+    .pulso {
+      animation:
+        hz-pulso 1500ms backwards,
+        hz-pulso-bucle 7200ms infinite;
+      animation-delay: calc(600ms + var(--k) * 300ms), calc(4200ms + var(--k) * 900ms);
+    }
+  }
+
+  /* Con un ratón: el sol sigue al cursor (±10 px, paralaje) y el brillo de las láminas se desliza con él. Leen
+     `--cx --cy` (0 a 1), que `DirectorEscena` escribe en `.historia` mientras el héroe está a la vista. */
+  @media (hover: hover) and (pointer: fine) {
+    .sol-paralaje {
+      translate: calc(-50% + (var(--cx, 0.5) - 0.5) * 20px) calc(-46% + (var(--cy, 0.5) - 0.5) * 20px);
+      transition: translate var(--dur-4) var(--ease-salida);
+    }
+
+    .lamina::after {
+      background-image: linear-gradient(
+        100deg,
+        rgb(255 255 255 / 0) calc(var(--cx, 0.5) * 50% + 10%),
+        rgb(255 255 255 / 0.4) calc(var(--cx, 0.5) * 50% + 25%),
+        rgb(255 255 255 / 0) calc(var(--cx, 0.5) * 50% + 40%)
+      );
+    }
+  }
+
+  @media print {
+    .h-horizonte,
+    .hero-antetitulo,
+    .h1-linea-1,
+    .h1-linea-2,
+    .sol,
+    .sol-halo,
+    .h-cielo::before,
+    .h-suelo::before,
+    .h-reticula,
+    .h-pulsos,
+    .h-reflejo,
+    .hero-texto,
+    .hero-mando,
+    .hero-acciones .boton-laton::after,
+    .pulso,
+    .cinta-pista,
+    .lamina,
+    .lamina::after,
+    .cinta::before,
+    .cinta-rotulo,
+    .cinta-rotulo::after,
+    .hero-desliza,
+    .hero-gota,
+    .alerta-viva,
+    .alerta-viva::before,
+    .alerta-viva *,
+    .av-lleno::after {
+      animation: none !important;
+    }
+  }
+}
+
 /* Pantallas estrechas (< 1024 px) con soporte de líneas de tiempo: la historia fija no cabe, así que cada
    pieza 3D se arma al entrar en pantalla, ligada al scroll (y se desarma al subir). Mismo lenguaje que la
    historia fija, con la línea de tiempo de cada pieza. Sin soporte, lo mismo lo dispara el motor (abajo). */
 html[data-movimiento="completo"] {
   @media (max-width: 1023.98px) {
     @supports (animation-timeline: view()) {
-      /* Conserva su entrada al cargar y, al salir por arriba, se pliega hacia atrás. */
+      /* La cinta se pone de pie con sus pulsos (por tiempo, en sus láminas) y, al salir por arriba, se pliega. */
       .h-cinta {
-        animation:
-          otea-aparecer 1000ms cubic-bezier(0.16, 1, 0.3, 1) 300ms backwards,
-          m-cinta-salir linear both;
-        animation-timeline: auto, view();
-        animation-range: normal, exit 0% exit 100%;
+        animation: m-cinta-salir linear both;
+        animation-timeline: view();
+        animation-range: exit 0% exit 100%;
       }
 
       .h-plano {
@@ -2390,28 +3541,53 @@ html[data-movimiento="completo"] {
         overflow: hidden;
       }
 
-      .h-luz {
-        display: block;
-        position: absolute;
-        inset: -10%;
-        pointer-events: none;
-        animation: h-encender linear both;
-        animation-timeline: --historia;
-        animation-range: contain 42% contain 62%;
-      }
-
+      /* El héroe llena el escenario (a sangre): su cuadrícula deja la cinta apoyada en el borde inferior. */
       .h-hero {
         position: absolute;
-        inset: 56px 24px auto;
+        inset: 0;
+        min-height: 0;
+        margin: 0;
         animation: h-hero linear both;
         animation-timeline: --historia;
         animation-range: contain 0% contain 100%;
       }
 
+      .h-pulsos {
+        animation:
+          hz-velar 1ms 599ms backwards,
+          hz-retirar linear both;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 0% contain 24%;
+      }
+
+      /* Apagado el héroe, el cielo, el suelo y el grano dejan de existir (y vuelven al subir): el suelo es un plano 3D de
+         4320×1600 px con máscara que el compositor seguía dibujando bajo una capa invisible en cada cuadro de la historia
+         (medido con rasterizado por software: de ~18 a ~30 fps). */
+      .h-cielo,
+      .h-suelo,
+      .h-grano {
+        animation: hz-retirar linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 24%;
+      }
+
+      .h-horizonte {
+        animation:
+          hz-trazar 1100ms var(--ease-salida) backwards,
+          hz-retirar linear both;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 0% contain 24%;
+      }
+
+      .hero-desliza {
+        animation:
+          hz-asomar 600ms var(--ease-salida) 3000ms backwards,
+          hz-desliza-salir linear both;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 0% contain 2%;
+      }
+
       .h-cinta {
-        pointer-events: none;
-        position: absolute;
-        inset: max(43%, 316px) 0 auto;
         animation: h-cinta linear both;
         animation-timeline: --historia;
         animation-range: contain 0% contain 100%;
@@ -2478,9 +3654,10 @@ html[data-movimiento="completo"] {
         animation-range: contain 61.2% contain 68.2%;
       }
 
+      /* El escenario es a sangre: los pasos siguen alineados con el marco de 1440 px. */
       .h-paso {
         position: absolute;
-        left: 24px;
+        left: max(24px, (100% - 1392px) / 2);
         top: 50%;
         width: min(440px, 31vw);
         translate: 0 -50%;

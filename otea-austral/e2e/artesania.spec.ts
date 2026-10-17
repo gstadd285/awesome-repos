@@ -166,7 +166,8 @@ test.describe("bucles", () => {
   test("los bucles se pausan fuera de vista y siguen al volver", async ({ page }, info) => {
     soloEscritorio(info.project.name);
     await page.goto("/");
-    const cinta = page.locator(".cinta[data-bucle]");
+    // Los pulsos del héroe (el bucle de la portada) y la gota de «Desliza».
+    const cinta = page.locator(".h-pulsos[data-bucle]");
     await expect(cinta).toHaveCount(1);
     const corriendo = () =>
       page.evaluate(

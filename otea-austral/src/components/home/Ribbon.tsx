@@ -1,41 +1,39 @@
 /**
- * Cinta 3D de láminas en los colores de Otea (estado y marca). Es una pieza
- * decorativa: las láminas ondean con CSS (`otea-ola` en globals.css, en pausa fuera de vista) y los
- * rótulos son temas, no datos.
+ * La cinta como «mercado»: 24 láminas de pie sobre el suelo del horizonte, agrupadas por estado (gana →
+ * condicionado → pierde, con tinta y bruma como separadores). Cada lámina tiene una clase fija `lamina-N` con su
+ * posición, profundidad, giro (entre 32° y 68°: nunca de canto, así que no hay astillas) y altura, y se pone de pie
+ * cuando le llega su pulso (entrada en `globals.css`, dentro de la puerta). Cuatro rótulos de temas se anclan con
+ * guías de 1 px. Pieza decorativa: los rótulos son temas, no datos.
  */
-const COLORES = ["pierde", "condicionado", "tinta", "gana", "bruma"] as const;
-const SECUENCIA = [0, 0, 1, 2, 2, 3, 4, 0, 1, 1, 2, 3, 3, 4, 0, 0, 1, 2];
-const LAMINAS = Array.from({ length: 36 }, (_, i) => COLORES[SECUENCIA[i % SECUENCIA.length]]);
+type Color = "gana" | "condicionado" | "pierde" | "tinta" | "bruma";
 
-// Posiciones fijas (clases completas para que Tailwind las detecte).
+const g: Color = "gana";
+const c: Color = "condicionado";
+const p: Color = "pierde";
+const t: Color = "tinta";
+const b: Color = "bruma";
+
+/** Tres láminas por grupo (el grupo k recibe el pulso k): gana, condicionado y pierde, con separadores. */
+const LAMINAS: Color[] = [g, g, b, g, g, g, g, t, c, c, b, c, c, c, c, t, p, p, b, p, p, p, t, p];
+
+// Cada rótulo va anclado a una lámina (misma profundidad, sin giro) y entra con su pulso.
 const ROTULOS = [
-  { texto: "COBRE", pos: "left-[9%] top-[6%]" },
-  { texto: "ORMUZ", pos: "left-[27%] top-[88%]" },
-  { texto: "USD/CLP", pos: "left-[71%] top-[4%]" },
-  { texto: "ARANCELES", pos: "left-[84%] top-[80%]" },
-  { texto: "CHIPS", pos: "left-[50%] top-[1%]" },
-  { texto: "TASAS", pos: "left-[4%] top-[74%]" },
-  { texto: "LITIO", pos: "left-[38%] top-[10%]" },
-  { texto: "FLETES", pos: "left-[62%] top-[92%]" },
-  { texto: "BRENT", pos: "left-[90%] top-[22%]" },
-  { texto: "FED", pos: "left-[17%] top-[40%]" },
-  { texto: "OPEP", pos: "left-[78%] top-[52%]" },
-  { texto: "YUAN", pos: "left-[45%] top-[84%]" },
+  { texto: "ORMUZ", clase: "rotulo-0" },
+  { texto: "COBRE", clase: "rotulo-1" },
+  { texto: "CHIPS", clase: "rotulo-2" },
+  { texto: "TASAS", clase: "rotulo-3" },
 ];
 
 export function Ribbon({ className = "" }: { className?: string }) {
   return (
-    // `data-bucle`: la ola y los rótulos no paran; DirectorEscena los pausa fuera de vista.
-    <div className={`cinta ${className}`} aria-hidden="true" data-bucle>
+    <div className={`cinta ${className}`} aria-hidden="true">
       <div className="cinta-pista">
         {LAMINAS.map((color, i) => (
-          <span key={i} className={`cinta-lamina cinta-lamina-${color}`} />
+          <span key={i} className={`lamina lamina-${i} lamina-${color}`} />
         ))}
-      </div>
-      <div>
         {ROTULOS.map((r) => (
-          <span key={r.texto} className={`cinta-chip ${r.pos}`}>
-            {r.texto}
+          <span key={r.texto} className={`cinta-rotulo ${r.clase}`}>
+            <span>{r.texto}</span>
           </span>
         ))}
       </div>

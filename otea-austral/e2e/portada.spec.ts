@@ -39,7 +39,7 @@ test.describe("portada", () => {
   test("el héroe dice qué es y ofrece una acción principal junto al titular", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Del horizonte al mercado." })).toBeVisible();
-    await expect(page.locator(".hero-texto .sr-only")).toContainText("Te avisamos de los eventos globales que importan");
+    await expect(page.locator(".hero-texto")).toContainText("Te avisamos de los eventos globales que importan");
     const principal = page.locator(".hero-acciones").getByRole("link", { name: "Recibir alertas" });
     await expect(principal).toBeVisible();
     await expect(principal).toHaveAttribute("href", "#lista-de-espera");
@@ -99,13 +99,13 @@ test.describe("movimiento", () => {
     await contexto.close();
   });
 
-  test("el titular de la portada entra letra a letra y termina completo", async ({ page }) => {
+  test("el titular de la portada sale del horizonte en dos líneas y termina completo", async ({ page }) => {
     await page.goto("/");
-    const letras = page.locator("h1 .kx-l");
-    expect(await letras.count()).toBeGreaterThan(10);
-    // Entrada de menos de 1,5 s: a los 2,5 s no queda ninguna letra desplazada ni transparente.
+    const lineas = page.locator("h1 .h1-linea-1, h1 .h1-linea-2");
+    await expect(lineas).toHaveCount(2);
+    // Entrada de menos de 1,5 s: a los 2,5 s ninguna línea queda desplazada ni transparente.
     await page.waitForTimeout(2500);
-    const pendientes = await letras.evaluateAll((ls) =>
+    const pendientes = await lineas.evaluateAll((ls) =>
       ls.filter((l) => {
         const e = getComputedStyle(l);
         return e.transform !== "none" || e.opacity !== "1";

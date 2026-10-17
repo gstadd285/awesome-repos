@@ -15,6 +15,8 @@ const NAV = "[data-nav-indicador]";
 const VARIABLES_NAV = ["--nx", "--nw", "--nv"] as const;
 /** Un salto de ancla más largo que esto (en pantallas) se hace en un fundido, sin cruzar la historia. */
 const SALTO_LARGO = 1.5;
+/** Luz del héroe: posición del cursor en la ventana (0 a 1), escrita en `.historia` mientras el héroe se ve. */
+const VARIABLES_LUZ = ["--cx", "--cy"] as const;
 
 const acotar = (valor: number, minimo: number, maximo: number) => Math.min(maximo, Math.max(minimo, valor));
 
@@ -45,6 +47,9 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   elemento bajo el cursor `--mx --my` (posición de 0 a 1), `--tx --ty` (atracción en px, `data-magnetico`) y
  *   `--rx --ry` (inclinación en grados, `data-inclinar`). Las borra al salir.
  *
+ * - **Luz del héroe:** mientras el héroe está a la vista (la primera pantalla), escribe en `.historia` `--cx --cy`
+ *   (posición del cursor en la ventana, de 0 a 1): el sol se desplaza hasta 10 px (paralaje) y el brillo de las
+ *   láminas lo sigue. Las borra al salir de la ventana o al cerrarse la puerta.
  * - **Pastilla de la navegación:** al pasar el ratón por un enlace de `[data-nav-indicador]` escribe en la navegación
  *   `--nx --nw` (posición y ancho del enlace, leídos solo al cambiar de enlace) y `--nv` (0 o 1). Si estaba apagada,
  *   marca `data-nav-salto` durante un cuadro para que aparezca en su sitio en vez de viajar.
@@ -52,6 +57,10 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   dentro de `document.startViewTransition` (con `data-salto` en `<html>` mientras dura): un fundido en vez de cruzar
  *   la historia en avance rápido. Antes de mover guarda la entrada en el historial (`pushState`), así «Atrás» vuelve a
  *   donde estaba; después mueve el foco al destino (`tabindex="-1"` si no lo tenía).
+ * - **Maquetación diferida** (siempre): mientras la página carga, el CSS deja sin maquetar lo que queda bajo la historia
+ *   (`content-visibility`, para que el primer pintado llegue antes). Tras el evento `load`, o al primer clic en un ancla
+ *   de esta página, marca `data-maquetado` en `<html>` y todo se maqueta con su alto real: los saltos de ancla
+ *   aterrizan donde deben.
  * - **Menú del teléfono** (siempre, también con movimiento reducido: no es movimiento): un clic en un enlace del menú
  *   lo cierra (`hidePopover`), y si el enlace es un ancla de esta página el salto es instantáneo, detrás de la hoja que
  *   se funde, y el foco pasa al destino. Si el foco sale del menú con el teclado, también se cierra.
@@ -74,9 +83,14 @@ export function DirectorEscena() {
     let ultimo: PointerEvent | null = null;
     let actual: HTMLElement | null = null;
     let enlaceNav: HTMLElement | null = null;
+    const luz = document.querySelector<HTMLElement>(".historia");
 
     const limpiar = (el: HTMLElement) => {
       for (const variable of VARIABLES) el.style.removeProperty(variable);
+    };
+
+    const apagarLuz = () => {
+      if (luz) for (const variable of VARIABLES_LUZ) luz.style.removeProperty(variable);
     };
 
     const soltar = () => {
@@ -91,6 +105,11 @@ export function DirectorEscena() {
       cuadro = 0;
       const evento = ultimo;
       if (!evento) return;
+      // El héroe ocupa la primera pantalla (también en la historia fija, donde se apaga antes del primer paso).
+      if (luz && window.scrollY < window.innerHeight) {
+        luz.style.setProperty("--cx", (evento.clientX / window.innerWidth).toFixed(3));
+        luz.style.setProperty("--cy", (evento.clientY / window.innerHeight).toFixed(3));
+      }
       const objetivo = evento.target instanceof Element ? evento.target.closest<HTMLElement>(PUNTERO) : null;
       if (objetivo !== actual) {
         if (actual) limpiar(actual);
@@ -124,6 +143,8 @@ export function DirectorEscena() {
     };
 
     const alSalir = (evento: PointerEvent) => {
+      // El cursor sale de la ventana: el sol vuelve a su sitio.
+      if (!evento.relatedTarget) apagarLuz();
       if (!actual) return;
       const destino = evento.relatedTarget;
       if (destino instanceof Node && actual.contains(destino)) return;
@@ -180,6 +201,7 @@ export function DirectorEscena() {
       document.removeEventListener("pointerover", alEntrarNav);
       document.removeEventListener("pointerout", alSalirNav);
       soltar();
+      apagarLuz();
       apagarNav();
     };
 
@@ -202,6 +224,17 @@ export function DirectorEscena() {
         .finally(() => raiz.removeAttribute("data-salto"));
     };
 
+    /** Termina la maquetación diferida de la carga (ver el CSS de `data-maquetado`). */
+    const maquetar = () => raiz.toggleAttribute("data-maquetado", true);
+    let esperaCarga = 0;
+    const alCargar = () => {
+      esperaCarga = window.setTimeout(maquetar, 0);
+    };
+    if (!raiz.hasAttribute("data-maquetado")) {
+      if (document.readyState === "complete") alCargar();
+      else window.addEventListener("load", alCargar, { once: true });
+    }
+
     // En captura: corre antes que el `onClick` de `next/link`, que respeta `defaultPrevented`.
     const alClic = (evento: MouseEvent) => {
       if (evento.defaultPrevented || evento.button !== 0) return;
@@ -209,6 +242,8 @@ export function DirectorEscena() {
       const enlace = evento.target instanceof Element ? evento.target.closest<HTMLAnchorElement>("a[href]") : null;
       if (!enlace || (enlace.target && enlace.target !== "_self") || enlace.hasAttribute("download")) return;
       const destino = destinoEnPagina(enlace);
+      // Con altos estimados el salto aterrizaría mal: todo se maqueta antes de medir o de dejar saltar al navegador.
+      if (destino) maquetar();
       const abierta = raiz.dataset.movimiento === "completo";
       const menu = enlace.closest<HTMLElement>("#menu-movil");
       if (menu) {
@@ -270,6 +305,8 @@ export function DirectorEscena() {
     sincronizar();
 
     return () => {
+      window.removeEventListener("load", alCargar);
+      window.clearTimeout(esperaCarga);
       vigilante.disconnect();
       fino.removeEventListener("change", sincronizar);
       document.removeEventListener("click", alClic, true);
