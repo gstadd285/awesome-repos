@@ -81,7 +81,7 @@ Utilidades propias: `superficie` (porcelana con borde fino y sombra suave),
 `boton-laton` (latón como material), `campo` (campos con el foco del sitio), `salto-contenido` (píldora en la cabecera que ocupa el lugar del logo), `cifras`,
 `linea-fina`, `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
 pantalla de error), `fondo-luz`,
-`luz-ventana` (sombras de persiana), `reticula-puntos`, y el tamaño `text-lede` (18 a 22 px) para el texto
+`reticula-puntos`, y el tamaño `text-lede` (18 a 22 px) para el texto
 que explica el producto.
 
 Reglas:
@@ -114,8 +114,7 @@ Reglas:
 
 ### Portada: la historia en 3D (`src/components/home/Story.tsx`)
 
-El héroe (titular H1, texto de entrada y dos botones) y tres pasos (`01 — 03`): la **cinta** de láminas
-(`Ribbon`) que se pliega sobre el **plano técnico** con una gota de metal (`Blueprint`), el **tablero** con alertas
+El héroe «Horizonte vivo» y tres pasos (`01 — 03`): la **cinta** de láminas (`Ribbon`) que se pliega sobre el **plano técnico** con una gota de metal (`Blueprint`), el **tablero** con alertas
 que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 3D:
 
 - **Historia fija**: en escritorio (≥ 1024 px), con `animation-timeline` y con el movimiento activado, el
@@ -133,7 +132,27 @@ que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 
   (`e2e/movimiento.spec.ts`).
 - Las piezas 3D son decorativas (`aria-hidden`); los textos de cada paso son secciones con `h2`.
   Lo que recibe foco se muestra aunque su paso no esté en pantalla.
-- Las láminas de la cinta giran sobre el eje vertical entre 28° y 152° para no atravesarse.
+- **Héroe «Horizonte vivo»** (`.h-hero`, `Horizonte.tsx`, `Ribbon.tsx`, `AlertaViva.tsx`): el H1 va partido por una línea
+  de horizonte a sangre (`<h1>` con una copia `sr-only` y dos cajas `aria-hidden`, `.h1-linea-1` y `.h1-linea-2`, que
+  recortan su línea con `overflow: clip`), con un sol de latón (un disco sin anillo: **no** es el emblema), un suelo en
+  perspectiva con 8 pulsos y la cinta de 24 láminas de pie (`lamina-0…23`, giro entre 30° y 64°: nunca de canto).
+  `.h-hero` es una cuadrícula con filas con nombre (`cielo · titulo · debajo · [aviso] · [alerta] · cinta`); las piezas
+  del horizonte son elementos de esa misma cuadrícula (`.horizonte` es `display: contents`) y se apoyan en los altos
+  conocidos del H1 (`--c1`, `--c2`, `--l1`): **ninguna línea del H1 se parte sola** (`white-space: nowrap`; en el
+  teléfono «DEL / HORIZONTE» son dos bloques a propósito). Sin subcuadrículas ni `container-type` en `.historia`:
+  costaban cientos de ms de maquetación antes del primer pintado a CPU ×4. La fila del cielo es `1fr` (sin franja
+  muerta; tope de 1240 px). Bajo 1024 px, la alerta viva (datos y reglas reales, `aria-hidden`, «Datos de ejemplo»)
+  va en el primer pliegue. La entrada es por tiempo y nada parte de opacidad 0 en la entrada ni en los botones (LCP).
+- Bucles del héroe: los pulsos (`hz-pulso-bucle`, solo ≥ 1024 px) y la gota de «Desliza» (`hz-gota`); sus contenedores
+  llevan `data-bucle`. `DirectorEscena` escribe `--cx --cy` en `.historia` (paralaje del sol y brillo de las láminas).
+- Los **pulsos son trazos 2D** apuntados al sol con `atan2()` sobre `cqw`/`cqh` (`.h-suelo` es contenedor de tamaño):
+  cada uno cae en su grupo (`--lx`, `--ly`) y solo recorre su `--tramo` (franja de la cinta en escritorio, del sol al filo
+  de la alerta en la tableta, el hueco bajo los botones en el teléfono). **Nada de máscaras ni planos 3D para ellos.**
+- En la historia fija, apagado el héroe (24 %), el cielo, el suelo, el grano y el horizonte pasan a `display: none`
+  (`hz-retirar`) y la cinta a `visibility: hidden`: así no se dibujan bajo una capa invisible.
+- **Maquetación diferida de la carga:** con JS, hasta el evento `load` las secciones bajo la historia llevan
+  `content-visibility: auto` (primer pintado más liviano); `DirectorEscena` marca `data-maquetado` en `<html>` tras
+  `load` o al primer clic en un ancla de la página. No se aplica sin JS ni si la dirección trae ancla (`:target`).
 - Los bloques de la historia son absolutos y se apilan: **lo que se desvanece debe dejar de interceptar clics**.
   `pointer-events` se anima en `h-hero`, `h-paso` y `h-paso-final`, y las piezas decorativas llevan
   `pointer-events: none` (`e2e/portada.spec.ts` lo comprueba con `elementFromPoint`).
@@ -149,9 +168,9 @@ movimiento»):
 | `anim-aparecer` + `anim-retraso-1…4` | Entrada al cargar: sube, se enfoca y aparece |
 | `anim-escalonado` + `[--retraso-base:Xms]` | Los hijos entran uno tras otro |
 | `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
-| `otea-ola`, `otea-flotar` | La cinta ondea y los rótulos flotan (bucles con `data-bucle`: se pausan fuera de vista) |
+| `hz-*` | Entrada en tres tiempos del héroe: la línea se traza, el titular sale del horizonte (< 1,3 s), amanece y los pulsos ponen de pie la cinta; bucle de pulsos con `data-bucle` |
 | `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
-| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista; escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
+| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista; escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.historia` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); marca `data-maquetado` en `<html>` tras `load` (fin de la maquetación diferida); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
 | `<PageTransition>` | Transición entre páginas (React `ViewTransition`), **solo en `src/app/template.tsx`**: dentro de un `page.tsx` React nunca la iniciaba. La cabecera no se mueve; el subrayado, el logo y las acciones viajan con nombre propio. **Con la puerta cerrada no monta el límite** al navegar (la plantilla hidratada lo conserva con salida `none`): ninguna view transition |
 | `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
 
@@ -580,6 +599,30 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   dispositivo real antes de recortar la coreografía.
 - **El borde transparente que sube el `main` bajo la cabecera necesita `background-origin: border-box`**: si no, los
   degradados repiten su mosaico en la banda y queda un escalón de color a los 72 px.
+
+## Lo aprendido (héroe «Horizonte vivo»)
+
+- **Subcuadrículas y unidades de contenedor cuestan caro en el primer pintado**: con el HTML que llega por partes, cada
+  trozo vuelve a maquetar. Medido con una traza a CPU ×4 (390 px): `grid-template-rows: subgrid` en el héroe sumaba
+  ~250 ms de `Layout` y un `container-type: inline-size` en `.historia` (para calcular el marco con `cqw`) otro tanto.
+  Lo que se coloca por filas usa la misma cuadrícula (`display: contents` en el contenedor decorativo) y altos conocidos.
+- **Los márgenes de dos bloques hermanos se colapsan**: las cajas del H1 van en un `flex` columna, si no el horizonte
+  quedaba 12 px por debajo del hueco entre las líneas.
+- **Una variable propia no puede llamarse como una del puntero** (`--ry` de la lámina chocaba con la inclinación de
+  `DirectorEscena`, y `motion.test.ts` lo detectó): el giro de la lámina es `--giro`.
+- **Colocación automática en la cuadrícula**: un elemento con `grid-row` pero sin `grid-column`, en una celda ya ocupada,
+  abre una columna implícita de ancho 0 (el horizonte «desapareció» así). Las piezas superpuestas llevan columna explícita.
+- **Una máscara sobre una capa que se anima cuesta en cada cuadro**: los pulsos vivían en un plano 3D de 4320×1600 px con
+  dos `mask-image`; el compositor redibujaba una superficie del tamaño del héroe en cada cuadro (rasterizado por software:
+  la historia caía de ~37 a ~24 fps). Medir quitando piezas con CSS inyectado (`fluidez2.mjs` del rediseño) lo encontró.
+- **`content-visibility: auto` en secciones enteras rompe los saltos de ancla** (con altos estimados el destino aterriza
+  fuera de pantalla: tres e2e de anclas fallaron). Por eso solo dura la carga y se libera antes de cualquier salto.
+- **Medir el LCP en esta máquina exige muchas repeticiones alternadas** (±150 ms entre corridas): `ab.mjs` y `lento.mjs`
+  del rediseño alternan servidores. Inyectar CSS con `route` cambia los tiempos de red: compara siempre contra una ruta
+  de control con un comentario vacío.
+- **Fotogramas deterministas de una entrada por tiempo**: las animaciones terminadas sin relleno `forwards` desaparecen
+  de `getAnimations()`. Antes de navegar, `Animation.setPlaybackRate({ playbackRate: 0 })` por CDP detiene el reloj y
+  después se fija `currentTime` (`verificacion/T3/hoja.mjs` del rediseño).
 
 ## Lo aprendido (cuentas de personas usuarias)
 
