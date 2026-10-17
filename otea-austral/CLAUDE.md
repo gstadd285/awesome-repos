@@ -144,7 +144,7 @@ que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 
   muerta; tope de 1240 px). Bajo 1024 px, la alerta viva (datos y reglas reales, `aria-hidden`, «Datos de ejemplo»)
   va en el primer pliegue. La entrada es por tiempo y nada parte de opacidad 0 en la entrada ni en los botones (LCP).
 - Bucles del héroe: los pulsos (`hz-pulso-bucle`, solo ≥ 1024 px) y la gota de «Desliza» (`hz-gota`); sus contenedores
-  llevan `data-bucle`. `DirectorEscena` escribe `--cx --cy` en `.historia` (paralaje del sol y brillo de las láminas).
+  llevan `data-bucle`. `DirectorEscena` escribe `--cx --cy` en `.h-hero` (paralaje del sol y brillo de las láminas).
 - Los **pulsos son trazos 2D** apuntados al sol con `atan2()` sobre `cqw`/`cqh` (`.h-suelo` es contenedor de tamaño):
   cada uno cae en su grupo (`--lx`, `--ly`) y solo recorre su `--tramo` (franja de la cinta en escritorio, del sol al filo
   de la alerta en la tableta, el hueco bajo los botones en el teléfono). **Nada de máscaras ni planos 3D para ellos.**
@@ -170,7 +170,7 @@ movimiento»):
 | `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
 | `hz-*` | Entrada en tres tiempos del héroe: la línea se traza, el titular sale del horizonte (< 1,3 s), amanece y los pulsos ponen de pie la cinta; bucle de pulsos con `data-bucle` |
 | `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
-| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista; escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.historia` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); marca `data-maquetado` en `<html>` tras `load` (fin de la maquetación diferida); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
+| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista; escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.h-hero` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); marca `data-maquetado` en `<html>` tras `load` (fin de la maquetación diferida); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
 | `<PageTransition>` | Transición entre páginas (React `ViewTransition`), **solo en `src/app/template.tsx`**: dentro de un `page.tsx` React nunca la iniciaba. La cabecera no se mueve; el subrayado, el logo y las acciones viajan con nombre propio. **Con la puerta cerrada no monta el límite** al navegar (la plantilla hidratada lo conserva con salida `none`): ninguna view transition |
 | `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
 

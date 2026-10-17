@@ -3415,7 +3415,7 @@ html[data-movimiento="completo"] {
   }
 
   /* Con un ratón: el sol sigue al cursor (±10 px, paralaje) y el brillo de las láminas se desliza con él. Leen
-     `--cx --cy` (0 a 1), que `DirectorEscena` escribe en `.historia` mientras el héroe está a la vista. */
+     `--cx --cy` (0 a 1), que `DirectorEscena` escribe en `.h-hero` mientras el héroe está a la vista. */
   @media (hover: hover) and (pointer: fine) {
     .sol-paralaje {
       translate: calc(-50% + (var(--cx, 0.5) - 0.5) * 20px) calc(-46% + (var(--cy, 0.5) - 0.5) * 20px);

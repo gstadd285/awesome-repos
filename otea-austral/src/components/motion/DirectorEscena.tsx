@@ -15,7 +15,7 @@ const NAV = "[data-nav-indicador]";
 const VARIABLES_NAV = ["--nx", "--nw", "--nv"] as const;
 /** Un salto de ancla más largo que esto (en pantallas) se hace en un fundido, sin cruzar la historia. */
 const SALTO_LARGO = 1.5;
-/** Luz del héroe: posición del cursor en la ventana (0 a 1), escrita en `.historia` mientras el héroe se ve. */
+/** Luz del héroe: posición del cursor en la ventana (0 a 1), escrita en `.h-hero` mientras el héroe se ve. */
 const VARIABLES_LUZ = ["--cx", "--cy"] as const;
 
 const acotar = (valor: number, minimo: number, maximo: number) => Math.min(maximo, Math.max(minimo, valor));
@@ -47,9 +47,11 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   elemento bajo el cursor `--mx --my` (posición de 0 a 1), `--tx --ty` (atracción en px, `data-magnetico`) y
  *   `--rx --ry` (inclinación en grados, `data-inclinar`). Las borra al salir.
  *
- * - **Luz del héroe:** mientras el héroe está a la vista (la primera pantalla), escribe en `.historia` `--cx --cy`
+ * - **Luz del héroe:** mientras el héroe está a la vista (la primera pantalla), escribe en `.h-hero` `--cx --cy`
  *   (posición del cursor en la ventana, de 0 a 1): el sol se desplaza hasta 10 px (paralaje) y el brillo de las
- *   láminas lo sigue. Las borra al salir de la ventana o al cerrarse la puerta.
+ *   láminas lo sigue. Las borra al salir de la ventana o al cerrarse la puerta. Van en `.h-hero` y no en `.historia`:
+ *   las propiedades personalizadas se heredan, y escribirlas en la historia invalidaba en cada cuadro el estilo de
+ *   todo su subárbol (plano, tablero y pasos) cuando solo las leen el sol y las láminas.
  * - **Pastilla de la navegación:** al pasar el ratón por un enlace de `[data-nav-indicador]` escribe en la navegación
  *   `--nx --nw` (posición y ancho del enlace, leídos solo al cambiar de enlace) y `--nv` (0 o 1). Si estaba apagada,
  *   marca `data-nav-salto` durante un cuadro para que aparezca en su sitio en vez de viajar.
@@ -83,7 +85,7 @@ export function DirectorEscena() {
     let ultimo: PointerEvent | null = null;
     let actual: HTMLElement | null = null;
     let enlaceNav: HTMLElement | null = null;
-    const luz = document.querySelector<HTMLElement>(".historia");
+    const luz = document.querySelector<HTMLElement>(".h-hero");
 
     const limpiar = (el: HTMLElement) => {
       for (const variable of VARIABLES) el.style.removeProperty(variable);
