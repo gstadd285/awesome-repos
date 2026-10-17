@@ -469,8 +469,8 @@ test.describe("menú del teléfono", () => {
     await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
     await page.getByRole("button", { name: "Menú", exact: true }).click();
     const hoja = page.locator("#menu-movil");
-    // El retraso del pie (320 ms) no lo pisa la transición de los enlaces: llega después del séptimo (280 ms).
-    expect(await hoja.locator(".menu-pie").evaluate((e) => getComputedStyle(e).transitionDelay)).toMatch(/^0\.32s(, 0\.32s)*$/);
+    // El retraso del pie (360 ms) no lo pisa la transición de los enlaces: llega después del séptimo (320 ms).
+    expect(await hoja.locator(".menu-pie").evaluate((e) => getComputedStyle(e).transitionDelay)).toMatch(/^0\.36s(, 0\.36s)*$/);
     await page.waitForTimeout(1000);
     const abierta = (await hoja.locator(".menu-lista").boundingBox())!;
     // A mitad del fundido de cierre la hoja sigue en columna: la lista no se va al lado del logo.
@@ -486,6 +486,96 @@ test.describe("menú del teléfono", () => {
     expect(cierre.direccion).toBe("column");
     expect(Math.abs(cierre.x - abierta.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(cierre.y - abierta.y)).toBeLessThanOrEqual(1);
+    await contexto.close();
+  });
+
+  test("la hoja queda opaca antes de que lleguen los enlaces, y al cerrar se vacía antes de fundirse: nunca hay texto doble", async ({
+    browser,
+  }, info) => {
+    soloEscritorio(info.project.name);
+    const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const page = await contexto.newPage();
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+    await page.waitForTimeout(1800);
+    /** Muestras por cuadro: [opacidad de la hoja, opacidad máxima de los enlaces y el pie]. */
+    const muestrear = (accion: "abrir" | "cerrar") =>
+      page.evaluate(
+        (accion) =>
+          new Promise<number[][]>((resolver) => {
+            const hoja = document.querySelector<HTMLElement>("#menu-movil")!;
+            const contenido = [...hoja.querySelectorAll<HTMLElement>(".menu-lista > li, .menu-pie")];
+            const muestras: number[][] = [];
+            const t0 = performance.now();
+            const medir = () => {
+              muestras.push([
+                Number(getComputedStyle(hoja).opacity),
+                Math.max(...contenido.map((e) => Number(getComputedStyle(e).opacity))),
+              ]);
+              if (performance.now() - t0 < 700) requestAnimationFrame(medir);
+              else resolver(muestras);
+            };
+            if (accion === "abrir") hoja.showPopover();
+            else hoja.hidePopover();
+            medir();
+          }),
+        accion,
+      );
+    const apertura = await muestrear("abrir");
+    for (const [hoja, contenido] of apertura) if (contenido > 0.05) expect(hoja, JSON.stringify(apertura)).toBeGreaterThan(0.9);
+    await page.waitForTimeout(600);
+    const cierre = await muestrear("cerrar");
+    for (const [hoja, contenido] of cierre) if (hoja < 0.9 && hoja > 0) expect(contenido, JSON.stringify(cierre)).toBeLessThan(0.1);
+    await contexto.close();
+  });
+
+  test("la cruz se forma sin pasar por una flecha: los trazos se juntan y después giran", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const page = await contexto.newPage();
+    await page.goto("/metodologia");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+    const muestras = await page.evaluate(
+      () =>
+        new Promise<number[][]>((resolver) => {
+          const hoja = document.querySelector<HTMLElement>("#menu-movil")!;
+          const trazos = [...hoja.querySelectorAll<HTMLElement>(".menu-cerrar-linea")];
+          const salida: number[][] = [];
+          const t0 = performance.now();
+          const medir = () => {
+            for (const trazo of trazos) {
+              const s = getComputedStyle(trazo);
+              const giro = s.rotate === "none" ? 0 : Number.parseFloat(s.rotate);
+              const [, y = "0"] = s.translate === "none" ? [] : s.translate.split(" ");
+              salida.push([giro, Number.parseFloat(y)]);
+            }
+            if (performance.now() - t0 < 900) requestAnimationFrame(medir);
+            else resolver(salida);
+          };
+          hoja.showPopover();
+          medir();
+        }),
+    );
+    // Mientras giran (más de 3°) ya están juntos en el centro (menos de 0,4 px de separación).
+    const girando = muestras.filter(([giro]) => Math.abs(giro) > 3);
+    expect(girando.length).toBeGreaterThan(0);
+    for (const [giro, y] of girando) expect(Math.abs(y), `giro ${giro}°`).toBeLessThan(0.4);
+    // Y terminan cruzados.
+    expect(muestras.slice(-2).map(([giro]) => Math.round(giro))).toEqual([45, -45]);
+    await contexto.close();
+  });
+
+  test("con movimiento reducido, tocar un ancla del menú lleva el foco al destino", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, reducedMotion: "reduce" });
+    const page = await contexto.newPage();
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("data-movimiento", "reducido");
+    await page.getByRole("button", { name: "Menú", exact: true }).click();
+    await page.getByRole("navigation", { name: "Principal (móvil)" }).getByRole("link", { name: "Temas" }).click();
+    await expect(page).toHaveURL(/#temas$/);
+    await expect(page.locator("#temas")).toBeFocused();
+    await expect(page.locator("#temas-titulo")).toBeInViewport();
     await contexto.close();
   });
 

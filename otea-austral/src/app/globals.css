@@ -1984,36 +1984,46 @@ html[data-movimiento="completo"] {
     animation-delay: 0s;
   }
 
-  /* Menú del teléfono: la hoja entra desde 12 px arriba (desde la derecha en el panel) en 320 ms, opaca a los 200 ms,
-     y el velo se enciende; los enlaces llegan escalonados 40 ms, desde 14 px, en 560 ms; la cruz se forma con los dos trazos del
-     botón de menú. Al cerrar, todo se funde en 200 ms (`allow-discrete` mantiene la hoja hasta el final). */
+  /* Menú del teléfono: la hoja entra desde 12 px arriba (desde la derecha en el panel) en 320 ms y queda opaca a los
+     120 ms, antes de que llegue el primer enlace (80 ms y después cada 40 ms, desde 14 px, en 560 ms): el texto de la
+     página nunca se cruza con el del menú. El velo se enciende y la cruz se forma con los dos trazos del botón de menú.
+     Al cerrar, el contenido se apaga primero (120 ms) y la hoja, ya vacía, se funde después (200 ms desde los 80 ms;
+     `allow-discrete` la mantiene hasta el final). */
   .menu-movil {
     opacity: 0;
     transition:
-      opacity var(--dur-2) var(--ease-entrada),
-      translate var(--dur-2) var(--ease-entrada),
-      display var(--dur-2) allow-discrete,
-      overlay var(--dur-2) allow-discrete;
+      opacity var(--dur-2) var(--ease-entrada) 80ms,
+      translate var(--dur-2) var(--ease-entrada) 80ms,
+      display calc(var(--dur-2) + 80ms) allow-discrete,
+      overlay calc(var(--dur-2) + 80ms) allow-discrete;
   }
 
   .menu-movil:popover-open {
     opacity: 1;
     translate: 0 0;
-    transition-duration: var(--dur-2), var(--dur-3), var(--dur-3), var(--dur-3);
+    transition-duration: var(--dur-1), var(--dur-3), var(--dur-3), var(--dur-3);
+    transition-delay: 0s;
     transition-timing-function: var(--ease-salida);
+  }
+
+  .menu-movil:not(:popover-open) .menu-lista > li,
+  .menu-movil:not(:popover-open) .menu-pie {
+    opacity: 0;
+    transition: opacity var(--dur-1) var(--ease-salida);
   }
 
   .menu-movil::backdrop {
     opacity: 0;
     transition:
-      opacity var(--dur-2) var(--ease-entrada),
-      display var(--dur-2) allow-discrete,
-      overlay var(--dur-2) allow-discrete;
+      opacity var(--dur-2) var(--ease-entrada) 80ms,
+      display calc(var(--dur-2) + 80ms) allow-discrete,
+      overlay calc(var(--dur-2) + 80ms) allow-discrete;
   }
 
   .menu-movil:popover-open::backdrop {
     opacity: 1;
     transition-duration: var(--dur-3);
+    transition-delay: 0s;
     transition-timing-function: var(--ease-salida);
   }
 
@@ -2027,36 +2037,38 @@ html[data-movimiento="completo"] {
   }
 
   .menu-movil:popover-open .menu-lista > li:nth-child(1) {
-    transition-delay: 40ms;
-  }
-  .menu-movil:popover-open .menu-lista > li:nth-child(2) {
     transition-delay: 80ms;
   }
-  .menu-movil:popover-open .menu-lista > li:nth-child(3) {
+  .menu-movil:popover-open .menu-lista > li:nth-child(2) {
     transition-delay: 120ms;
   }
-  .menu-movil:popover-open .menu-lista > li:nth-child(4) {
+  .menu-movil:popover-open .menu-lista > li:nth-child(3) {
     transition-delay: 160ms;
   }
-  .menu-movil:popover-open .menu-lista > li:nth-child(5) {
+  .menu-movil:popover-open .menu-lista > li:nth-child(4) {
     transition-delay: 200ms;
   }
-  .menu-movil:popover-open .menu-lista > li:nth-child(6) {
+  .menu-movil:popover-open .menu-lista > li:nth-child(5) {
     transition-delay: 240ms;
   }
-  .menu-movil:popover-open .menu-lista > li:nth-child(n + 7) {
+  .menu-movil:popover-open .menu-lista > li:nth-child(6) {
     transition-delay: 280ms;
   }
-  .menu-movil:popover-open .menu-pie {
+  .menu-movil:popover-open .menu-lista > li:nth-child(n + 7) {
     transition-delay: 320ms;
   }
+  .menu-movil:popover-open .menu-pie {
+    transition-delay: 360ms;
+  }
 
+  /* La cruz en dos tiempos, como un solo gesto: los trazos se juntan en el centro (200 ms) y, ya en una sola línea,
+     giran en sentidos opuestos con el resorte hasta cruzarse. Nunca pasan por una flecha. */
   .menu-movil:popover-open .menu-cerrar-linea {
-    transition-property: rotate, translate;
-    transition-duration: var(--dur-4);
-    transition-delay: 60ms;
-    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
-    transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+    transition-property: translate, rotate;
+    transition-duration: var(--dur-2), var(--dur-4);
+    transition-delay: 40ms, 170ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
   }
 
   @starting-style {

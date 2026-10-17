@@ -54,7 +54,7 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   donde estaba; después mueve el foco al destino (`tabindex="-1"` si no lo tenía).
  * - **Menú del teléfono** (siempre, también con movimiento reducido: no es movimiento): un clic en un enlace del menú
  *   lo cierra (`hidePopover`), y si el enlace es un ancla de esta página el salto es instantáneo, detrás de la hoja que
- *   se funde. Si el foco sale del menú con el teclado, también se cierra.
+ *   se funde, y el foco pasa al destino. Si el foco sale del menú con el teclado, también se cierra.
  *
  * Lo demás solo actúa con la puerta abierta (`html[data-movimiento="completo"]`): observa el atributo y, al cerrarse,
  * retira oyentes, marcas y variables. Escribe solo por CSSOM (`style.setProperty`, admitido por la CSP; nunca un
@@ -213,8 +213,10 @@ export function DirectorEscena() {
       const menu = enlace.closest<HTMLElement>("#menu-movil");
       if (menu) {
         cerrarMenu(menu);
-        // Con la puerta abierta el ancla iría con scroll suave: se salta al instante, detrás de la hoja que se funde.
-        if (destino && abierta) {
+        // Un ancla de esta página se salta al instante, detrás de la hoja que se funde (con la puerta abierta iría con
+        // scroll suave), y el foco va al destino: si no, al cerrarse el popover vuelve al botón «Menú», también con
+        // movimiento reducido (mover el foco no es movimiento).
+        if (destino) {
           evento.preventDefault();
           saltar(destino, enlace.hash, false);
         }
