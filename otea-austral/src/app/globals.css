@@ -1513,14 +1513,16 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 }
 
 /* Lámina: canto (sombra interior de 5 px), filete de luz arriba a la izquierda, sombra de contacto y brillo
-   especular en `::after` (con la puerta abierta y un ratón, sigue a `--cx`). */
+   especular en `::after` (con la puerta abierta y un ratón, sigue a `--cx`). 19cqh de ancho: con 12,5 quedaban finas
+   y separadas, y la cinta se leía como un gráfico de barras; así cada lámina tiene cuerpo y las vecinas casi se tocan
+   en perspectiva, sin volver a las astillas (el giro sigue entre 30° y 64°). */
 .lamina {
   position: absolute;
   left: var(--x);
   bottom: 12cqh;
-  width: 12.5cqh;
+  width: 19cqh;
   height: var(--alto);
-  margin-left: -6.25cqh;
+  margin-left: -9.5cqh;
   border-radius: 2.6cqh;
   transform-origin: 50% 100%;
   transform: translateZ(var(--z)) rotateY(var(--giro));
@@ -1938,14 +1940,14 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     background-image: linear-gradient(90deg, rgb(176 141 87 / 0), rgb(176 141 87 / 0.9) 50%, rgb(176 141 87 / 0));
   }
 
-  /* La cinta sigue bajo el héroe, más alta que el marco: se ve un tramo, como una banda que continúa. */
+  /* La cinta, encuadrada entera en el marco: los tres grupos (gana · condicionado · pierde) a la vista, sin cortes en
+     los bordes. La pista es más estrecha que sus 4,4 alturas de escritorio, así que las láminas quedan más juntas. */
   .cinta-pista {
-    width: 440cqh;
-    margin-inline: calc(50cqw - 220cqh) auto;
+    width: calc(100cqw - 40px);
   }
 
   .cinta::before {
-    width: 440cqh;
+    width: calc(100cqw - 40px);
   }
 
   .cinta-rotulo {
@@ -2505,14 +2507,32 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-/* Lámina: de tendida (hacia la cámara) a de pie, con resorte. */
+/* Lámina: de tendida (hacia la cámara) a de pie, con resorte. La curva va en cada clave (§3.2.2): el resorte literal,
+   después de su respaldo, en la clave que arranca el giro, y la de aterrizaje en la que ya solo sostiene la opacidad. */
 @keyframes hz-erguir {
   0% {
     opacity: 0;
     transform: translateZ(var(--z)) rotateY(var(--giro)) rotateX(-88deg);
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
   }
   14% {
     opacity: 1;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* En pantallas estrechas con línea de tiempo, la lámina se pone de pie ligada al scroll (al entrar la cinta): sin
+   resorte, que ligado al dedo se leería como un temblor. */
+@keyframes m-erguir {
+  0% {
+    opacity: 0;
+    transform: translateZ(var(--z)) rotateY(var(--giro)) rotateX(-88deg);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  30% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
@@ -3279,8 +3299,6 @@ html[data-movimiento="completo"] {
 
   .lamina {
     animation: hz-erguir 760ms backwards;
-    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
-    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
     animation-delay: var(--d);
   }
 
@@ -3454,11 +3472,33 @@ html[data-movimiento="completo"] {
 html[data-movimiento="completo"] {
   @media (max-width: 1023.98px) {
     @supports (animation-timeline: view()) {
-      /* La cinta se pone de pie con sus pulsos (por tiempo, en sus láminas) y, al salir por arriba, se pliega. */
+      /* Aquí la cinta queda bajo la alerta, casi siempre fuera del primer pliegue: si sus láminas se pusieran de pie
+         por tiempo, la persona llegaría a una cinta ya quieta. Se ponen de pie al entrar en pantalla, ligadas al
+         scroll y en ola de izquierda a derecha (el arranque de cada una depende de su posición, `--x`), entre el 4 %
+         y el ~38 % de su recorrido por la pantalla: entera antes de llegar a la mitad. Al salir por arriba, se pliega. */
       .h-cinta {
+        view-timeline: --cinta block;
         animation: m-cinta-salir linear both;
         animation-timeline: view();
         animation-range: exit 0% exit 100%;
+      }
+
+      .h-cinta .lamina,
+      .h-cinta .lamina::after {
+        animation: m-erguir linear both;
+        animation-timeline: --cinta;
+        animation-range: cover calc(4% + var(--x) * 0.2) cover calc(18% + var(--x) * 0.2);
+      }
+
+      .h-cinta .lamina::after {
+        animation-name: hz-destello;
+      }
+
+      /* La sombra común se enciende con la primera ola (antes no hay nada que la proyecte). */
+      .h-cinta::before {
+        animation: hz-encender linear both;
+        animation-timeline: --cinta;
+        animation-range: cover 4% cover 30%;
       }
 
       .h-plano {
