@@ -1,0 +1,4054 @@
+@import "tailwindcss";
+
+/*
+ * Sistema visual de Otea Austral: editorial claro, inspirado en la referencia
+ * "TIDY" (fondo perla, luz de ventana, tipografía grotesca en mayúsculas,
+ * piezas 3D y una historia ligada al scroll), con la paleta y el logo de Otea.
+ * Fuente única de los tokens: `src/lib/design/contrast.test.ts` lee este
+ * archivo y verifica el contraste AA de los pares de texto.
+ */
+@theme {
+  --color-*: initial;
+
+  /* Marca */
+  --color-ink: #0F1B2D;
+  --color-ivory: #F3EEE3;
+  --color-brass: #B08D57;
+  /* AA como texto de 12 px o más sobre `fondo` (4,8:1), `papel` y `papel-alto` (numerales, índice, filetes);
+     no sobre `fondo-sombra` (4,2:1). `contrast.test.ts` lo vigila. */
+  --color-brass-deep: #7A5E33;
+  --color-mist: #8C97A6;
+  /* Texto secundario sobre tinta (11:1). */
+  --color-niebla: #C9CFD8;
+  /* Extremos del degradado del botón de latón: tinta sobre ambos ≥ 4,5:1 (7,4 y 4,9). */
+  --color-laton-claro: #C7A570;
+  --color-laton-oscuro: #A6834D;
+
+  /* Tema claro */
+  --color-fondo: #E7E5E0;
+  --color-fondo-sombra: #D9D7D2;
+  --color-papel: #F6F3ED;
+  --color-papel-alto: #FCFAF6;
+  --color-texto: #0F1B2D;
+  --color-texto-suave: #3D4859;
+  --color-apoyo: #4C5665;
+  --color-linea: rgb(15 27 45 / 0.14);
+  --color-linea-fuerte: rgb(15 27 45 / 0.32);
+  /* Único acento de interfaz: relleno de la acción principal (con texto tinta). */
+  --color-acento: #B08D57;
+
+  /* Estado: en alertas y en las piezas que las representan, siempre con texto tinta. */
+  --color-gana: #7FBF9E;
+  --color-condicionado: #B08D57;
+  --color-pierde: #E08A72;
+
+  --radius-badge: 6px;
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --text-micro: 12px;
+  --text-micro--line-height: 1.35;
+  --text-display: clamp(2.4rem, 4.6vw, 4.25rem);
+  --text-display--line-height: 1;
+  --text-titulo: clamp(1.9rem, 3vw, 2.75rem);
+  --text-titulo--line-height: 1.04;
+  /* Texto de entrada (el que explica el producto): 18 a 22 px. */
+  --text-lede: clamp(1.125rem, 1.1rem + 0.35vw, 1.375rem);
+  --text-lede--line-height: 1.55;
+}
+
+@theme inline {
+  --font-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+/* ── Sistema de movimiento ─────────────────────────────────────────────────
+ * Tokens de duración, curva y escalonado (en `:root`, no en `@theme`, para no generar utilidades `animate-*`).
+ * Las curvas: `salida` para lo que aterriza (entradas, hover), `enfasis` para cámara, medidores y cambios de
+ * estado, `entrada` para lo que se va. El resorte NO es un token: va literal (utilidad `resorte`), siempre detrás
+ * de un `cubic-bezier` de respaldo, porque `var()` con `linear()` no tiene respaldo posible.
+ */
+:root {
+  --dur-1: 120ms; /* pulsado, cambio de color pequeño */
+  --dur-2: 200ms; /* hover, foco, chevrones, salidas cortas */
+  --dur-3: 320ms; /* cambios de estado, cabecera, paneles, view transitions de entrada */
+  --dur-4: 560ms; /* resortes, entradas de bloques, menú */
+  --dur-5: 900ms; /* titulares, trazados, piezas grandes */
+  --ease-salida: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-enfasis: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-entrada: cubic-bezier(0.5, 0, 0.9, 0.6);
+  --escalon: 40ms; /* listas */
+  --escalon-anotacion: 90ms;
+  --escalon-demo: 120ms; /* secuencias de demostración */
+}
+
+/* Destello del botón de latón: se registra para poder transicionarlo. `inherits: false` no llega a los
+   seudoelementos, así que se escribe en el propio `::after`. */
+@property --brillo {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: -30%;
+}
+
+/* Halo de latón del foco: lo pone `:focus-visible` (o el foco de un campo) y lo leen las sombras de botones,
+   superficies y campos (`var(--anillo, 0 0 #0000), …`). Sin herencia: no se contagia a los hijos. */
+@property --anillo {
+  syntax: "*";
+  inherits: false;
+}
+
+/* Avance de la isla de la cabecera (0 arriba, 1 a los 120 px de scroll). Una sola línea de tiempo para la píldora, el
+   logo, las acciones y el avance de lectura: el borde de la isla acompaña al contenido en cada píxel, en vez de tener
+   su forma final desde el primero mientras el logo y la CTA todavía viajan por fuera. Hereda, para que lo lean los
+   hijos y `::before`; sin la animación (puerta cerrada, sin línea de tiempo) vale 0 y nada lo usa. */
+@property --isla {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Variantes con puerta (forma de bloque: la de una línea desalinea `quitarBloques` de motion.test.ts).
+   `mov:` solo con el movimiento activado; `fino:` solo con ratón o trackpad. Nunca `motion-safe:`/`motion-reduce:`:
+   obedecen a la consulta de medios y no al conmutador del pie. */
+@custom-variant mov {
+  html[data-movimiento="completo"] & {
+    @slot;
+  }
+}
+
+@custom-variant fino {
+  @media (hover: hover) and (pointer: fine) {
+    @slot;
+  }
+}
+
+/* Resorte con un pequeño rebote (*pops*, checks, sellos, vuelta del botón magnético). Respaldo primero. */
+@utility resorte {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    background-color: var(--color-fondo);
+    /* Cabecera de 72 px en escritorio (+16 px de aire); bajo 1024 px la barra mide 60 px (regla de abajo). */
+    scroll-padding-top: 88px;
+    /* Tinta y no latón: el latón queda bajo 3:1 sobre el lienzo claro (WCAG 1.4.11) en casillas y radios. */
+    accent-color: var(--color-ink);
+    scrollbar-color: var(--color-mist) transparent;
+    /* El `:active` de botones y tarjetas da la respuesta al tacto. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (max-width: 1023.98px) {
+    html {
+      scroll-padding-top: 76px;
+    }
+  }
+
+  body {
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button:not(:disabled),
+  summary,
+  label:has(input),
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  input,
+  textarea {
+    caret-color: var(--color-brass-deep);
+  }
+
+  /* Foco que aterriza: anillo tinta de 2 px (13,7:1) y, en la separación de 3 px, un halo de latón que pintan
+     las sombras de botones, superficies y campos. Con la puerta abierta el anillo llega desde 9 px (abajo). */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 3px;
+    --anillo: 0 0 0 3px rgb(176 141 87 / 0.5);
+  }
+
+  /* Sobre tinta (pie, capítulo nocturno, paneles oscuros) el anillo pasa a latón (5,6:1). */
+  .en-tinta :focus-visible,
+  .en-tinta:focus-visible {
+    outline-color: var(--color-brass);
+  }
+
+  /* Sobre tinta, los controles nativos marcados van en latón (5,6:1). */
+  .en-tinta {
+    accent-color: var(--color-brass);
+  }
+
+  /* Enlaces de navegación (cabecera, menús, pie) y resúmenes sin sombra propia: el mismo halo de latón que
+     botones y campos, para que el recorrido con Tab hable un solo idioma. Los enlaces en prosa conservan solo el
+     anillo tinta (un marco relleno pesaría demasiado dentro de una línea de texto). Está en la capa base:
+     cualquier utilidad con su propia sombra (que ya lee `--anillo`) le gana. */
+  header a:focus-visible,
+  nav a:focus-visible,
+  summary:focus-visible {
+    box-shadow: var(--anillo);
+  }
+
+  ::selection {
+    background-color: var(--color-brass);
+    color: var(--color-ink);
+  }
+}
+
+/* ── Superficies ───────────────────────────────────────────────────────────── */
+
+/* Tarjeta de porcelana: papel cálido, borde fino y sombra suave. */
+@utility superficie {
+  background-color: var(--color-papel-alto);
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 2px 6px -2px rgb(15 27 45 / 0.08),
+    0 24px 48px -24px rgb(15 27 45 / 0.3);
+}
+
+/* Porcelana casi opaca (cabecera, paneles flotantes). Sin `backdrop-filter`: el desenfoque sobre la escena 3D,
+   que cambia en cada cuadro, costaba ~11 fps en la historia. Al 98,5 % el texto que pasa por debajo ya no
+   se distingue (al 94 % un titular todavía se leía a 3×). */
+@utility vidrio {
+  background-color: rgb(252 250 246 / 0.985);
+  box-shadow: inset 0 -1px 0 var(--color-linea);
+}
+
+@utility linea-fina {
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea);
+}
+
+/* ── Tipografía ────────────────────────────────────────────────────────────── */
+
+/* Titulares grotescos en mayúsculas, como en la referencia. */
+@utility titular {
+  font-family: var(--font-display);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+}
+
+/* Rótulos pequeños de navegación y etiquetas. */
+@utility micro {
+  font-size: var(--text-micro);
+  line-height: var(--text-micro--line-height);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Contadores técnicos de los pasos: 01 — 03. */
+@utility contador {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cifras que cambian o se comparan (contadores, cotas, porcentajes): de ancho fijo, no bailan. */
+@utility cifras {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Enlace entre corchetes: `[ SALIR ]` en el panel interno y la pantalla de error (la cabecera pública ya no lo usa). */
+@utility corchetes {
+  &::before {
+    content: "[\00a0";
+  }
+  &::after {
+    content: "\00a0]";
+  }
+}
+
+/* ── Atmósfera ─────────────────────────────────────────────────────────────── */
+
+/* Luz de día sobre el lienzo perla. */
+@utility fondo-luz {
+  background-image:
+    radial-gradient(1100px 620px at 72% -12%, rgb(255 255 255 / 0.75), transparent 70%),
+    radial-gradient(900px 520px at 0% 110%, rgb(15 27 45 / 0.05), transparent 70%);
+}
+
+/* Retícula de puntos de los planos técnicos. */
+@utility reticula-puntos {
+  background-image: radial-gradient(circle, rgb(15 27 45 / 0.38) 1.1px, transparent 1.6px);
+  background-size: 26px 26px;
+  background-position: 13px 13px;
+}
+
+/* ── Interacción ───────────────────────────────────────────────────────────── */
+
+/* Hover honesto: solo lo que se puede pulsar se eleva, y solo con un puntero que pase por encima (en táctil el
+   hover se quedaría pegado). El pulsado responde en todos los modos; el movimiento (transiciones y la subida
+   de 2 px) vive en la puerta, más abajo. La tarjeta de alerta no es clicable: no lleva esta utilidad. */
+@utility superficie-interactiva {
+  @media (hover: hover) {
+    &:hover {
+      box-shadow:
+        var(--anillo, 0 0 #0000),
+        inset 0 0 0 1px var(--color-linea-fuerte),
+        inset 0 1px 0 rgb(255 255 255 / 0.95),
+        0 4px 10px -4px rgb(15 27 45 / 0.12),
+        0 32px 60px -28px rgb(15 27 45 / 0.38);
+    }
+  }
+
+  &:active {
+    scale: 0.985;
+  }
+}
+
+/* ── Botón de latón ────────────────────────────────────────────────────────
+ * Latón como material, no como relleno: degradado vertical claro → medio → oscuro (tinta sobre los tres
+ * ≥ 4,9:1), filo de luz arriba, filo de sombra abajo y una sombra de contacto cálida. `::before` es la luz
+ * (un velo al pasar el cursor; con la puerta abierta y ratón, un brillo que sigue al puntero) y `::after` el
+ * destello que barre el botón una sola vez al entrar. Ambos van detrás de la etiqueta (`isolation`).
+ */
+@utility boton-laton {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  color: var(--color-ink);
+  background-color: var(--color-brass);
+  /* Un satinado que se apaga sin pliegue: una sola rampa larga (sin paradas a media altura, que dibujaban una
+     arista horizontal tipo «botón gel»). El bisel lo da el filo de luz de 1 px. */
+  background-image:
+    linear-gradient(180deg, rgb(255 251 240 / 0.14) 0%, rgb(255 251 240 / 0) 62%),
+    linear-gradient(180deg, var(--color-laton-claro) 0%, var(--color-brass) 55%, var(--color-laton-oscuro) 100%);
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 1px 0 rgb(255 250 235 / 0.55),
+    inset 0 -1px 0 rgb(90 68 34 / 0.35),
+    0 1px 2px rgb(15 27 45 / 0.2),
+    0 10px 22px -12px rgb(122 94 51 / 0.75);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  &::before {
+    background-image: linear-gradient(180deg, rgb(255 249 235 / 0.3), rgb(255 249 235 / 0.04) 75%);
+    opacity: 0;
+  }
+
+  &::after {
+    background-image: linear-gradient(
+      105deg,
+      transparent calc(var(--brillo) - 14%),
+      rgb(255 253 246 / 0.55) var(--brillo),
+      transparent calc(var(--brillo) + 14%)
+    );
+  }
+
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      box-shadow:
+        var(--anillo, 0 0 #0000),
+        inset 0 1px 0 rgb(255 250 235 / 0.65),
+        inset 0 -1px 0 rgb(90 68 34 / 0.35),
+        0 2px 4px rgb(15 27 45 / 0.18),
+        0 16px 30px -14px rgb(122 94 51 / 0.8);
+    }
+
+    &:hover:not(:disabled)::before {
+      opacity: 1;
+    }
+  }
+
+  &:active:not(:disabled) {
+    box-shadow:
+      var(--anillo, 0 0 #0000),
+      inset 0 1px 0 rgb(255 250 235 / 0.4),
+      inset 0 -1px 0 rgb(90 68 34 / 0.3),
+      0 1px 1px rgb(15 27 45 / 0.22),
+      0 6px 14px -10px rgb(122 94 51 / 0.7);
+  }
+}
+
+/* Etiqueta del botón magnético: un segundo plano que se mueve un 45 % más que el botón (paralaje). Un `span`
+   en línea no admite `translate`, por eso es `inline-flex`. */
+@utility boton-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Flecha del botón secundario: avanza 3 px con el cursor encima. */
+@utility boton-flecha {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  margin-inline-end: -0.25rem;
+}
+
+@utility boton-flecha-abajo {
+  margin-inline-end: -0.125rem;
+}
+
+/* Campo de texto: borde fino; al enfocarlo, borde tinta, halo de latón y el mismo anillo tinta que el resto
+   del sitio (nunca `outline: none`). */
+@utility campo {
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea-fuerte);
+
+  /* El anillo tinta se apoya sobre el borde (separación 0) y el halo de latón asoma 3 px por fuera. */
+  &:focus {
+    --anillo: 0 0 0 5px rgb(176 141 87 / 0.4);
+    box-shadow:
+      var(--anillo),
+      inset 0 0 0 1px var(--color-ink);
+  }
+
+  &:focus-visible {
+    outline-offset: 0;
+  }
+
+  &[aria-invalid="true"] {
+    box-shadow:
+      var(--anillo, 0 0 #0000),
+      inset 0 0 0 2px var(--color-ink);
+  }
+}
+
+/* «Saltar al contenido»: píldora tinta de 44 px que ocupa el lugar del logo dentro de la cabecera (centrada en
+   sus 72 px y alineada con su margen). El logo se aparta mientras la píldora tiene el foco (regla de abajo): no
+   queda nada tapado a medias ni pisa el contenido de la página. */
+@utility salto-contenido {
+  &:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  &:focus {
+    position: fixed;
+    /* Centrada en la barra: 72 px en escritorio, 60 px bajo 1024 px. */
+    top: 14px;
+    /* `100%` y no `100vw`: en un elemento fijo es el ancho sin la barra de desplazamiento, como la cabecera. */
+    left: max(24px, calc((100% - 1440px) / 2 + 24px));
+    z-index: 60;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: 44px;
+    padding-inline: 1.125rem 1.25rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-ink);
+    color: var(--color-ivory);
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow:
+      var(--anillo, 0 0 #0000),
+      0 10px 24px -14px rgb(15 27 45 / 0.55);
+
+    @media (max-width: 1023.98px) {
+      top: 8px;
+    }
+
+    /* Bajo 640 px la barra usa 16 px de margen (o el área segura); bajo 360 px la píldora se compacta. */
+    @media (max-width: 639.98px) {
+      left: max(16px, env(safe-area-inset-left));
+    }
+
+    @media (max-width: 359.98px) {
+      padding-inline: 0.875rem;
+      font-size: 0.8125rem;
+    }
+  }
+}
+
+/* Mientras la píldora tiene el foco, el logo de la cabecera le cede su sitio (pública y panel interno). */
+body:has(> .salto-contenido:focus) header > div > a:first-child {
+  opacity: 0;
+}
+
+/* ── Cabecera ──────────────────────────────────────────────────────────────
+ * Barra de 60 px en el teléfono y 72 px en escritorio. El material es `::before` (cero nodos): por defecto (sin JS,
+ * movimiento reducido, sin líneas de tiempo o bajo 1024 px) es la barra sólida de porcelana a todo el ancho. Con la
+ * puerta abierta, en escritorio y con `animation-timeline`, se convierte en la isla que aparece con el scroll (más
+ * abajo, en la puerta). `container-type` deja que el logo y las acciones midan su viaje hacia la isla en `cqw`.
+ */
+.cabecera {
+  height: 60px;
+  container-type: inline-size;
+  isolation: isolate;
+  /* Isla: 1200 px como máximo y 16 px de aire a cada lado; el logo entra 18 px en ella y las acciones, 6 px. */
+  --isla-w: min(1200px, 100cqw - 32px);
+  --isla-x: calc((100cqw - var(--isla-w)) / 2);
+  --fila-x: max(24px, calc((100cqw - 1440px) / 2 + 24px));
+  --cab-dx-logo: max(0px, calc(var(--isla-x) + 18px - var(--fila-x)));
+  --cab-dx-acciones: max(0px, calc(var(--isla-x) + 6px - var(--fila-x)));
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: rgb(252 250 246 / 0.985);
+    box-shadow: inset 0 -1px 0 var(--color-linea);
+  }
+
+  @media (min-width: 1024px) {
+    height: 72px;
+  }
+}
+
+.cabecera-fila {
+  padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+
+  @media (min-width: 640px) {
+    padding-inline: 24px;
+  }
+}
+
+/* Avance de lectura: un filete de latón (≥ 3:1 en `brass-deep`) que solo existe donde lo mueve una línea de tiempo.
+   El elemento es el riel y `::after`, el latón que lo llena (la escala no deforma el riel). */
+.cabecera-progreso {
+  display: none;
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  pointer-events: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: linear-gradient(90deg, var(--color-brass), var(--color-brass-deep));
+    transform-origin: left center;
+  }
+}
+
+/* Pastilla de hover: tinta al 6 %, detrás de los enlaces. La coloca `DirectorEscena` (`--nx --nw` en px y `--nv` de
+   0 a 1) solo con la puerta abierta y un ratón; sin esas variables no se ve. */
+.nav-principal {
+  isolation: isolate;
+}
+
+.nav-indicador {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: -1;
+  height: 36px;
+  width: calc(var(--nw, 0) * 1px);
+  translate: calc(var(--nx, 0) * 1px) -50%;
+  border-radius: var(--radius-pill);
+  background-color: rgb(15 27 45 / 0.06);
+  opacity: var(--nv, 0);
+  pointer-events: none;
+}
+
+/* Página actual: filete de 2 px en latón oscuro (4,8:1 sobre el lienzo). Con la puerta abierta viaja de un enlace a
+   otro en la transición de página (`view-transition-name`, en la puerta). */
+.nav-subrayado {
+  position: absolute;
+  inset: auto 16px 3px;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--color-brass-deep);
+  pointer-events: none;
+}
+
+/* Botón del menú: círculo de 44 px con dos trazos. */
+.boton-menu {
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 9999px;
+  color: var(--color-ink);
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea-fuerte);
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--color-papel-alto);
+    }
+  }
+
+  &:active {
+    scale: 0.94;
+  }
+
+  @media (min-width: 1024px) {
+    display: none;
+  }
+}
+
+.boton-menu-linea {
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  border-radius: 1px;
+  background-color: currentColor;
+}
+
+/* ── Menú del teléfono (popover nativo) ─────────────────────────────────────
+ * Bajo 640 px ocupa la pantalla entera, en papel alto; desde 640 px es un panel de 440 px a la derecha y el resto de
+ * la página queda bajo un velo tinta al 35 % (tocarlo cierra). Sin `@supports`: sin popover el botón no abre nada y la
+ * navegación completa sigue en el pie (`#pie-navegacion`). La coreografía vive en la puerta, más abajo.
+ */
+.menu-movil {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  padding: 0 max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--color-papel-alto);
+  color: var(--color-texto);
+  /* La dirección va fuera de `:popover-open`: al cerrar, `allow-discrete` mantiene `display: flex` durante el
+     fundido, y la hoja tiene que seguir en columna hasta el último fotograma. */
+  flex-direction: column;
+
+  &:popover-open {
+    display: flex;
+  }
+
+  &::backdrop {
+    background-color: rgb(15 27 45 / 0.35);
+  }
+
+  @media (min-width: 640px) {
+    inset: 0 0 0 auto;
+    width: min(440px, 100%);
+    padding-inline: 32px 24px;
+    box-shadow:
+      inset 1px 0 0 var(--color-linea),
+      -32px 0 80px -40px rgb(15 27 45 / 0.45);
+  }
+
+  /* En escritorio no hay botón de menú: si quedó abierto al ensanchar la ventana, no se ve. */
+  @media (min-width: 1024px) {
+    &:popover-open {
+      display: none;
+    }
+  }
+}
+
+/* Mientras el menú ocupa la pantalla, la página de atrás no se desplaza (en el panel, el velo ya la separa). */
+@media (max-width: 639.98px) {
+  html:has(#menu-movil:popover-open) {
+    overflow: hidden;
+  }
+}
+
+.menu-cabecera {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+
+  /* En el panel lateral el logo ya se ve en la cabecera de la página: solo queda el botón de cerrar. */
+  @media (min-width: 640px) {
+    justify-content: flex-end;
+
+    & > a {
+      display: none;
+    }
+  }
+}
+
+/* Cerrar: círculo tinta de 44 px en el mismo lugar que el botón del menú; sus dos trazos forman la cruz. */
+.menu-cerrar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 9999px;
+  background-color: var(--color-ink);
+  color: var(--color-ivory);
+  box-shadow: var(--anillo, 0 0 #0000);
+
+  &:active {
+    scale: 0.94;
+  }
+}
+
+.menu-cerrar-linea {
+  position: absolute;
+  top: calc(50% - 0.75px);
+  left: calc(50% - 9px);
+  width: 18px;
+  height: 1.5px;
+  border-radius: 1px;
+  background-color: currentColor;
+  rotate: 45deg;
+
+  & + & {
+    rotate: -45deg;
+  }
+}
+
+.menu-lista {
+  flex: 1 0 auto;
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+
+.menu-lista > li {
+  border-top: 1px solid var(--color-linea);
+
+  /* El último filete cierra la lista. */
+  &:last-child {
+    border-bottom: 1px solid var(--color-linea);
+  }
+}
+
+/* 8 px de aire a cada lado con el margen negativo equivalente: el numeral sigue alineado con el logo y el anillo de
+   foco, que va por dentro del borde del enlace, no toca ni el numeral ni el borde de la pantalla. */
+.menu-enlace {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+  margin-inline: -8px;
+  padding: 12px 8px;
+  font-family: var(--font-display);
+  /* 30 px desde 400 px de ancho; a 320 px baja a 24 px para que «Cómo funciona» quepa en una línea. */
+  font-size: clamp(22px, 7.5vw, 30px);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  color: var(--color-texto);
+  border-radius: var(--radius-badge);
+  box-shadow: var(--anillo, 0 0 #0000);
+
+  &:active {
+    background-color: rgb(15 27 45 / 0.04);
+  }
+
+  /* Foco: el anillo tinta de 2 px se apoya por dentro del borde y el halo de latón asoma 3 px hacia el texto (con
+     el anillo exterior de siempre, a 390 px quedaba pegado al numeral y casi en el borde de la pantalla). */
+  &:focus-visible {
+    outline-offset: -2px;
+    --anillo: inset 0 0 0 5px rgb(176 141 87 / 0.4);
+  }
+
+  @media (min-width: 640px) {
+    font-size: 26px;
+    min-height: 60px;
+  }
+
+  @media (max-height: 700px) {
+    font-size: min(25px, 7.5vw);
+    min-height: 54px;
+    padding-block: 8px;
+  }
+
+  @media (max-height: 580px) {
+    font-size: min(21px, 7.5vw);
+    min-height: 46px;
+  }
+}
+
+/* Numeral grabado en latón oscuro (5,8:1 sobre papel alto); decorativo, fuera del nombre accesible. */
+.menu-numero {
+  min-width: 22px;
+  /* Centrado ópticamente con las mayúsculas (el mono de 12 px tiene la altura de x más baja). */
+  translate: 0 -0.08em;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--color-brass-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.menu-texto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Flecha que avanza al pasar el cursor; en la página actual, un punto de latón en su lugar. */
+.menu-marca {
+  margin-inline-start: auto;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background-color: var(--color-apoyo);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.menu-enlace[aria-current="page"] .menu-numero {
+  color: var(--color-texto);
+}
+
+.menu-enlace[aria-current="page"] .menu-marca {
+  width: 8px;
+  height: 8px;
+  margin-inline-end: 4px;
+  border-radius: 9999px;
+  background-color: var(--color-brass);
+  -webkit-mask: none;
+  mask: none;
+}
+
+.menu-pie {
+  display: grid;
+  flex: none;
+  gap: 16px;
+
+  & > a {
+    height: 52px;
+    font-size: 15px;
+  }
+}
+
+.menu-legal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  font-size: 13px;
+  color: var(--color-apoyo);
+
+  & > p {
+    margin-inline-start: auto;
+  }
+}
+
+.menu-cuenta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 2px;
+  border-radius: var(--radius-badge);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-texto);
+  text-decoration: underline;
+  text-decoration-color: var(--color-linea-fuerte);
+  text-underline-offset: 4px;
+}
+
+/* ── Plano técnico ─────────────────────────────────────────────────────────── */
+
+.plano {
+  position: relative;
+  aspect-ratio: 1;
+  width: min(560px, 82vw);
+  margin-inline: auto;
+  transform-style: preserve-3d;
+  transform: rotateX(56deg) rotateZ(-36deg);
+}
+
+.plano-superficie {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--color-linea-fuerte);
+}
+
+.plano-cota {
+  position: absolute;
+  background-color: var(--color-linea-fuerte);
+}
+
+.plano-etiqueta {
+  position: absolute;
+  color: var(--color-apoyo);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* Gota de metal: gradiente cromado. Quieta (la deformación animaba `border-radius` y `background-position`,
+   fuera del compositor y sin pausa); el plano se reescribe en T4. */
+.gota {
+  position: absolute;
+  left: 22%;
+  top: 28%;
+  width: 56%;
+  height: 44%;
+  border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  background-image:
+    radial-gradient(60% 40% at 35% 30%, rgb(255 255 255 / 0.95), transparent 60%),
+    conic-gradient(
+      from 210deg at 50% 50%,
+      #F7F4EE,
+      #9AA3AD,
+      #FDFBF7,
+      #6F7884,
+      #EFE9DD,
+      #B8BFC7,
+      #F7F4EE
+    );
+  box-shadow:
+    inset 0 -18px 40px rgb(15 27 45 / 0.25),
+    inset 0 10px 24px rgb(255 255 255 / 0.7),
+    0 30px 50px -20px rgb(15 27 45 / 0.45);
+  transform: translateZ(26px);
+}
+
+/* ── Tablero (tableta con el panel de ejemplo) ─────────────────────────────── */
+
+.tablero {
+  position: relative;
+  width: min(820px, 100%);
+  aspect-ratio: 820 / 520;
+  margin-inline: auto;
+  container-type: inline-size;
+  transform-style: preserve-3d;
+}
+
+.tablero-marco {
+  position: absolute;
+  inset: 0;
+  border-radius: 4.4cqw;
+  background-image: linear-gradient(150deg, #FBFAF7, #E6E3DD 60%, #D8D5CF);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.9),
+    inset 0 -2px 0 rgb(15 27 45 / 0.08),
+    0 3cqw 6cqw -2cqw rgb(15 27 45 / 0.35),
+    0 0.4cqw 1cqw rgb(15 27 45 / 0.12);
+  transform-style: preserve-3d;
+}
+
+.tablero-pantalla {
+  position: absolute;
+  inset: 1.7cqw;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 1.6cqw;
+  padding: 2.2cqw;
+  border-radius: 3.2cqw;
+  background-color: var(--color-papel-alto);
+  box-shadow: inset 0 0 0 1px var(--color-linea);
+  transform-style: preserve-3d;
+}
+
+.tablero-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.9cqw;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.tablero-chip {
+  padding: 0.35cqw 0.9cqw;
+  border-radius: 0.8cqw;
+  background-color: var(--color-fondo);
+  font-size: 1.1cqw;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.tablero-cuerpo {
+  display: grid;
+  grid-template-columns: 22% 1fr;
+  gap: 2cqw;
+  min-height: 0;
+  transform-style: preserve-3d;
+}
+
+.tablero-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15cqw;
+  padding-right: 1.6cqw;
+  border-right: 1px solid var(--color-linea);
+  font-size: 1.25cqw;
+  color: var(--color-texto-suave);
+}
+
+.tablero-menu li {
+  display: flex;
+  align-items: center;
+  gap: 0.9cqw;
+}
+
+.tablero-menu svg {
+  width: 1.9cqw;
+  height: 1.9cqw;
+  flex: none;
+}
+
+.tablero-columnas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.6cqw;
+  transform-style: preserve-3d;
+}
+
+.tablero-columna {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1cqw;
+  transform-style: preserve-3d;
+}
+
+.tablero-columna-titulo {
+  font-size: 1.1cqw;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.tablero-tarjeta {
+  display: grid;
+  gap: 0.5cqw;
+  padding: 1.2cqw 1.3cqw;
+  border-radius: 1.6cqw;
+  color: var(--color-ink);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.35),
+    0 1.2cqw 2.4cqw -1cqw rgb(15 27 45 / 0.45);
+}
+
+.tablero-tarjeta-gana {
+  background-image: linear-gradient(150deg, #B2DDC6, #7FBF9E);
+}
+.tablero-tarjeta-condicionado {
+  background-image: linear-gradient(150deg, #DCC08F, #B08D57);
+}
+.tablero-tarjeta-pierde {
+  background-image: linear-gradient(150deg, #F2B39F, #E08A72);
+}
+
+.tablero-tarjeta-sector {
+  font-size: 1.3cqw;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tablero-tarjeta-evento {
+  font-size: 1.05cqw;
+  line-height: 1.3;
+}
+
+.tablero-tarjeta-chip {
+  justify-self: start;
+  padding: 0.25cqw 0.7cqw;
+  border-radius: 0.7cqw;
+  background-color: rgb(252 250 246 / 0.6);
+  font-size: 0.95cqw;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ── Historia (portada): disposición base, sin animación ──────────────────
+ * Sin soporte de animaciones ligadas al scroll, en pantallas chicas o con
+ * movimiento reducido, las piezas se apilan en orden de lectura.
+ */
+
+/* Las piezas 3D sobresalen: se recortan sin crear barra horizontal. */
+.historia {
+  overflow-x: clip;
+}
+
+/* Primer pintado ligero: hasta que la página termina de cargar, lo que queda bajo la historia no se maqueta ni se pinta
+   (salvo cerca de la pantalla). Medido en el perfil móvil lento (CPU ×4 y 4G lento), el primer pase de estilo y
+   maquetación de la portada entera retrasaba el LCP ~270 ms. Solo dura la carga: `DirectorEscena` marca
+   `data-maquetado` en `<html>` tras el evento `load` (o al primer clic en un ancla), porque con altos estimados los
+   saltos de ancla aterrizaban mal. Sin JavaScript (no hay `data-movimiento`) o si la dirección trae un ancla
+   (`:target`), no se aplica. */
+html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .historia ~ section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1100px;
+}
+
+/* ── Héroe «Horizonte vivo» (estructura y estado final) ──────────────────────
+ * El emblema hecho escena: un H1 monumental partido por una línea de horizonte a sangre, un sol de latón cortado
+ * por ella, un suelo en perspectiva con pulsos y la cinta de pie. Aquí vive el ESTADO FINAL (sol arriba, láminas de
+ * pie, sin pulsos): es lo que se ve con movimiento reducido, sin JS y al imprimir. La entrada vive en la puerta.
+ *
+ * `.h-hero` es una cuadrícula de filas con nombre (cielo · titulo · debajo · [aviso] · [alerta] · cinta) y
+ * columnas a sangre (`bleed`) con el marco de 1440 px dentro (`marco`). La fila `titulo` mide exactamente el H1, cuyas
+ * líneas tienen alto conocido (interlineado 0,9 y nunca se parten solas): `--c1` es la caja 1 con su margen y `--c2`
+ * la caja 2. Las piezas del horizonte son elementos de la misma cuadrícula (`Horizonte` es `display: contents`) que se
+ * apoyan en esos altos, así que la línea cae siempre entre las dos cajas, a cualquier ancho. Sin subcuadrículas: a
+ * CPU ×4 costaban ~250 ms de maquetación antes del primer pintado. La fila del cielo es `1fr`: absorbe lo que sobra y
+ * deja la cinta apoyada en el borde inferior de la primera pantalla (sin franja muerta). Las columnas se calculan con el ancho del propio héroe (sin unidades de contenedor: un
+ * `container-type` en `.historia` triplicaba la maquetación antes del primer pintado).
+ */
+.historia {
+  --cab: 72px;
+}
+
+.h-hero {
+  /* Posición del sol: número (para la trigonometría de los pulsos) y porcentaje (para el resto). */
+  --sol-n: 0.84;
+  --sol-x: calc(var(--sol-n) * 100%);
+  --sol: clamp(88px, 10.4vw, 200px);
+  --h1: clamp(3.1rem, min(9.6vw, 17svh), 9rem);
+  --cinta-alto: clamp(180px, 31svh, 360px);
+  /* Líneas de la caja 1 (2 en el teléfono: «DEL / HORIZONTE») y alto de cada caja con su margen. */
+  --l1: 1;
+  --c1: calc(var(--h1) * (0.9 * var(--l1) + 0.085));
+  --c2: var(--h1);
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    [bleed-start] minmax(24px, 1fr) [marco-start] minmax(0, 696px) [mitad] minmax(0, 696px)
+    [marco-end] minmax(24px, 1fr) [bleed-end];
+  /* La cinta cede hasta 150 px y el cielo hasta 64 px cuando la pantalla es baja (1280×720, 1024×768): en la historia
+     fija el héroe mide justo el escenario y la cinta nunca queda cortada por los pies. */
+  grid-template-rows:
+    [cielo] minmax(64px, 1fr) [titulo] auto [debajo] auto
+    [cinta] minmax(150px, var(--cinta-alto));
+  /* La primera pantalla entera (sin franja muerta), con un tope: en una ventana muy alta el cielo no crece sin fin y el
+     primer paso asoma debajo. */
+  min-height: min(calc(100svh - var(--cab)), 1240px);
+  /* A sangre desde el marco de la historia (en la historia fija, el héroe llena el escenario: ver más abajo). */
+  margin-inline: calc(50% - 50vw);
+}
+
+/* Todo lo que no es el horizonte va por encima de él (los elementos de la cuadrícula admiten z-index). */
+.h-hero > :not(.horizonte),
+.hero-debajo > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Horizonte: sus piezas son elementos de la cuadrícula del héroe, a sangre y por debajo del texto. */
+.horizonte {
+  display: contents;
+
+  & > * {
+    grid-column: bleed;
+    position: relative;
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+}
+
+/* Cielo: perla arriba (se funde con el lienzo bajo la cabecera transparente) que se entibia hacia el horizonte. */
+.h-cielo {
+  grid-row: cielo / debajo;
+  margin-bottom: var(--c2);
+  overflow: clip;
+}
+
+.h-cielo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(60% 120% at var(--sol-x) 100%, rgb(214 178 118 / 0.3), rgb(214 178 118 / 0) 62%),
+    linear-gradient(180deg, rgb(236 231 221 / 0) 0%, rgb(236 231 221 / 0.55) 62%, rgb(241 232 216 / 0.95) 100%);
+}
+
+.sol-halo {
+  position: absolute;
+  left: var(--sol-x);
+  top: 100%;
+  width: calc(var(--sol) * 6);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background-image: radial-gradient(
+    circle,
+    rgb(240 214 160 / 0.55) 0%,
+    rgb(214 178 118 / 0.22) 28%,
+    rgb(214 178 118 / 0) 60%
+  );
+}
+
+/* El sol: un disco de latón SIN anillo ni lente (no es el emblema). `.sol-paralaje` lleva el paralaje del cursor
+   (`translate`); `.sol`, el amanecer (`transform`): dos propiedades, nunca se pisan. */
+.sol-paralaje {
+  position: absolute;
+  left: var(--sol-x);
+  top: 100%;
+  width: var(--sol);
+  aspect-ratio: 1;
+  translate: -50% -46%;
+}
+
+.sol {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+  box-shadow:
+    0 0 0 1px rgb(122 94 51 / 0.18),
+    inset 0 -6px 14px -6px rgb(122 94 51 / 0.35),
+    0 0 60px 10px rgb(232 200 140 / 0.42);
+}
+
+/* Suelo en perspectiva: el punto de fuga está en el sol. La retícula es un plano tendido (`rotateX` de 82°) dentro de
+   la perspectiva del suelo, de 300 % de ancho (no 400 %) y 1600 px de fondo: la capa justa para cubrir el encuadre. */
+.h-suelo {
+  grid-row: titulo / -1;
+  margin-top: var(--c1);
+  overflow: clip;
+  perspective: 420px;
+  perspective-origin: var(--sol-x) 0;
+  /* Los pulsos se apuntan al sol con su ancho y su alto (`cqw`, `cqh`). Su contenido es todo absoluto, así que la
+     contención de tamaño no cambia nada de la maquetación. */
+  container-type: size;
+}
+
+/* La luz del suelo junto al horizonte, en su propia capa: se entibia con el cielo (sin ella, antes del amanecer se veía
+   un escalón de color donde todavía no hay línea). */
+.h-suelo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(180deg, rgb(240 232 218 / 0.85) 0%, rgb(236 231 221 / 0) 46%);
+}
+
+.h-reflejo {
+  position: absolute;
+  left: var(--sol-x);
+  top: 0;
+  width: calc(var(--sol) * 1.5);
+  height: 62%;
+  translate: -50% 0;
+  background-image: radial-gradient(50% 100% at 50% 0%, rgb(214 178 118 / 0.42), rgb(214 178 118 / 0) 100%);
+}
+
+/* La retícula solo existe en la franja de la cinta: es el suelo donde se apoya el «mercado» y nunca pasa bajo el
+   titular, la entrada ni los botones, que terminan donde empieza la fila de la cinta. Por eso el plano no nace en el
+   pie del suelo (como antes, girado desde su borde cercano y enmascarado en sus propias coordenadas, lo que proyectaba
+   la zona opaca justo bajo la entrada), sino en el filo superior de la franja: su borde lejano queda a `0,88 × cinta`
+   del pie y desde ahí se tiende hacia la cámara (`rotateX(82deg)` con origen arriba). En `z = 0` la perspectiva no
+   escala, así que ese borde cae exactamente ahí a cualquier alto de pantalla, y las líneas siguen fugando hacia el sol
+   (la perspectiva sigue en el suelo, con origen en el horizonte). Un solo degradado lo hace salir de la bruma. El
+   plano mide a lo sumo 400 px de fondo (a 420 px de profundidad llegaría al ojo); el suelo recorta lo que sobra. */
+.h-reticula {
+  position: absolute;
+  left: -100%;
+  top: calc(100% - 0.88 * var(--cinta-alto));
+  width: 300%;
+  height: min(1.3 * var(--cinta-alto), 400px);
+  transform-origin: 50% 0;
+  transform: rotateX(82deg);
+  background-image:
+    repeating-linear-gradient(90deg, rgb(122 94 51 / 0.16) 0 1.5px, transparent 1.5px 128px),
+    repeating-linear-gradient(0deg, rgb(122 94 51 / 0.08) 0 1.5px, transparent 1.5px 64px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 calc(0.32 * var(--cinta-alto)));
+  mask-image: linear-gradient(180deg, transparent 0, #000 calc(0.32 * var(--cinta-alto)));
+}
+
+/* Pulsos: trazos de luz planos (2D), cada uno apuntado al sol con `atan2` y lanzado hacia la cámara por su propio eje.
+   Sin máscaras ni planos 3D: la versión anterior (un plano inclinado de 4320×1600 px con dos máscaras) obligaba al
+   compositor a dibujar en cada cuadro una superficie del tamaño del héroe (medido con rasterizado por software: la
+   historia caía de ~37 a ~24 fps). La perspectiva se imita con la curva que acelera (`--ease-entrada`) y con el trazo,
+   que se alarga al acercarse.
+
+   Cada pulso cae en `--lx` (el centro de su grupo de láminas) a la altura `--ly` y solo recorre el último `--tramo` del
+   camino (en vertical): en escritorio, la franja de la cinta (nunca pasa por detrás de un texto); en la tableta, del sol
+   al filo de la alerta; en el teléfono, el hueco bajo los botones hasta el filo de la alerta. Quieto, no se ve. */
+.h-pulsos {
+  position: absolute;
+  inset: 0;
+  --pulsos-ancho: min(100cqw - 240px, 4.4 * var(--cinta-alto), 1240px);
+  --pulsos-y: calc(100cqh - 0.12 * var(--cinta-alto));
+  /* De la altura de las cabezas de las láminas (62 % de la cinta) a sus pies: por debajo de los botones y la entrada. */
+  --tramo: calc(0.5 * var(--cinta-alto));
+}
+
+.pulso {
+  --lx: calc(50cqw + (var(--p) - 0.5) * var(--pulsos-ancho));
+  --th: atan2(calc(var(--sol-n) * 100cqw - var(--lx)), var(--pulsos-y));
+  --largo: calc(var(--tramo) / cos(var(--th)));
+  position: absolute;
+  left: var(--lx);
+  bottom: calc(100cqh - var(--pulsos-y));
+  width: 6px;
+  height: calc(var(--largo) * 0.42);
+  margin-left: -3px;
+  border-radius: 6px;
+  transform-origin: 50% 100%;
+  transform: rotate(var(--th));
+  background-image: linear-gradient(
+    180deg,
+    rgb(176 141 87 / 0),
+    rgb(176 141 87 / 0.5) 62%,
+    #F2D69E 90%,
+    #FFF8E8 100%
+  );
+  box-shadow: 0 0 12px 2px rgb(240 210 150 / 0.4);
+  opacity: 0;
+}
+
+.pulso-0 { --p: 0.069; --k: 0; }
+.pulso-1 { --p: 0.182; --k: 1; }
+.pulso-2 { --p: 0.305; --k: 2; }
+.pulso-3 { --p: 0.434; --k: 3; }
+.pulso-4 { --p: 0.566; --k: 4; }
+.pulso-5 { --p: 0.695; --k: 5; }
+.pulso-6 { --p: 0.818; --k: 6; }
+.pulso-7 { --p: 0.931; --k: 7; }
+
+/* La línea de horizonte: filete de 1 px en latón, transparente en los extremos, con un punto incandescente bajo el
+   sol. Cae bajo la caja 1 del H1 (`--c1`), entre las dos cajas. */
+.h-horizonte {
+  grid-row: titulo;
+  align-self: start;
+  margin-top: var(--c1);
+  height: 1px;
+  translate: 0 -0.5px;
+  transform-origin: var(--sol-x) 50%;
+  background-image: linear-gradient(
+    90deg,
+    rgb(122 94 51 / 0) 0%,
+    rgb(122 94 51 / 0.5) 10%,
+    rgb(122 94 51 / 0.68) 64%,
+    #E2BF83 var(--sol-x),
+    rgb(122 94 51 / 0.6) 92%,
+    rgb(122 94 51 / 0) 100%
+  );
+}
+
+.h-horizonte::after {
+  content: "";
+  position: absolute;
+  left: var(--sol-x);
+  top: -3px;
+  width: calc(var(--sol) * 2.3);
+  height: 7px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background-image: radial-gradient(closest-side, rgb(255 240 205 / 0.95), rgb(255 240 205 / 0));
+}
+
+/* Grano de película estático: ruido en un SVG `data:` (permitido por `img-src`), sin modo de fusión. */
+.h-grano {
+  grid-row: 1 / -1;
+  opacity: 0.065;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.06 0 0 0 0 0.1 0 0 0 0 0.17 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Antetítulo: encima del H1, apoyado en el fondo de la fila del cielo. */
+.hero-antetitulo {
+  grid-column: marco;
+  grid-row: cielo;
+  align-self: end;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: clamp(14px, 1.5vw, 24px);
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--color-texto-suave);
+  text-wrap: balance;
+}
+
+/* El punto se alinea con la primera línea (en el teléfono el antetítulo ocupa dos). */
+.hero-punto {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: calc(0.675em - 3px);
+  border-radius: 50%;
+  background-color: var(--color-acento);
+}
+
+/* H1 monumental: ocupa la fila `titulo`. La caja 1 descansa sobre el horizonte y la 2 cuelga debajo; cada una recorta su línea (`overflow: clip`) con un margen para los remates, así que la línea sale
+   exactamente desde el horizonte. Nada de letras sueltas: se conserva el interletraje de Inter. */
+.h1-horizonte {
+  grid-column: marco;
+  grid-row: titulo;
+  /* Flex y no bloque: los márgenes de las dos cajas no se colapsan (el horizonte cae justo entre ellas). */
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: var(--h1);
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  color: var(--color-texto);
+}
+
+.h1-caja {
+  display: block;
+  overflow: clip;
+  overflow-clip-margin: 0.08em;
+}
+
+.h1-caja-1 {
+  margin-bottom: 0.085em;
+}
+
+.h1-caja-2 {
+  margin-top: 0.1em;
+}
+
+/* Ninguna línea se parte sola (el horizonte depende de cuántas hay): en el teléfono, «DEL» y «HORIZONTE» van en
+   dos líneas a propósito. */
+.h1-linea-1,
+.h1-palabra {
+  white-space: nowrap;
+}
+
+.h1-linea-1,
+.h1-linea-2 {
+  display: block;
+}
+
+/* «AL MERCADO.» nunca se parte (en el teléfono, «DEL HORIZONTE» sí: tres líneas con el horizonte entre la 2 y la 3). */
+.h1-linea-2 {
+  white-space: nowrap;
+}
+
+/* Entrada en Source Serif 4 (sin cursiva), 19 a 22 px, a lo sumo 44ch. */
+.hero-texto {
+  max-width: 44ch;
+  font-family: var(--font-serif);
+  font-size: clamp(1.1875rem, 1.06rem + 0.4vw, 1.375rem);
+  line-height: 1.5;
+  color: var(--color-texto-suave);
+}
+
+.hero-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* «Desliza»: mono de 12 px y una gota de 1 px que baja en bucle (contenedor con `data-bucle`). Solo en escritorio. */
+.hero-desliza {
+  display: none;
+}
+
+.hero-desliza-asomo {
+  display: block;
+}
+
+.hero-gota {
+  display: block;
+  width: 1px;
+  height: 28px;
+  margin: 8px auto 0;
+  transform-origin: top;
+  background-image: linear-gradient(var(--color-texto), rgb(15 27 45 / 0));
+}
+
+/* ── La cinta («mercado») ──────────────────────────────────────────────────
+ * Contenedor de tamaño: las láminas se miden en `cqh` (la fila de la cinta), así que la cinta conserva sus
+ * proporciones de 720 a 1080 px de alto. La pista es un plano 3D (`preserve-3d`, sin `overflow`, opacidad ni
+ * filtros en sus ancestros 3D) que mide 4,4 veces su alto, centrado y sin pasar del marco.
+ */
+.cinta {
+  grid-column: bleed;
+  grid-row: cinta;
+  container-type: size;
+  perspective: calc(var(--cinta-alto) * 5.6);
+  perspective-origin: 50% 0%;
+  pointer-events: none;
+}
+
+/* Sombra de contacto común: la cinta se apoya en el suelo. */
+.cinta::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4cqh;
+  width: min(100cqw - 240px, 440cqh, 1240px);
+  height: 18cqh;
+  translate: -50% 0;
+  border-radius: 50%;
+  background-image: radial-gradient(closest-side, rgb(15 27 45 / 0.16), rgb(15 27 45 / 0));
+}
+
+.cinta-pista {
+  position: absolute;
+  inset: 0;
+  /* Deja 120 px a cada lado: «Desliza» vive en la esquina inferior derecha sin pisar la última lámina. */
+  width: min(100cqw - 240px, 440cqh, 1240px);
+  margin-inline: auto;
+  transform-style: preserve-3d;
+}
+
+/* Lámina: canto (sombra interior de 5 px), filete de luz arriba a la izquierda, sombra de contacto y brillo
+   especular en `::after` (con la puerta abierta y un ratón, sigue a `--cx`). 19cqh de ancho: con 12,5 quedaban finas
+   y separadas, y la cinta se leía como un gráfico de barras; así cada lámina tiene cuerpo y las vecinas casi se tocan
+   en perspectiva, sin volver a las astillas (el giro sigue entre 30° y 64°). */
+.lamina {
+  position: absolute;
+  left: var(--x);
+  bottom: 12cqh;
+  width: 19cqh;
+  height: var(--alto);
+  margin-left: -9.5cqh;
+  border-radius: 2.6cqh;
+  transform-origin: 50% 100%;
+  transform: translateZ(var(--z)) rotateY(var(--giro));
+  background-image: linear-gradient(160deg, var(--c1), var(--c2));
+  box-shadow:
+    inset 1px 1px 0 rgb(255 255 255 / 0.5),
+    inset -5px 0 0 rgb(15 27 45 / 0.14),
+    inset 0 -1px 0 rgb(15 27 45 / 0.12),
+    0 18px 24px -18px rgb(15 27 45 / 0.55);
+}
+
+.lamina::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(100deg, rgb(255 255 255 / 0) 35%, rgb(255 255 255 / 0.4) 50%, rgb(255 255 255 / 0) 65%);
+  opacity: 0.35;
+}
+
+.lamina-gana { --c1: #A3D6BC; --c2: #5E9F7F; }
+.lamina-condicionado { --c1: #D2B07A; --c2: #93723F; }
+.lamina-pierde { --c1: #F0AE98; --c2: #C46C54; }
+.lamina-tinta { --c1: #2E405A; --c2: #0F1B2D; }
+.lamina-bruma { --c1: #B6BFCB; --c2: #7C8796; }
+
+/* Posición en la pista, profundidad, giro (30°–64°: nunca de canto; menor a la derecha, donde la perspectiva ya las
+   gira), altura y llegada de su pulso (grupo de 3). */
+.lamina-0 { --x: 2%; --z: -15cqh; --giro: 62deg; --alto: 34cqh; --d: 1950ms; }
+.lamina-1 { --x: 6.17%; --z: -9cqh; --giro: 63deg; --alto: 39.3cqh; --d: 2020ms; }
+.lamina-2 { --x: 10.35%; --z: -3.1cqh; --giro: 63.6deg; --alto: 38.8cqh; --d: 2090ms; }
+.lamina-3 { --x: 14.52%; --z: 2.5cqh; --giro: 63.5deg; --alto: 39.8cqh; --d: 2250ms; }
+.lamina-4 { --x: 18.7%; --z: 7.9cqh; --giro: 62.4deg; --alto: 45.9cqh; --d: 2320ms; }
+.lamina-5 { --x: 22.87%; --z: 12.8cqh; --giro: 60.4deg; --alto: 48.9cqh; --d: 2390ms; }
+.lamina-6 { --x: 27.04%; --z: 17.2cqh; --giro: 57.4deg; --alto: 47.1cqh; --d: 2550ms; }
+.lamina-7 { --x: 31.22%; --z: 20.9cqh; --giro: 53.9deg; --alto: 49.1cqh; --d: 2620ms; }
+.lamina-8 { --x: 35.39%; --z: 24.1cqh; --giro: 50.1deg; --alto: 54.3cqh; --d: 2690ms; }
+.lamina-9 { --x: 39.57%; --z: 26.5cqh; --giro: 46.4deg; --alto: 54.2cqh; --d: 2850ms; }
+.lamina-10 { --x: 43.74%; --z: 28.1cqh; --giro: 43.2deg; --alto: 51.5cqh; --d: 2920ms; }
+.lamina-11 { --x: 47.91%; --z: 28.9cqh; --giro: 40.8deg; --alto: 54cqh; --d: 2990ms; }
+.lamina-12 { --x: 52.09%; --z: 28.9cqh; --giro: 39.4deg; --alto: 56.9cqh; --d: 3150ms; }
+.lamina-13 { --x: 56.26%; --z: 28.1cqh; --giro: 39deg; --alto: 53.7cqh; --d: 3220ms; }
+.lamina-14 { --x: 60.43%; --z: 26.5cqh; --giro: 39.4deg; --alto: 50.7cqh; --d: 3290ms; }
+.lamina-15 { --x: 64.61%; --z: 24.1cqh; --giro: 40.3deg; --alto: 53cqh; --d: 3450ms; }
+.lamina-16 { --x: 68.78%; --z: 20.9cqh; --giro: 41.4deg; --alto: 52.9cqh; --d: 3520ms; }
+.lamina-17 { --x: 72.96%; --z: 17.2cqh; --giro: 42.1deg; --alto: 47.4cqh; --d: 3590ms; }
+.lamina-18 { --x: 77.13%; --z: 12.8cqh; --giro: 42.3deg; --alto: 45cqh; --d: 3750ms; }
+.lamina-19 { --x: 81.3%; --z: 7.9cqh; --giro: 41.6deg; --alto: 46.6cqh; --d: 3820ms; }
+.lamina-20 { --x: 85.48%; --z: 2.5cqh; --giro: 39.8deg; --alto: 43.4cqh; --d: 3890ms; }
+.lamina-21 { --x: 89.65%; --z: -3.1cqh; --giro: 37.2deg; --alto: 37.1cqh; --d: 4050ms; }
+.lamina-22 { --x: 93.83%; --z: -9cqh; --giro: 33.8deg; --alto: 36cqh; --d: 4120ms; }
+.lamina-23 { --x: 98%; --z: -15cqh; --giro: 30deg; --alto: 36.6cqh; --d: 4190ms; }
+
+/* Rótulos de temas: a la profundidad de su lámina y de frente, con una guía de 1 px que baja hasta ella. */
+.cinta-rotulo {
+  position: absolute;
+  left: var(--x);
+  bottom: calc(12cqh + var(--alto) + 1.5cqh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%) translateZ(var(--z));
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--color-apoyo);
+  white-space: nowrap;
+}
+
+.cinta-rotulo > span {
+  padding: 5px 8px;
+  border-radius: var(--radius-badge);
+  background-color: rgb(252 250 246 / 0.92);
+  box-shadow:
+    inset 0 0 0 1px var(--color-linea),
+    0 6px 14px -10px rgb(15 27 45 / 0.4);
+}
+
+.cinta-rotulo::after {
+  content: "";
+  width: 1px;
+  height: var(--guia);
+  transform-origin: bottom;
+  background-image: linear-gradient(var(--color-brass-deep), rgb(122 94 51 / 0.15));
+}
+
+.rotulo-0 { --x: 18.7%; --z: 7.9cqh; --alto: 45.9cqh; --guia: 11cqh; --dr: 2420ms; }
+.rotulo-1 { --x: 43.74%; --z: 28.1cqh; --alto: 51.5cqh; --guia: 6cqh; --dr: 3020ms; }
+.rotulo-2 { --x: 68.78%; --z: 20.9cqh; --alto: 52.9cqh; --guia: 9cqh; --dr: 3620ms; }
+.rotulo-3 { --x: 93.83%; --z: -9cqh; --alto: 36cqh; --guia: 13cqh; --dr: 4220ms; }
+
+/* ── Alerta viva (solo bajo 1024 px) ───────────────────────────────────────
+ * Decorativa y con los datos reales de la alerta de ejemplo de Ormuz (`AlertaViva.tsx`). Porcelana con un filo de
+ * latón arriba (donde «aterrizan» los pulsos). Los colores de estado solo como relleno, con texto tinta.
+ */
+.alerta-viva {
+  display: none;
+}
+
+.av-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.av-tema {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-apoyo);
+}
+
+.av-ejemplo {
+  padding: 3px 8px;
+  border-radius: var(--radius-badge);
+  background-color: var(--color-fondo);
+  box-shadow: inset 0 0 0 1px var(--color-linea);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-texto-suave);
+}
+
+.av-titulo {
+  margin-top: 10px;
+  font-family: var(--font-serif);
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--color-texto);
+  text-wrap: balance;
+}
+
+.av-fuente {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--color-texto-suave);
+}
+
+/* Check en un círculo tinta (dibujado con bordes: sin nodos extra). */
+.av-check,
+.av-sello-marca {
+  position: relative;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--color-ink);
+}
+
+.av-check::after,
+.av-sello-marca::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 4px;
+  width: 5px;
+  height: 8px;
+  border: solid var(--color-papel-alto);
+  border-width: 0 1.5px 1.5px 0;
+  rotate: 45deg;
+}
+
+.av-tipo {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--color-linea-fuerte);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-texto);
+}
+
+.av-confianza {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-block: 12px;
+  border-block: 1px solid var(--color-linea);
+}
+
+.av-rotulo {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-apoyo);
+}
+
+.av-medidor {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+/* Segmento: pista en `fondo-sombra` y relleno tinta en `::after` (se llena de izquierda a derecha). */
+.av-segmento {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: clip;
+  background-color: var(--color-fondo-sombra);
+}
+
+.av-lleno::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  background-color: var(--color-ink);
+}
+
+.av-nivel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.av-filas {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.av-fila {
+  display: grid;
+  grid-template-columns: 7.6rem minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.av-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-badge);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.av-chip-gana {
+  background-color: var(--color-gana);
+}
+.av-chip-condicionado {
+  background-color: var(--color-condicionado);
+}
+.av-chip-pierde {
+  background-color: var(--color-pierde);
+}
+
+.av-sector {
+  display: grid;
+  gap: 2px;
+  padding-top: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--color-texto);
+}
+
+/* La condición no cabe en el teléfono: solo desde 640 px. */
+.av-condicion {
+  display: none;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-texto-suave);
+}
+
+.av-sello {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-linea);
+  font-size: 13px;
+  color: var(--color-texto-suave);
+}
+
+.av-sello-marca {
+  width: 22px;
+  height: 22px;
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--color-brass-deep);
+}
+
+.av-sello-marca::after {
+  left: 8px;
+  top: 5px;
+  border-color: var(--color-brass-deep);
+}
+
+.av-organismos {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-apoyo);
+  white-space: nowrap;
+}
+
+/* ── El héroe por anchos ─────────────────────────────────────────────────── */
+
+/* Escritorio: el H1 a todo el marco, la entrada a la derecha desde el horizonte (sin pisar «AL MERCADO.») y la
+   acción bajo la línea 2. La cinta, de pie en la última fila; «Desliza», abajo a la derecha. */
+@media (min-width: 1024px) {
+  .hero-debajo {
+    display: contents;
+  }
+
+  .hero-texto {
+    grid-column: marco;
+    grid-row: debajo;
+    align-self: start;
+    justify-self: end;
+    width: min(440px, 100% - 6.4 * var(--h1) - 40px);
+    /* Sube junto a la línea 2, desde el horizonte, sin agrandar la fila del título (que debe medir lo que el H1). */
+    margin-top: calc(clamp(22px, 2.4vw, 36px) - var(--c2));
+  }
+
+  .hero-mando {
+    grid-column: marco;
+    grid-row: debajo;
+    justify-self: start;
+    margin-top: clamp(26px, 2.8vw, 44px);
+  }
+
+  .hero-aviso {
+    grid-column: marco;
+    grid-row: cielo;
+    align-self: start;
+  }
+
+  .hero-desliza {
+    display: block;
+    grid-column: marco;
+    grid-row: cinta;
+    justify-self: end;
+    align-self: end;
+    margin-bottom: 22px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-apoyo);
+    pointer-events: none;
+  }
+}
+
+/* Teléfono y tableta: la alerta viva en el primer pliegue. El sol se corre al 86 %: con «DEL HORIZONTE» en una línea
+   (tableta), el H1 llega al 75 % del ancho y el disco queda a 38–65 px del final, como en escritorio (al 80 % lo
+   tocaba a 768 px). */
+@media (max-width: 1023.98px) {
+  .historia {
+    --cab: 60px;
+  }
+
+  .h-hero {
+    --sol-n: 0.86;
+    --cinta-alto: clamp(150px, 24svh, 240px);
+    grid-template-rows:
+      [cielo] minmax(72px, 1fr) [titulo] auto [debajo] auto [aviso] auto
+      [cinta] var(--cinta-alto);
+  }
+
+  .hero-aviso {
+    grid-column: marco;
+    grid-row: aviso;
+  }
+
+  .hero-debajo {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-top: 24px;
+  }
+
+  .hero-texto {
+    max-width: 52ch;
+  }
+
+  .alerta-viva {
+    display: block;
+    padding: 18px 18px 16px;
+    border-radius: var(--radius-card);
+    background-color: var(--color-papel-alto);
+    box-shadow:
+      inset 0 0 0 1px var(--color-linea),
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      0 2px 6px -2px rgb(15 27 45 / 0.08),
+      0 24px 48px -24px rgb(15 27 45 / 0.32);
+  }
+
+  /* Filo de latón arriba: donde «aterrizan» los pulsos del horizonte. */
+  .alerta-viva::before {
+    content: "";
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    top: 0;
+    height: 1px;
+    background-image: linear-gradient(90deg, rgb(176 141 87 / 0), rgb(176 141 87 / 0.9) 50%, rgb(176 141 87 / 0));
+  }
+
+  /* La cinta, encuadrada entera en el marco: los tres grupos (gana · condicionado · pierde) a la vista, sin cortes en
+     los bordes. La pista es más estrecha que sus 4,4 alturas de escritorio, así que las láminas quedan más juntas. */
+  .cinta-pista {
+    width: calc(100cqw - 40px);
+  }
+
+  .cinta::before {
+    width: calc(100cqw - 40px);
+  }
+
+  .cinta-rotulo {
+    display: none;
+  }
+
+  /* Aquí la cinta queda bajo la alerta, fuera del primer pliegue: no se maqueta ni se pinta hasta acercarse (su tamaño
+     ya lo fija la fila). */
+  .cinta {
+    content-visibility: auto;
+  }
+
+  /* El grano no se aprecia en una pantalla de alta densidad y su ruido (`feTurbulence`) se rasteriza a 3×: medido en el
+     perfil lento, retrasaba el primer pintado. Solo en escritorio. */
+  .h-grano {
+    display: none;
+  }
+}
+
+/* Tableta (768–1023 px): dos columnas bajo el horizonte, texto y acciones a la izquierda y la alerta a la derecha. */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .hero-debajo {
+    grid-column: marco-start / mitad;
+    grid-row: debajo;
+    padding-right: 12px;
+  }
+
+  /* La alerta abarca también la fila del aviso: con movimiento reducido el aviso cabe a su izquierda, bajo las acciones
+     y alineado con su pie, y no empuja nada (sin el aviso, la fila no añade alto: la alerta ya lo ocupa). */
+  .hero-aviso {
+    grid-column: marco-start / mitad;
+    align-self: end;
+    padding-right: 12px;
+  }
+
+  /* El margen va en el aviso (no en su fila): oculto, no suma alto. */
+  .hero-aviso .aviso-mov {
+    margin-bottom: 32px;
+  }
+
+  .alerta-viva {
+    grid-column: mitad / marco-end;
+    grid-row: debajo / cinta;
+    align-self: start;
+    margin: 24px 0 32px 12px;
+  }
+
+  .av-condicion {
+    display: block;
+  }
+
+  /* Los pulsos bajan del sol y aterrizan en el filo de la alerta (columna derecha, 24 px bajo la línea 2). */
+  .h-pulsos {
+    --pulsos-ancho: calc(100cqw - 48px);
+    --pulsos-y: calc(var(--c2) + 24px);
+    --tramo: var(--pulsos-y);
+  }
+
+  .pulso-0 { --p: 0.56; }
+  .pulso-1 { --p: 0.615; }
+  .pulso-2 { --p: 0.67; }
+  .pulso-3 { --p: 0.725; }
+  .pulso-4 { --p: 0.78; }
+  .pulso-5 { --p: 0.835; }
+  .pulso-6 { --p: 0.89; }
+  .pulso-7 { --p: 0.945; }
+}
+
+/* Teléfono: botones a todo el ancho y la alerta bajo ellos, asomando en el primer pliegue. El suelo termina en el
+   borde superior de la alerta: los pulsos llegan a su filo de latón. */
+@media (max-width: 767.98px) {
+  /* El H1 va en tres líneas y «HORIZONTE», la que toca el horizonte, mide 5,5 em: termina al 75 % del ancho. Con el
+     sol al 80 % la «E» le tapaba unos 20 px. Al 96 %, el disco queda a 33–41 px de la «E» (de 360 a 414 px) y el borde
+     derecho le corta un tercio: un sol que entra en cuadro, cortado por el horizonte y por el marco, nunca tangente. */
+  .h-hero {
+    --h1: clamp(2.3rem, 12.6vw, 4.4rem);
+    --sol: clamp(76px, 22vw, 120px);
+    --sol-n: 0.96;
+    /* El aviso de movimiento reducido va después de la alerta: el primer pliegue es el mismo en los dos modos. La cinta,
+       encuadrada entera en el ancho, es más baja que en la tableta. */
+    --cinta-alto: clamp(120px, 17svh, 170px);
+    grid-template-rows:
+      [cielo] minmax(72px, 1fr) [titulo] auto [debajo] auto [alerta] auto [aviso] auto
+      [cinta] var(--cinta-alto);
+    --l1: 2;
+  }
+
+  .hero-aviso .aviso-mov {
+    margin-top: 0;
+    margin-bottom: 32px;
+  }
+
+  /* Con la cinta encuadrada en 350 px, las láminas van más juntas: algo más finas, para que se lean una a una. */
+  .lamina {
+    width: 14cqh;
+    margin-left: -7cqh;
+  }
+
+  .h-suelo {
+    grid-row: titulo / alerta;
+  }
+
+  /* El suelo llega hasta el filo de la alerta (que deja 28 px bajo los botones): los pulsos solo recorren ese hueco,
+     repartidos a lo ancho, y se apagan en el filo de latón. */
+  .h-suelo {
+    margin-bottom: -28px;
+  }
+
+  .h-pulsos {
+    --pulsos-ancho: calc(100cqw - 48px);
+    --pulsos-y: 100cqh;
+    /* Menos que el hueco (28 px) con su estela: con 34 px la cabeza asomaba sobre el borde del botón «Ver una alerta». */
+    --tramo: 20px;
+  }
+
+  .pulso-0 { --p: 0.08; }
+  .pulso-1 { --p: 0.2; }
+  .pulso-2 { --p: 0.32; }
+  .pulso-3 { --p: 0.44; }
+  .pulso-4 { --p: 0.56; }
+  .pulso-5 { --p: 0.68; }
+  .pulso-6 { --p: 0.8; }
+  .pulso-7 { --p: 0.92; }
+
+  /* Sin retícula: aquí el suelo va del horizonte al filo de la alerta y el texto lo ocupa entero (la retícula pasaba
+     por detrás del párrafo y de los botones). Quedan el sol, su reflejo, la luz del suelo y los pulsos en el hueco
+     bajo los botones. Además ahorra una capa 3D que a 3× pesaba en el primer pintado. */
+  .h-reticula {
+    display: none;
+  }
+
+  .h1-palabra {
+    display: block;
+  }
+
+  .hero-antetitulo {
+    gap: 8px;
+    font-size: 13px;
+    letter-spacing: -0.005em;
+  }
+
+  .hero-debajo {
+    grid-column: marco;
+    grid-row: debajo;
+  }
+
+  .hero-acciones {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .alerta-viva {
+    grid-column: marco;
+    grid-row: alerta;
+    margin-block: 28px 24px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 767.98px) {
+  .av-condicion {
+    display: block;
+  }
+}
+
+/* Teléfonos bajos (360×740 y similares, muy comunes en Android): el cielo cede hasta 48 px, la entrada se aprieta un poco
+   (interlineado 1,42) y los espacios bajo el horizonte pasan de 24 a 18 px. Así la alerta asoma unos 40 px más en el
+   primer pliegue sin tocar el tamaño del H1 ni el de la entrada. */
+@media (max-width: 767.98px) and (max-height: 799.98px) {
+  .h-hero {
+    grid-template-rows:
+      [cielo] minmax(48px, 1fr) [titulo] auto [debajo] auto [alerta] auto [aviso] auto
+      [cinta] var(--cinta-alto);
+  }
+
+  .hero-antetitulo {
+    margin-bottom: 12px;
+  }
+
+  .hero-texto {
+    line-height: 1.42;
+  }
+
+  .hero-debajo {
+    gap: 18px;
+    margin-top: 18px;
+  }
+}
+
+/* Historia: las demás piezas siguen en el marco de 1440 px. */
+.historia-escenario {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(40px, 6vw, 72px);
+  padding: 0 max(24px, (100% - 1392px) / 2) 96px;
+  perspective: 1600px;
+}
+
+.h-plano {
+  margin-block: -6%;
+}
+
+.h-tablero {
+  margin-block: 2% 7%;
+  transform: rotateX(30deg) rotateZ(-12deg) scale(0.86);
+}
+
+/* ── Texto en movimiento: estructura ──────────────────────────────────────
+ * `TextoEnMovimiento` parte el texto en unidades (letras o palabras). La CSP no admite `style`
+ * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 79; `MAX_INDICE`).
+ * La máscara `.kx-m` recorta lo que sube desde debajo de la línea; su relleno negativo deja
+ * espacio a las tildes de las mayúsculas sin alterar el interlineado.
+ */
+.kx-visual {
+  display: inline;
+}
+
+.kx-m {
+  display: inline-block;
+  overflow: clip;
+  padding: 0.14em 0.05em;
+  margin: -0.14em -0.05em;
+  vertical-align: top;
+}
+
+.kx-p,
+.kx-l {
+  display: inline-block;
+}
+
+.kx-i-0 { --i: 0; } .kx-i-1 { --i: 1; } .kx-i-2 { --i: 2; } .kx-i-3 { --i: 3; } .kx-i-4 { --i: 4; } .kx-i-5 { --i: 5; } .kx-i-6 { --i: 6; } .kx-i-7 { --i: 7; }
+.kx-i-8 { --i: 8; } .kx-i-9 { --i: 9; } .kx-i-10 { --i: 10; } .kx-i-11 { --i: 11; } .kx-i-12 { --i: 12; } .kx-i-13 { --i: 13; } .kx-i-14 { --i: 14; } .kx-i-15 { --i: 15; }
+.kx-i-16 { --i: 16; } .kx-i-17 { --i: 17; } .kx-i-18 { --i: 18; } .kx-i-19 { --i: 19; } .kx-i-20 { --i: 20; } .kx-i-21 { --i: 21; } .kx-i-22 { --i: 22; } .kx-i-23 { --i: 23; }
+.kx-i-24 { --i: 24; } .kx-i-25 { --i: 25; } .kx-i-26 { --i: 26; } .kx-i-27 { --i: 27; } .kx-i-28 { --i: 28; } .kx-i-29 { --i: 29; } .kx-i-30 { --i: 30; } .kx-i-31 { --i: 31; }
+.kx-i-32 { --i: 32; } .kx-i-33 { --i: 33; } .kx-i-34 { --i: 34; } .kx-i-35 { --i: 35; } .kx-i-36 { --i: 36; } .kx-i-37 { --i: 37; } .kx-i-38 { --i: 38; } .kx-i-39 { --i: 39; }
+.kx-i-40 { --i: 40; } .kx-i-41 { --i: 41; } .kx-i-42 { --i: 42; } .kx-i-43 { --i: 43; } .kx-i-44 { --i: 44; } .kx-i-45 { --i: 45; } .kx-i-46 { --i: 46; } .kx-i-47 { --i: 47; }
+.kx-i-48 { --i: 48; } .kx-i-49 { --i: 49; } .kx-i-50 { --i: 50; } .kx-i-51 { --i: 51; } .kx-i-52 { --i: 52; } .kx-i-53 { --i: 53; } .kx-i-54 { --i: 54; } .kx-i-55 { --i: 55; }
+.kx-i-56 { --i: 56; } .kx-i-57 { --i: 57; } .kx-i-58 { --i: 58; } .kx-i-59 { --i: 59; } .kx-i-60 { --i: 60; } .kx-i-61 { --i: 61; } .kx-i-62 { --i: 62; } .kx-i-63 { --i: 63; }
+.kx-i-64 { --i: 64; } .kx-i-65 { --i: 65; } .kx-i-66 { --i: 66; } .kx-i-67 { --i: 67; } .kx-i-68 { --i: 68; } .kx-i-69 { --i: 69; } .kx-i-70 { --i: 70; } .kx-i-71 { --i: 71; }
+.kx-i-72 { --i: 72; } .kx-i-73 { --i: 73; } .kx-i-74 { --i: 74; } .kx-i-75 { --i: 75; } .kx-i-76 { --i: 76; } .kx-i-77 { --i: 77; } .kx-i-78 { --i: 78; } .kx-i-79 { --i: 79; }
+
+/* ── Movimiento ────────────────────────────────────────────────────────────
+ * Las animaciones son CSS; las enciende la puerta `html[data-movimiento="completo"]`, que escribe el motor
+ * (`src/lib/movimiento/motor.ts`) antes del primer pintado: por defecto manda `prefers-reduced-motion`, y
+ * la persona puede elegir lo contrario. Sin JavaScript no hay puerta y la página queda quieta y completa.
+ * Lo ligado al scroll, además, solo donde el navegador lo soporta (`@supports (animation-timeline: view())`);
+ * donde no, el motor marca `data-timeline="no"` y las mismas piezas se animan una vez al entrar en pantalla.
+ * `src/lib/design/motion.test.ts` vigila estas reglas.
+ */
+
+@keyframes otea-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes otea-revelar {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Historia: cada pieza recorre la línea de tiempo del scroll (0–100 %). */
+/* `pointer-events` también se anima: lo que se desvanece deja de interceptar clics (un bloque
+   invisible no debe tapar botones ni enlaces de otro paso). Foco y lectores de pantalla no cambian. */
+@keyframes h-hero {
+  0%,
+  14% {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  24%,
+  100% {
+    opacity: 0;
+    transform: translateY(-56px);
+    pointer-events: none;
+  }
+}
+
+@keyframes h-cinta {
+  0%,
+  13% {
+    opacity: 1;
+    transform: none;
+  }
+  25% {
+    opacity: 0.45;
+    transform: translateY(16%) rotateX(66deg) scale(0.74);
+  }
+  31%,
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(22%) rotateX(82deg) scale(0.6);
+  }
+}
+
+@keyframes h-plano {
+  0%,
+  17% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(8deg) rotateZ(-6deg) scale(0.55);
+  }
+  31%,
+  56% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) scale(1);
+  }
+  78%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) scale(1.08);
+  }
+}
+
+@keyframes h-gota {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translateZ(0) scale(0.3);
+  }
+  32%,
+  44% {
+    opacity: 1;
+    transform: translateZ(26px) scale(1);
+  }
+  52%,
+  100% {
+    opacity: 0;
+    transform: translateZ(4px) scale(0.45);
+  }
+}
+
+@keyframes h-tablero {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) translateZ(-160px) scale(0.86);
+  }
+  50%,
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotateX(56deg) rotateZ(-36deg) translateZ(0) scale(0.9);
+  }
+  88%,
+  100% {
+    opacity: 1;
+    transform: translate(-20%, -48%) rotateX(20deg) rotateY(-28deg) rotateZ(5deg) scale(1.22);
+  }
+}
+
+@keyframes h-tarjeta {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -40px, 240px) rotateX(-22deg) rotateZ(7deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes h-paso {
+  0% {
+    opacity: 0;
+    transform: translateY(36px);
+    pointer-events: none;
+  }
+  22%,
+  78% {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-36px);
+    pointer-events: none;
+  }
+}
+
+@keyframes h-paso-final {
+  from {
+    opacity: 0;
+    transform: translateY(36px);
+    pointer-events: none;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
+
+/* Héroe «Horizonte vivo»: entrada en tres tiempos (la línea se traza, el titular sale de ella y amanece; los pulsos
+   arman la cinta). Todas parten de un estado y terminan en el diseño base (relleno `backwards`, sin residuo). */
+@keyframes hz-trazar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes hz-subir {
+  from {
+    transform: translateY(108%);
+  }
+}
+
+@keyframes hz-bajar {
+  from {
+    transform: translateY(-108%);
+  }
+}
+
+@keyframes hz-asomar {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* La entrada y los botones no parten de opacidad 0 (son el LCP y lo primero que se lee): solo se asientan. */
+@keyframes hz-asentar {
+  from {
+    transform: translateY(10px);
+  }
+}
+
+@keyframes hz-amanecer {
+  from {
+    transform: translateY(86%);
+  }
+}
+
+@keyframes hz-halo {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes hz-encender {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Lo que no se ve en el primer pintado no se crea en él: la retícula (un plano 3D grande, a 3× en el teléfono) no
+   existe hasta que empieza a encenderse, y el plano de los pulsos no se pinta hasta el primer pulso. Medido a CPU ×4:
+   el plano de la retícula retrasaba el primer pintado (y el LCP, que es la entrada) en ~120 ms. */
+@keyframes hz-diferir {
+  from {
+    display: none;
+  }
+}
+
+@keyframes hz-velar {
+  from {
+    visibility: hidden;
+  }
+}
+
+/* En la historia fija el escenario nunca sale de vista, así que la pausa de `data-bucle` no actúa: los pulsos dejan de
+   existir cuando el héroe ya se apagó (y vuelven a entrar al subir), y «Desliza» se apaga antes del 2 %. Un bucle
+   vivo bajo una capa invisible seguía costando ~60 recálculos por segundo durante toda la historia. */
+@keyframes hz-retirar {
+  0%,
+  99% {
+    display: block;
+  }
+  100% {
+    display: none;
+  }
+}
+
+@keyframes hz-desliza-salir {
+  0% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  99% {
+    opacity: 0;
+    display: block;
+  }
+  100% {
+    opacity: 0;
+    display: none;
+  }
+}
+
+/* Barrido de brillo del botón principal, una sola vez. */
+@keyframes hz-barrido {
+  from {
+    --brillo: -30%;
+    opacity: 1;
+  }
+  to {
+    --brillo: 130%;
+    opacity: 1;
+  }
+}
+
+/* Pulso: entra en su tramo, acelera hacia la cámara (la curva que se va) mientras se alarga y llega a su grupo de
+   láminas al 90 % (1950 + 300·k ms, cuando se pone de pie el grupo k); después sigue un poco y se apaga. */
+@keyframes hz-pulso {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--th)) translateY(calc(-1 * var(--largo))) scaleY(0.2);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  14% {
+    opacity: 1;
+    animation-timing-function: linear;
+  }
+  90% {
+    opacity: 1;
+    transform: rotate(var(--th)) translateY(0) scaleY(1);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--th)) translateY(calc(0.16 * var(--largo))) scaleY(0.6);
+  }
+}
+
+/* El mismo viaje en un periodo de 7,2 s (un pulso cada 0,9 s entre los ocho): el resto del periodo, apagado. */
+@keyframes hz-pulso-bucle {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--th)) translateY(calc(-1 * var(--largo))) scaleY(0.2);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  2.9% {
+    opacity: 1;
+    animation-timing-function: linear;
+  }
+  18.7% {
+    opacity: 1;
+    transform: rotate(var(--th)) translateY(0) scaleY(1);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  20.8%,
+  100% {
+    opacity: 0;
+    transform: rotate(var(--th)) translateY(calc(0.16 * var(--largo))) scaleY(0.6);
+  }
+}
+
+/* Lámina: de tendida (hacia la cámara) a de pie, con resorte. La curva va en cada clave (§3.2.2): el resorte literal,
+   después de su respaldo, en la clave que arranca el giro, y la de aterrizaje en la que ya solo sostiene la opacidad. */
+@keyframes hz-erguir {
+  0% {
+    opacity: 0;
+    transform: translateZ(var(--z)) rotateY(var(--giro)) rotateX(-88deg);
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+  14% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* En pantallas estrechas con línea de tiempo, la lámina se pone de pie ligada al scroll (al entrar la cinta): sin
+   resorte, que ligado al dedo se leería como un temblor. */
+@keyframes m-erguir {
+  0% {
+    opacity: 0;
+    transform: translateZ(var(--z)) rotateY(var(--giro)) rotateX(-88deg);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  30% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* Destello especular al ponerse de pie. */
+@keyframes hz-destello {
+  0% {
+    opacity: 0.35;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  30% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes hz-rotulo {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px) translateZ(var(--z));
+  }
+}
+
+@keyframes hz-guia {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Gota de «Desliza»: baja, se asienta y se apaga (bucle de 1,8 s). */
+@keyframes hz-gota {
+  0% {
+    opacity: 1;
+    transform: scaleY(0);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+
+/* Alerta viva: sale de su línea de base (recortada solo mientras sube) y se arma pieza a pieza. */
+@keyframes hz-av-subir {
+  from {
+    transform: translateY(calc(100% + 28px));
+    clip-path: inset(-120px -120px calc(100% - 12px) -120px);
+  }
+  to {
+    transform: none;
+    clip-path: inset(-120px -120px -40px -120px);
+  }
+}
+
+@keyframes hz-pop {
+  from {
+    scale: 0.86;
+  }
+}
+
+@keyframes hz-llenar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Las filas esperan en tenue (la tarjeta nunca se ve vacía) y se encienden cuando llega su pulso. */
+@keyframes hz-fila {
+  from {
+    opacity: 0.16;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes hz-chip {
+  from {
+    opacity: 0.4;
+    scale: 0.8;
+  }
+}
+
+@keyframes hz-sello {
+  from {
+    opacity: 0;
+    scale: 0.4;
+    rotate: -30deg;
+  }
+}
+
+/* Pantallas estrechas (< 1024 px): no hay historia fija; cada pieza se arma al entrar en pantalla. Parten del
+   estado «armándose» y terminan en el diseño base de la pieza (el `to` implícito), así que sin animación
+   quedan exactamente como en la disposición apilada. */
+@keyframes m-cinta-salir {
+  to {
+    opacity: 0.4;
+    transform: translateY(6%) rotateX(54deg) scale(0.82);
+  }
+}
+
+@keyframes m-plano {
+  from {
+    opacity: 0;
+    transform: rotateX(8deg) rotateZ(-6deg) scale(0.55);
+  }
+}
+
+@keyframes m-gota {
+  from {
+    opacity: 0;
+    transform: translateZ(0) scale(0.3);
+  }
+}
+
+@keyframes m-tablero {
+  from {
+    opacity: 0;
+    transform: rotateX(62deg) rotateZ(-28deg) translateZ(-140px) scale(0.7);
+  }
+}
+
+/* Texto en movimiento: la unidad sube desde la máscara; la palabra pasa de tenue a plena. */
+@keyframes kx-subir {
+  from {
+    transform: translateY(1.35em);
+  }
+}
+
+@keyframes kx-palabra {
+  from {
+    opacity: 0.16;
+  }
+}
+
+/* Los tres puntos de «buscando la respuesta» del asistente: suben y bajan por turnos. */
+@keyframes otea-pulso {
+  0%,
+  60%,
+  100% {
+    opacity: 0.4;
+    transform: none;
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes otea-vt-salir {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes otea-vt-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Salto de ancla largo: la pantalla de destino sube 10 px mientras aparece (la de origen solo se funde). */
+@keyframes otea-vt-salto {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes otea-vt-fundir {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Cabecera isla, ligada a scroll(root) en los primeros 120 px: `--isla` va de 0 a 1 (la barra a todo el ancho se
+   condensa en la píldora y el logo y las acciones la acompañan) y la isla aparece. El progreso es una escala
+   horizontal. */
+@keyframes cab-isla-avance {
+  from {
+    --isla: 0;
+  }
+  to {
+    --isla: 1;
+  }
+}
+
+@keyframes cab-isla {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Arriba del todo la isla no solo es transparente: está oculta. Chromium captura mal, para la view transition, una
+   capa con la opacidad animada justo en 0 y una sombra que desborda la cabecera: estiraba en vertical la imagen vieja
+   de la cabecera (una copia deformada de la navegación unos 18 px más abajo). Va en una animación aparte para que
+   `cab-isla` siga entera en el compositor. */
+@keyframes cab-isla-ver {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
+
+/* El avance aparece con la isla, no antes: sin ella sería una raya suelta bajo el logo. */
+@keyframes cab-progreso-ver {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cab-progreso {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+html[data-movimiento="completo"] {
+  scroll-behavior: smooth;
+  /* Desplegables que se abren con suavidad (donde hay soporte). */
+  interpolate-size: allow-keywords;
+
+  /* Entrada al cargar, escalonada. `backwards`: al terminar no queda
+     filtro ni transformación residual. */
+  .anim-aparecer {
+    animation: otea-aparecer 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  .anim-retraso-1 {
+    animation-delay: 100ms;
+  }
+  .anim-retraso-2 {
+    animation-delay: 200ms;
+  }
+  .anim-retraso-3 {
+    animation-delay: 300ms;
+  }
+  .anim-retraso-4 {
+    animation-delay: 400ms;
+  }
+
+  /* Hijos que entran uno tras otro; `--retraso-base` desplaza la secuencia. */
+  .anim-escalonado > * {
+    animation: otea-aparecer 900ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: var(--retraso-base, 0ms);
+  }
+  .anim-escalonado > :nth-child(2) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 70ms);
+  }
+  .anim-escalonado > :nth-child(3) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 140ms);
+  }
+  .anim-escalonado > :nth-child(4) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 210ms);
+  }
+  .anim-escalonado > :nth-child(5) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 280ms);
+  }
+  .anim-escalonado > :nth-child(6) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 350ms);
+  }
+  .anim-escalonado > :nth-child(7) {
+    animation-delay: calc(var(--retraso-base, 0ms) + 420ms);
+  }
+
+  .punto-escribiendo {
+    animation: otea-pulso 1.2s ease-in-out infinite;
+  }
+  .punto-escribiendo:nth-child(2) {
+    animation-delay: 150ms;
+  }
+  .punto-escribiendo:nth-child(3) {
+    animation-delay: 300ms;
+  }
+
+  /* Al imprimir no hay scroll: todo se muestra completo y quieto. */
+  @media print {
+    .anim-revelar,
+    .anim-aparecer,
+    .anim-escalonado > *,
+    .kx-l,
+    .kx-p,
+    .kx-w {
+      animation: none !important;
+    }
+  }
+
+  /* Revelado ligado al scroll: termina cuando el borde superior del bloque
+     subió 280 px dentro de la ventana, aunque el bloque sea muy alto. */
+  @supports (animation-timeline: view()) {
+    .anim-revelar {
+      animation: otea-revelar linear both;
+      animation-timeline: view();
+      animation-range: entry 0px entry 280px;
+    }
+  }
+
+  /* Texto en movimiento al cargar: los H1 entran letra a letra y los textos de entrada se iluminan
+     palabra a palabra justo después. `backwards`: al terminar no queda transformación residual. */
+  .kx-carga.kx-letras .kx-l {
+    animation: kx-subir 750ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(100ms + var(--i, 0) * 24ms);
+  }
+
+  .kx-carga.kx-palabras .kx-p {
+    animation: kx-subir 800ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(100ms + var(--i, 0) * 70ms);
+  }
+
+  .kx-carga.kx-lectura .kx-w {
+    animation: kx-palabra 700ms ease-out backwards;
+    animation-delay: calc(650ms + var(--i, 0) * 40ms);
+  }
+
+  /* Texto en movimiento al bajar: ligado al scroll, así que se revierte al subir. Cada bloque de texto
+     define UNA línea de tiempo (`--kx`) y sus unidades la comparten (antes, una por unidad: mucho más caro).
+     Los rangos van en `vh` y terminan antes de que el bloque llegue a la zona de lectura (≈ 60 % de la
+     pantalla), para que nada quede a medio aparecer; las pruebas e2e lo vigilan. */
+  @supports (animation-timeline: view()) {
+    .kx-scroll {
+      view-timeline: --kx block;
+    }
+
+    .kx-scroll.kx-palabras .kx-p {
+      animation: kx-subir linear both;
+      animation-timeline: --kx;
+      animation-range: entry calc(var(--i, 0) * 1.8vh) entry calc(16vh + var(--i, 0) * 1.8vh);
+    }
+
+    .kx-scroll.kx-lectura .kx-w {
+      animation: kx-palabra linear both;
+      animation-timeline: --kx;
+      animation-range: entry calc(var(--i, 0) * 1.5vh) entry calc(10vh + var(--i, 0) * 1.5vh);
+    }
+  }
+
+  /* Desplegables que se abren con suavidad (donde hay soporte). */
+  & details::details-content {
+    block-size: 0;
+    overflow-y: clip;
+    transition:
+      content-visibility 450ms allow-discrete,
+      block-size 450ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  & details[open]::details-content {
+    block-size: auto;
+  }
+
+  /* Transición entre páginas (React <ViewTransition> en `template.tsx`): la página que se va sube 8 px y se funde en
+     180 ms; la que llega entra desde 12 px en 420 ms, 60 ms después. La cabecera no se mueve y el filete de la página
+     actual viaja al enlace nuevo (420 ms, curva de énfasis). Los clics atraviesan la capa de la transición. (La página
+     no puede viajar en la imagen de la raíz: React le quita el nombre a `<html>` cuando nada cambia fuera de sus
+     límites.) */
+  &::view-transition {
+    pointer-events: none;
+  }
+
+  &::view-transition-old(.otea-pagina) {
+    animation: otea-vt-salir 180ms var(--ease-entrada) both;
+  }
+
+  &::view-transition-new(.otea-pagina) {
+    animation: otea-vt-entrar 420ms var(--ease-salida) 60ms both;
+  }
+
+  /* La cabecera es el ancla: no se mueve. Si la página anterior estaba desplazada, su isla espera a que el contenido
+     viejo se haya ido (160 ms) y entonces se disuelve (200 ms) sobre la cabecera nueva, que arriba es transparente:
+     así el texto viejo nunca cruza las etiquetas de la navegación. El logo y las acciones vuelven a su sitio
+     deslizándose (420 ms, curva de énfasis), cada uno con su nombre. Los textos de la navegación no cambian de lugar. */
+  &::view-transition-group(site-header) {
+    animation: none;
+  }
+
+  &::view-transition-old(site-header) {
+    animation: otea-vt-fundir var(--dur-2) var(--ease-salida) 160ms both;
+  }
+
+  &::view-transition-new(site-header) {
+    animation: none;
+  }
+
+  /* La página que entra es un grupo que React crea después de los de la cabecera, así que se pintaba encima: la luz
+     de su `main` (que sube bajo la cabecera transparente) velaba la navegación y la CTA mientras entraba. Las piezas de
+     la cabecera van siempre por encima del contenido, como fuera de la transición. */
+  &::view-transition-group(site-header),
+  &::view-transition-group(cab-logo),
+  &::view-transition-group(cab-acciones),
+  &::view-transition-group(nav-subrayado) {
+    z-index: 1;
+  }
+
+  .cabecera-logo {
+    view-transition-name: cab-logo;
+  }
+
+  .cabecera-acciones {
+    view-transition-name: cab-acciones;
+  }
+
+  &::view-transition-group(cab-logo),
+  &::view-transition-group(cab-acciones) {
+    animation-duration: 420ms;
+    animation-timing-function: var(--ease-enfasis);
+  }
+
+  .nav-subrayado {
+    view-transition-name: nav-subrayado;
+  }
+
+  &::view-transition-group(nav-subrayado) {
+    animation-duration: 420ms;
+    animation-timing-function: var(--ease-enfasis);
+  }
+
+  /* Salto de ancla largo (`DirectorEscena` marca `data-salto` mientras dura): un fundido de unos 320 ms en vez de
+     cruzar la historia en avance rápido. */
+  &[data-salto]::view-transition-old(root) {
+    animation: otea-vt-fundir 140ms var(--ease-entrada) both;
+  }
+
+  &[data-salto]::view-transition-new(root) {
+    animation: otea-vt-salto 280ms var(--ease-salida) 40ms both;
+  }
+
+  /* En el salto la cabecera no cambia: sus piezas con nombre no esperan los 420 ms de la navegación entre páginas, ni
+     su imagen vieja espera al contenido. */
+  &[data-salto]::view-transition-group(*) {
+    animation-duration: var(--dur-3);
+  }
+
+  &[data-salto]::view-transition-old(site-header) {
+    animation-delay: 0s;
+  }
+
+  /* Menú del teléfono: la hoja entra desde 12 px arriba (desde la derecha en el panel) en 320 ms y queda opaca a los
+     120 ms, antes de que llegue el primer enlace (80 ms y después cada 40 ms, desde 14 px, en 560 ms): el texto de la
+     página nunca se cruza con el del menú. El velo se enciende y la cruz se forma con los dos trazos del botón de menú.
+     Al cerrar, el contenido se apaga primero (120 ms) y la hoja, ya vacía, se funde después (200 ms desde los 80 ms;
+     `allow-discrete` la mantiene hasta el final). */
+  .menu-movil {
+    opacity: 0;
+    transition:
+      opacity var(--dur-2) var(--ease-entrada) 80ms,
+      translate var(--dur-2) var(--ease-entrada) 80ms,
+      display calc(var(--dur-2) + 80ms) allow-discrete,
+      overlay calc(var(--dur-2) + 80ms) allow-discrete;
+  }
+
+  .menu-movil:popover-open {
+    opacity: 1;
+    translate: 0 0;
+    transition-duration: var(--dur-1), var(--dur-3), var(--dur-3), var(--dur-3);
+    transition-delay: 0s;
+    transition-timing-function: var(--ease-salida);
+  }
+
+  .menu-movil:not(:popover-open) .menu-lista > li,
+  .menu-movil:not(:popover-open) .menu-pie {
+    opacity: 0;
+    transition: opacity var(--dur-1) var(--ease-salida);
+  }
+
+  .menu-movil::backdrop {
+    opacity: 0;
+    transition:
+      opacity var(--dur-2) var(--ease-entrada) 80ms,
+      display calc(var(--dur-2) + 80ms) allow-discrete,
+      overlay calc(var(--dur-2) + 80ms) allow-discrete;
+  }
+
+  .menu-movil:popover-open::backdrop {
+    opacity: 1;
+    transition-duration: var(--dur-3);
+    transition-delay: 0s;
+    transition-timing-function: var(--ease-salida);
+  }
+
+  /* Selectores separados y no `:is()`: con `:is()` la regla tomaba la especificidad de `.menu-lista > li` y su
+     atajo `transition` pisaba el retraso del pie, que llegaba antes que los enlaces. */
+  .menu-movil:popover-open .menu-lista > li,
+  .menu-movil:popover-open .menu-pie {
+    transition:
+      opacity var(--dur-4) var(--ease-salida),
+      translate var(--dur-4) var(--ease-salida);
+  }
+
+  .menu-movil:popover-open .menu-lista > li:nth-child(1) {
+    transition-delay: 80ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(2) {
+    transition-delay: 120ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(3) {
+    transition-delay: 160ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(4) {
+    transition-delay: 200ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(5) {
+    transition-delay: 240ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(6) {
+    transition-delay: 280ms;
+  }
+  .menu-movil:popover-open .menu-lista > li:nth-child(n + 7) {
+    transition-delay: 320ms;
+  }
+  .menu-movil:popover-open .menu-pie {
+    transition-delay: 360ms;
+  }
+
+  /* La cruz en dos tiempos, como un solo gesto: los trazos se juntan en el centro (200 ms) y, ya en una sola línea,
+     giran en sentidos opuestos con el resorte hasta cruzarse. Nunca pasan por una flecha. */
+  .menu-movil:popover-open .menu-cerrar-linea {
+    transition-property: translate, rotate;
+    transition-duration: var(--dur-2), var(--dur-4);
+    transition-delay: 40ms, 170ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  @starting-style {
+    .menu-movil:popover-open {
+      opacity: 0;
+      translate: 0 -12px;
+    }
+
+    .menu-movil:popover-open::backdrop {
+      opacity: 0;
+    }
+
+    .menu-movil:popover-open :is(.menu-lista > li, .menu-pie) {
+      opacity: 0;
+      translate: 0 14px;
+    }
+
+    /* Los trazos parten donde están en el botón de menú (paralelos, a ±3,75 px) y giran hasta cruzarse. */
+    .menu-movil:popover-open .menu-cerrar-linea {
+      rotate: 0deg;
+      translate: 0 -3.75px;
+    }
+
+    .menu-movil:popover-open .menu-cerrar-linea + .menu-cerrar-linea {
+      rotate: 0deg;
+      translate: 0 3.75px;
+    }
+  }
+
+  @media (min-width: 640px) {
+    @starting-style {
+      .menu-movil:popover-open {
+        translate: 24px 0;
+      }
+    }
+  }
+
+  .boton-menu,
+  .menu-cerrar {
+    transition:
+      background-color var(--dur-2) var(--ease-salida),
+      scale var(--dur-1) var(--ease-salida);
+  }
+
+  .menu-marca {
+    transition: translate var(--dur-3) var(--ease-salida);
+  }
+
+  /* Ratón: la flecha avanza 4 px y la pastilla de la navegación se desliza de un enlace a otro (320 ms) y se apaga
+     en 200 ms. Al entrar en la navegación aparece en su sitio, sin viajar (`data-nav-salto`, una sola imagen). */
+  @media (hover: hover) and (pointer: fine) {
+    .menu-enlace:hover .menu-marca {
+      translate: 4px 0;
+    }
+
+    .menu-enlace[aria-current="page"]:hover .menu-marca {
+      translate: none;
+    }
+
+    .nav-indicador {
+      transition:
+        translate var(--dur-3) var(--ease-salida),
+        width var(--dur-3) var(--ease-salida),
+        opacity var(--dur-2) var(--ease-salida);
+    }
+
+    [data-nav-salto] .nav-indicador {
+      transition: opacity var(--dur-2) var(--ease-salida);
+    }
+  }
+}
+
+/* Cabecera isla: solo con la puerta abierta, en escritorio y con líneas de tiempo (literal de M8). Arriba del todo
+   la cabecera es transparente; en los primeros 120 px de scroll aparece la isla, una píldora de porcelana de hasta
+   1200 px con filo y sombra larga, y el logo y las acciones se acercan a ella. El avance de lectura recorre su
+   borde inferior. La altura de 72 px no cambia: el escenario fijo de la historia sigue en `top: 72px`. */
+html[data-movimiento="completo"] {
+  @media (min-width: 1024px) {
+    @supports (animation-timeline: view()) {
+      /* Un solo avance para todo (`--isla`, curva de cámara: ligada al dedo, se condensa a lo largo de los 120 px en
+         vez de formarse casi entera en los primeros 30). */
+      .cabecera {
+        animation: cab-isla-avance var(--ease-enfasis) both;
+        animation-timeline: scroll(root);
+        animation-range: 0px 120px;
+      }
+
+      /* La píldora nace de la barra a todo el ancho (6 px del borde del logo) y se condensa hasta su sitio (16 px de
+         aire, 1200 px como máximo, 10 px arriba y abajo) con el mismo avance que el logo y las acciones: el logo queda
+         siempre 18 px dentro de ella y las acciones, entre 18 y 6 px. Una capa pequeña de un solo seudoelemento. */
+      .cabecera::before {
+        --isla-borde-0: max(6px, 50% - 714px);
+        --isla-borde-1: max(16px, 50% - 600px);
+        --isla-borde: calc(var(--isla-borde-0) + var(--isla) * (var(--isla-borde-1) - var(--isla-borde-0)));
+        inset: calc(var(--isla) * 10px) var(--isla-borde);
+        border-radius: var(--radius-pill);
+        background-color: rgb(252 250 246 / 0.99);
+        box-shadow:
+          inset 0 0 0 1px var(--color-linea),
+          inset 0 1px 0 rgb(255 255 255 / 0.9),
+          0 1px 2px rgb(15 27 45 / 0.06),
+          0 18px 40px -22px rgb(15 27 45 / 0.34);
+        animation:
+          cab-isla var(--ease-enfasis) both,
+          cab-isla-ver linear both;
+        animation-timeline: scroll(root), scroll(root);
+        animation-range: 0px 120px;
+      }
+
+      /* La cabecera es transparente arriba: el fondo de la página sube por debajo de ella (un borde transparente
+         de 72 px conserva la posición del contenido y deja pintar la luz del lienzo). `border-box`: los degradados
+         de `fondo-luz` se extienden por la banda del borde en vez de repetir el mosaico, sin escalón a los 72 px. */
+      .cabecera ~ main {
+        margin-top: -72px;
+        border-top: 72px solid transparent;
+        background-origin: border-box;
+      }
+
+      /* El logo entra en la isla y baja al 94 % (sin tocar su geometría); las acciones se acercan a su borde. */
+      .cabecera-logo {
+        transform-origin: left center;
+        translate: calc(var(--isla) * var(--cab-dx-logo)) 0;
+        scale: calc(1 - var(--isla) * 0.06);
+      }
+
+      .cabecera-acciones {
+        translate: calc(var(--isla) * -1 * var(--cab-dx-acciones)) 0;
+      }
+
+      /* El avance recorre el borde inferior de la isla, 28 px dentro de sus extremos, sobre un riel de tinta muy
+         tenue: así se lee como progreso desde el primer píxel, también en la portada, donde al principio es corto. */
+      .cabecera-progreso {
+        display: block;
+        inset: auto
+          calc(max(6px, 50% - 714px) + var(--isla) * (max(16px, 50% - 600px) - max(6px, 50% - 714px)) + 28px)
+          calc(var(--isla) * 10px + 1px);
+        border-radius: 1px;
+        background-color: rgb(15 27 45 / 0.12);
+        animation: cab-progreso-ver var(--ease-enfasis) both;
+        animation-timeline: scroll(root);
+        animation-range: 0px 120px;
+
+        &::after {
+          animation: cab-progreso linear both;
+          animation-timeline: scroll(root);
+        }
+      }
+    }
+  }
+
+  /* Teléfono y tableta: la barra queda sólida y su filete inferior es el avance de lectura. */
+  @media (max-width: 1023.98px) {
+    @supports (animation-timeline: view()) {
+      .cabecera-progreso {
+        display: block;
+      }
+
+      .cabecera-progreso::after {
+        animation: cab-progreso linear both;
+        animation-timeline: scroll(root);
+      }
+    }
+  }
+}
+
+/* Héroe «Horizonte vivo»: la entrada en tres tiempos, por tiempo (igual con y sin línea de tiempo y a cualquier
+   ancho). 0–1,1 s la línea se traza desde el sol; 0,22–1,24 s el titular sale del horizonte (completo antes de 1,3 s);
+   0,26–2,2 s amanece; 0,6–4,9 s los pulsos cruzan el suelo y cada llegada pone de pie un grupo de láminas. En el
+   teléfono y la tableta, los pulsos encienden la alerta viva fila a fila. Retrasos con clases finitas (`--d`, `--k`,
+   `--dr`), nunca `style`. */
+html[data-movimiento="completo"] {
+  .h-horizonte {
+    animation: hz-trazar 1100ms var(--ease-salida) backwards;
+  }
+
+  .hero-antetitulo {
+    animation: hz-asomar 520ms var(--ease-salida) 120ms backwards;
+  }
+
+  .h1-linea-1 {
+    animation: hz-subir var(--dur-5) var(--ease-salida) 220ms backwards;
+  }
+
+  .h1-linea-2 {
+    animation: hz-bajar var(--dur-5) var(--ease-salida) 340ms backwards;
+  }
+
+  .sol {
+    animation: hz-amanecer 1700ms cubic-bezier(0.22, 1, 0.36, 1) 260ms backwards;
+  }
+
+  .sol-halo {
+    animation: hz-halo 1900ms var(--ease-salida) 300ms backwards;
+  }
+
+  .h-cielo::before,
+  .h-suelo::before {
+    animation: hz-encender 1900ms var(--ease-salida) 300ms backwards;
+  }
+
+  .h-reticula {
+    animation:
+      hz-diferir 1ms 519ms backwards,
+      hz-encender 1200ms var(--ease-enfasis) 520ms backwards;
+  }
+
+  .h-pulsos {
+    animation: hz-velar 1ms 599ms backwards;
+  }
+
+  .h-reflejo {
+    animation: hz-encender 1600ms var(--ease-salida) 700ms backwards;
+  }
+
+  .hero-texto {
+    animation: hz-asentar 600ms var(--ease-salida) 760ms backwards;
+  }
+
+  .hero-mando {
+    animation: hz-asentar 600ms var(--ease-salida) 880ms backwards;
+  }
+
+  /* Un barrido de brillo, una sola vez, cuando el botón ya está quieto. */
+  .hero-acciones .boton-laton::after {
+    animation: hz-barrido 1100ms var(--ease-enfasis) 1900ms backwards;
+  }
+
+  .pulso {
+    animation: hz-pulso 1500ms backwards;
+    animation-delay: calc(600ms + var(--k) * 300ms);
+  }
+
+  .lamina {
+    animation: hz-erguir 760ms backwards;
+    animation-delay: var(--d);
+  }
+
+  .lamina::after {
+    animation: hz-destello 1200ms backwards;
+    animation-delay: var(--d);
+  }
+
+  /* Antes del primer grupo no hay nada que ver en la cinta: no se pinta (las láminas conservan su reloj). */
+  .cinta-pista {
+    animation: hz-velar 1ms 1899ms backwards;
+  }
+
+  /* La sombra común llega con el primer grupo (antes no hay nada que la proyecte). */
+  .cinta::before {
+    animation: hz-encender 2400ms var(--ease-salida) 1850ms backwards;
+  }
+
+  .cinta-rotulo {
+    animation: hz-rotulo 500ms var(--ease-salida) backwards;
+    animation-delay: var(--dr);
+  }
+
+  .cinta-rotulo::after {
+    animation: hz-guia 500ms var(--ease-salida) backwards;
+    animation-delay: calc(var(--dr) + 120ms);
+  }
+
+  /* La entrada va en el `span` interior: el párrafo lleva la salida ligada a la historia (si ambas vivieran en el
+     mismo elemento, el 0 % de la salida, con relleno `both`, pisaría la entrada diferida). La gota espera con relleno
+     `backwards` (recogida, sin trazo) hasta que le toca bajar. */
+  .hero-desliza-asomo {
+    animation: hz-asomar 600ms var(--ease-salida) 3000ms backwards;
+  }
+
+  .hero-gota {
+    animation: hz-gota 1800ms 3200ms infinite backwards;
+  }
+
+  /* Alerta viva (solo existe bajo 1024 px): sube de 0,6 a 1,6 s; el check hace pop; el medidor se llena por
+     segmentos; cada fila se enciende cuando llega un pulso (1,9 · 2,2 · 2,5 · 2,8 s) y al final aterriza el sello. */
+  .alerta-viva {
+    animation:
+      hz-velar 1ms 599ms backwards,
+      hz-av-subir 1000ms var(--ease-salida) 600ms backwards;
+  }
+
+  .alerta-viva::before {
+    animation: hz-trazar var(--dur-5) var(--ease-salida) 1880ms backwards;
+  }
+
+  .av-check {
+    animation: hz-pop 460ms 1350ms backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .av-lleno::after {
+    animation: hz-llenar 380ms var(--ease-enfasis) backwards;
+  }
+  .av-segmento:nth-child(1)::after {
+    animation-delay: 1700ms;
+  }
+  .av-segmento:nth-child(2)::after {
+    animation-delay: 1820ms;
+  }
+  .av-segmento:nth-child(3)::after {
+    animation-delay: 1940ms;
+  }
+
+  .av-nivel {
+    animation: hz-asomar var(--dur-3) var(--ease-salida) 2150ms backwards;
+  }
+
+  .av-fila {
+    animation: hz-fila var(--dur-4) var(--ease-salida) backwards;
+  }
+
+  .av-chip {
+    animation: hz-chip 520ms backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .av-fila:nth-child(1),
+  .av-fila:nth-child(1) .av-chip {
+    animation-delay: 2180ms;
+  }
+  .av-fila:nth-child(2),
+  .av-fila:nth-child(2) .av-chip {
+    animation-delay: 2480ms;
+  }
+  .av-fila:nth-child(3),
+  .av-fila:nth-child(3) .av-chip {
+    animation-delay: 2780ms;
+  }
+
+  .av-sello-marca {
+    animation: hz-sello 640ms 3080ms backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  /* En escritorio, ya armada la cinta, los pulsos siguen en un bucle tranquilo (uno cada 0,9 s). Es uno de los dos
+     únicos bucles del héroe; su contenedor lleva `data-bucle` y se pausa fuera de vista. En el teléfono y la
+     tableta no hay bucle: los pulsos pasarían por detrás del texto mientras se lee. */
+  @media (min-width: 1024px) {
+    .pulso {
+      animation:
+        hz-pulso 1500ms backwards,
+        hz-pulso-bucle 7200ms infinite;
+      animation-delay: calc(600ms + var(--k) * 300ms), calc(4200ms + var(--k) * 900ms);
+    }
+  }
+
+  /* Con un ratón: el sol sigue al cursor (±10 px, paralaje) y el brillo de las láminas se desliza con él. Leen
+     `--cx --cy` (0 a 1), que `DirectorEscena` escribe en `.h-hero` mientras el héroe está a la vista. */
+  @media (hover: hover) and (pointer: fine) {
+    .sol-paralaje {
+      translate: calc(-50% + (var(--cx, 0.5) - 0.5) * 20px) calc(-46% + (var(--cy, 0.5) - 0.5) * 20px);
+      transition: translate var(--dur-4) var(--ease-salida);
+    }
+
+    .lamina::after {
+      background-image: linear-gradient(
+        100deg,
+        rgb(255 255 255 / 0) calc(var(--cx, 0.5) * 50% + 10%),
+        rgb(255 255 255 / 0.4) calc(var(--cx, 0.5) * 50% + 25%),
+        rgb(255 255 255 / 0) calc(var(--cx, 0.5) * 50% + 40%)
+      );
+    }
+  }
+
+  @media print {
+    .h-horizonte,
+    .hero-antetitulo,
+    .h1-linea-1,
+    .h1-linea-2,
+    .sol,
+    .sol-halo,
+    .h-cielo::before,
+    .h-suelo::before,
+    .h-reticula,
+    .h-pulsos,
+    .h-reflejo,
+    .hero-texto,
+    .hero-mando,
+    .hero-acciones .boton-laton::after,
+    .pulso,
+    .cinta-pista,
+    .lamina,
+    .lamina::after,
+    .cinta::before,
+    .cinta-rotulo,
+    .cinta-rotulo::after,
+    .hero-desliza,
+    .hero-desliza-asomo,
+    .hero-gota,
+    .alerta-viva,
+    .alerta-viva::before,
+    .alerta-viva *,
+    .av-lleno::after {
+      animation: none !important;
+    }
+  }
+}
+
+/* Pantallas estrechas (< 1024 px) con soporte de líneas de tiempo: la historia fija no cabe, así que cada
+   pieza 3D se arma al entrar en pantalla, ligada al scroll (y se desarma al subir). Mismo lenguaje que la
+   historia fija, con la línea de tiempo de cada pieza. Sin soporte, lo mismo lo dispara el motor (abajo). */
+html[data-movimiento="completo"] {
+  @media (max-width: 1023.98px) {
+    @supports (animation-timeline: view()) {
+      /* Aquí la cinta queda bajo la alerta, casi siempre fuera del primer pliegue: si sus láminas se pusieran de pie
+         por tiempo, la persona llegaría a una cinta ya quieta. Se ponen de pie al entrar en pantalla, ligadas al
+         scroll y en ola de izquierda a derecha (el arranque de cada una depende de su posición, `--x`), entre el 4 %
+         y el ~38 % de su recorrido por la pantalla: entera antes de llegar a la mitad. Al salir por arriba, se pliega. */
+      .h-cinta {
+        view-timeline: --cinta block;
+        animation: m-cinta-salir linear both;
+        animation-timeline: view();
+        animation-range: exit 0% exit 100%;
+      }
+
+      .h-cinta .lamina,
+      .h-cinta .lamina::after {
+        animation: m-erguir linear both;
+        animation-timeline: --cinta;
+        animation-range: cover calc(4% + var(--x) * 0.2) cover calc(18% + var(--x) * 0.2);
+      }
+
+      .h-cinta .lamina::after {
+        animation-name: hz-destello;
+      }
+
+      /* La sombra común se enciende con la primera ola (antes no hay nada que la proyecte). */
+      .h-cinta::before {
+        animation: hz-encender linear both;
+        animation-timeline: --cinta;
+        animation-range: cover 4% cover 30%;
+      }
+
+      .h-plano {
+        view-timeline: --plano block;
+        animation: m-plano linear both;
+        animation-timeline: view();
+        animation-range: entry 5% entry 80%;
+      }
+
+      .h-plano .gota {
+        animation: m-gota linear both;
+        animation-timeline: --plano;
+        animation-range: entry 35% entry 90%;
+      }
+
+      .h-tablero {
+        view-timeline: --tablero block;
+        animation: m-tablero linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 75%;
+      }
+
+      /* Las alertas caen sobre el tablero una tras otra, antes de que esté entero a la vista. */
+      .h-tablero .tablero-tarjeta {
+        animation: h-tarjeta linear both;
+        animation-timeline: --tablero;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: entry 30% entry 60%;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: entry 34% entry 64%;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: entry 38% entry 68%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: entry 42% entry 72%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: entry 46% entry 76%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: entry 50% entry 80%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: entry 54% entry 84%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: entry 58% entry 88%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: entry 62% entry 92%;
+      }
+    }
+  }
+}
+
+/* Respaldo sin líneas de tiempo (Firefox, Safari anterior al 26): el motor anota `data-timeline="no"`, observa
+   los bloques de texto (`kx-scroll`) y las piezas 3D (`escena`) y les añade `kx-visto` / `escena-vista` al
+   entrar en pantalla; entonces corre la animación una vez, con el tiempo. Todo lo que oculta algo cuelga
+   de `[data-motor]`, que el motor escribe solo cuando está listo para revelarlo: si el motor no arranca, el
+   contenido se queda completo y quieto. Lo que ya estaba a la vista al empezar lleva `mov-quieto` (sin animar). */
+html[data-movimiento="completo"][data-timeline="no"][data-motor] {
+  .kx-scroll.kx-palabras:not(.kx-visto) .kx-p {
+    transform: translateY(1.35em);
+  }
+  .kx-scroll.kx-lectura:not(.kx-visto) .kx-w {
+    opacity: 0.16;
+  }
+  .kx-scroll.kx-palabras.kx-visto:not(.mov-quieto) .kx-p {
+    animation: kx-subir 800ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  .kx-scroll.kx-lectura.kx-visto:not(.mov-quieto) .kx-w {
+    animation: kx-palabra 700ms ease-out backwards;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+
+  .escena:not(.escena-vista) {
+    opacity: 0;
+  }
+  .h-plano.escena-vista:not(.mov-quieto) {
+    animation: m-plano 1100ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .h-plano.escena-vista:not(.mov-quieto) .gota {
+    animation: m-gota 900ms ease-out 500ms backwards;
+  }
+  .h-tablero.escena-vista:not(.mov-quieto) {
+    animation: m-tablero 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .h-tablero.escena-vista:not(.mov-quieto) .tablero-tarjeta {
+    animation: h-tarjeta 600ms ease-out backwards;
+    animation-delay: calc(450ms + var(--k, 0) * 90ms);
+  }
+  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
+    --k: 0;
+  }
+  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
+    --k: 1;
+  }
+  .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
+    --k: 2;
+  }
+  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
+    --k: 3;
+  }
+  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
+    --k: 4;
+  }
+  .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
+    --k: 5;
+  }
+  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
+    --k: 6;
+  }
+  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
+    --k: 7;
+  }
+  .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
+    --k: 8;
+  }
+}
+
+/* Historia fija en pantalla (escritorio): la cinta se pliega sobre un plano
+   técnico, del plano surge un tablero y las alertas caen sobre él. */
+html[data-movimiento="completo"] {
+  @media (min-width: 1024px) {
+    @supports (animation-timeline: view()) {
+      .historia {
+        height: 470vh;
+        view-timeline-name: --historia;
+      }
+
+      .historia-escenario {
+        position: sticky;
+        top: 72px;
+        display: block;
+        height: calc(100svh - 72px);
+        padding: 0;
+        overflow: hidden;
+      }
+
+      /* El héroe llena el escenario (a sangre): su cuadrícula deja la cinta apoyada en el borde inferior. */
+      .h-hero {
+        position: absolute;
+        inset: 0;
+        min-height: 0;
+        margin: 0;
+        animation: h-hero linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .h-pulsos {
+        animation:
+          hz-velar 1ms 599ms backwards,
+          hz-retirar linear both;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 0% contain 24%;
+      }
+
+      /* Apagado el héroe, el cielo, el suelo y el grano dejan de existir (y vuelven al subir): el suelo es un plano 3D de
+         4320×1600 px con máscara que el compositor seguía dibujando bajo una capa invisible en cada cuadro de la historia
+         (medido con rasterizado por software: de ~18 a ~30 fps). */
+      .h-cielo,
+      .h-suelo,
+      .h-grano {
+        animation: hz-retirar linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 24%;
+      }
+
+      .h-horizonte {
+        animation:
+          hz-trazar 1100ms var(--ease-salida) backwards,
+          hz-retirar linear both;
+        animation-timeline: auto, --historia;
+        animation-range: normal, contain 0% contain 24%;
+      }
+
+      .hero-desliza {
+        animation: hz-desliza-salir linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 2%;
+      }
+
+      .h-cinta {
+        animation: h-cinta linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .h-plano {
+        pointer-events: none;
+        position: absolute;
+        left: 63%;
+        top: 54%;
+        width: min(560px, 40vw);
+        margin: 0;
+        animation: h-plano linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .h-plano .gota {
+        animation: h-gota linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .h-tablero {
+        pointer-events: none;
+        position: absolute;
+        left: 66%;
+        top: 52%;
+        width: min(820px, 56vw);
+        animation: h-tablero linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .h-tablero .tablero-tarjeta {
+        animation: h-tarjeta linear both;
+        animation-timeline: --historia;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: contain 50.0% contain 57.0%;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: contain 51.4% contain 58.4%;
+      }
+      .tablero-columna:nth-child(1) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: contain 52.8% contain 59.8%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: contain 54.2% contain 61.2%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: contain 55.6% contain 62.6%;
+      }
+      .tablero-columna:nth-child(2) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: contain 57.0% contain 64.0%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(1) {
+        animation-range: contain 58.4% contain 65.4%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(2) {
+        animation-range: contain 59.8% contain 66.8%;
+      }
+      .tablero-columna:nth-child(3) .tablero-tarjeta:nth-of-type(3) {
+        animation-range: contain 61.2% contain 68.2%;
+      }
+
+      /* El escenario es a sangre: los pasos siguen alineados con el marco de 1440 px. */
+      .h-paso {
+        position: absolute;
+        left: max(24px, (100% - 1392px) / 2);
+        top: 50%;
+        width: min(440px, 31vw);
+        translate: 0 -50%;
+        animation: h-paso linear both;
+        animation-timeline: --historia;
+      }
+      .h-paso-2 {
+        animation-range: contain 24% contain 50%;
+      }
+      .h-paso-3 {
+        animation-range: contain 50% contain 76%;
+      }
+      .h-paso-4 {
+        animation-name: h-paso-final;
+        animation-range: contain 76% contain 86%;
+      }
+
+      /* Texto de cada paso: el titular sube y el texto se ilumina durante la primera parte de su tramo,
+         antes de que el paso empiece a salir. Más específico que `.kx-scroll …` para ganarle sin depender
+         del orden. */
+      .historia .h-paso-2 .kx-palabras .kx-p,
+      .historia .h-paso-3 .kx-palabras .kx-p,
+      .historia .h-paso-4 .kx-palabras .kx-p {
+        animation: kx-subir linear both;
+        animation-timeline: --historia;
+      }
+      .historia .h-paso-2 .kx-palabras .kx-p {
+        animation-range: contain calc(24.4% + var(--i, 0) * 0.5%) contain calc(28.4% + var(--i, 0) * 0.5%);
+      }
+      .historia .h-paso-3 .kx-palabras .kx-p {
+        animation-range: contain calc(50.4% + var(--i, 0) * 0.5%) contain calc(54.4% + var(--i, 0) * 0.5%);
+      }
+      .historia .h-paso-4 .kx-palabras .kx-p {
+        animation-range: contain calc(76.4% + var(--i, 0) * 0.5%) contain calc(80.4% + var(--i, 0) * 0.5%);
+      }
+
+      .historia .h-paso-2 .kx-lectura .kx-w,
+      .historia .h-paso-3 .kx-lectura .kx-w,
+      .historia .h-paso-4 .kx-lectura .kx-w {
+        animation: kx-palabra linear both;
+        animation-timeline: --historia;
+      }
+      .historia .h-paso-2 .kx-lectura .kx-w {
+        animation-range: contain calc(26% + var(--i, 0) * 0.28%) contain calc(28% + var(--i, 0) * 0.28%);
+      }
+      .historia .h-paso-3 .kx-lectura .kx-w {
+        animation-range: contain calc(52% + var(--i, 0) * 0.28%) contain calc(54% + var(--i, 0) * 0.28%);
+      }
+      .historia .h-paso-4 .kx-lectura .kx-w {
+        animation-range: contain calc(78% + var(--i, 0) * 0.28%) contain calc(80% + var(--i, 0) * 0.28%);
+      }
+
+      /* Lo que recibe foco siempre se ve, aunque su paso no esté en pantalla. */
+      .h-paso:focus-within,
+      .h-hero:focus-within {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+  }
+}
+
+/* ── Interacción con movimiento ────────────────────────────────────────────
+ * Respuesta física común: lo que aterriza usa `--ease-salida`; lo que rebota, el resorte literal (respaldo
+ * primero; dentro de una lista con `linear()` las demás curvas van literales, porque una `var()` invalidaría la
+ * declaración entera sin dejar respaldo). Los efectos de puntero leen las variables que escribe
+ * `DirectorEscena` por CSSOM (`--mx --my` de 0 a 1, `--tx --ty` en px, `--rx --ry` en grados) y solo existen
+ * con la puerta abierta y un puntero fino; sin ellas, `var(--tx, 0)` deja todo quieto.
+ */
+@keyframes otea-foco {
+  from {
+    outline-offset: 9px;
+  }
+}
+
+/* En las filas del menú el anillo va por dentro: aterriza desde la posición habitual (3 px por fuera) hacia dentro. */
+@keyframes menu-foco {
+  from {
+    outline-offset: 3px;
+  }
+}
+
+@keyframes otea-salto {
+  from {
+    opacity: 0;
+    translate: 0 -12px;
+  }
+}
+
+html[data-movimiento="completo"] {
+  /* El anillo de foco aterriza: llega desde 9 px y se asienta en 3 px con el resorte. */
+  :focus-visible {
+    animation: otea-foco var(--dur-3) backwards;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .salto-contenido:focus-visible {
+    animation:
+      otea-salto var(--dur-2) var(--ease-salida) backwards,
+      otea-foco var(--dur-3) 80ms backwards;
+  }
+
+  .menu-enlace:focus-visible {
+    animation-name: menu-foco;
+  }
+
+  /* El logo se aparta en 120 ms y vuelve con la misma curva cuando el foco sigue. */
+  header > div > a:first-child {
+    transition: opacity var(--dur-1) var(--ease-salida);
+  }
+
+  /* Lo enfocado nunca espera a su entrada: aparece entero en cuanto recibe el foco. */
+  .anim-revelar:focus-within {
+    animation: none;
+  }
+
+  /* Bucles pausados fuera de vista: `DirectorEscena` pone `data-fuera` con un IntersectionObserver. Solo se
+     pausan los descendientes (los bucles): las animaciones propias del contenedor (entrada, claves ligadas al
+     scroll) siguen su curso y no quedan congeladas al volver. */
+  [data-bucle][data-fuera] * {
+    animation-play-state: paused;
+  }
+
+  /* Fondo y color también transicionan: así una tarjeta que vuelve de su estado activo (tema en tinta) se funde
+     igual que al activarse, en vez de cambiar de golpe. */
+  .superficie-interactiva {
+    transition-property: background-color, color, box-shadow, translate, scale;
+    transition-duration: var(--dur-3), var(--dur-3), var(--dur-3), var(--dur-3), var(--dur-4);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+
+    &:active {
+      transition-duration: var(--dur-3), var(--dur-3), var(--dur-3), var(--dur-3), var(--dur-1);
+      transition-timing-function: var(--ease-salida);
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        translate: 0 -2px;
+      }
+    }
+  }
+
+  /* Botón de latón: el pulsado baja en 120 ms y vuelve con resorte; la sombra y la luz, con la curva de salida. */
+  .boton-laton {
+    transition-property: translate, scale, box-shadow;
+    transition-duration: var(--dur-4), var(--dur-4), var(--dur-3);
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1), cubic-bezier(0.34, 1.56, 0.64, 1), cubic-bezier(0.16, 1, 0.3, 1);
+    transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%), cubic-bezier(0.16, 1, 0.3, 1);
+
+    &:active:not(:disabled) {
+      transition-duration: var(--dur-2), var(--dur-1), var(--dur-1);
+      transition-timing-function: var(--ease-salida);
+    }
+
+    &::before {
+      transition: opacity var(--dur-3) var(--ease-salida);
+    }
+  }
+
+  .boton-etiqueta {
+    transition-property: translate;
+    transition-duration: var(--dur-4);
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .boton-flecha {
+    transition: translate var(--dur-3) var(--ease-salida);
+  }
+
+  @media (hover: hover) {
+    :hover > .boton-flecha,
+    :hover > .boton-etiqueta > .boton-flecha {
+      translate: 3px 0;
+    }
+
+    :hover > .boton-flecha-abajo,
+    :hover > .boton-etiqueta > .boton-flecha-abajo {
+      translate: 0 3px;
+    }
+  }
+
+  /* Con ratón o trackpad: brillo bajo el cursor, destello al entrar y atracción de hasta 4 px. */
+  @media (hover: hover) and (pointer: fine) {
+    .boton-laton::before {
+      background-image:
+        radial-gradient(
+          110px 70px at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0) * 100%),
+          rgb(255 246 222 / 0.6),
+          rgb(255 246 222 / 0) 72%
+        ),
+        linear-gradient(180deg, rgb(255 249 235 / 0.22), rgb(255 249 235 / 0) 75%);
+    }
+
+    /* Destello: al entrar barre una vez (900 ms) y aparece en 120 ms. Al salir no se corta en seco: se funde en
+       320 ms donde esté y solo vuelve a su origen 560 ms después; así, salir y volver a entrar enseguida (o
+       rozar el borde) continúa la misma pasada en vez de disparar destellos seguidos. */
+    .boton-laton::after {
+      opacity: 0;
+      transition:
+        opacity var(--dur-3) var(--ease-salida),
+        --brillo 0s linear var(--dur-4);
+    }
+
+    .boton-laton:hover:not(:disabled)::after {
+      --brillo: 130%;
+      opacity: 1;
+      transition:
+        opacity var(--dur-1) var(--ease-salida),
+        --brillo var(--dur-5) var(--ease-enfasis);
+    }
+
+    [data-magnetico] {
+      translate: calc(var(--tx, 0) * 1px) calc(var(--ty, 0) * 1px);
+    }
+
+    [data-magnetico] .boton-etiqueta {
+      translate: calc(var(--tx, 0) * 0.45px) calc(var(--ty, 0) * 0.45px);
+    }
+
+    /* Mientras el cursor está dentro, el botón lo sigue con suavidad; al salir vuelve con el resorte. */
+    .boton-laton[data-magnetico]:hover {
+      transition-duration: var(--dur-2), var(--dur-4), var(--dur-3);
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1), cubic-bezier(0.16, 1, 0.3, 1);
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%), cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-magnetico]:hover .boton-etiqueta {
+      transition-duration: var(--dur-2);
+      transition-timing-function: var(--ease-salida);
+    }
+
+    .boton-laton[data-magnetico]:active:not(:disabled) {
+      transition-duration: var(--dur-2), var(--dur-1), var(--dur-1);
+      transition-timing-function: var(--ease-salida);
+    }
+  }
+}
+
+.vt-site-header {
+  view-transition-name: site-header;
+}
+
+/* Control de movimiento. El motor escribe en <html> `data-sistema` («reduce» si el sistema pide menos
+   movimiento) y `data-mov-ui` (hay algo que elegir): el aviso de la portada solo se ve cuando el sistema pide
+   reducir y la persona no ha activado el movimiento; el conmutador del pie, cuando hay algo que elegir. */
+.aviso-mov {
+  display: none;
+}
+
+html[data-sistema="reduce"]:not([data-movimiento="completo"]) .aviso-mov {
+  display: flex;
+}
+
+.mov-conmutador {
+  display: none;
+}
+
+html[data-mov-ui] .mov-conmutador {
+  display: inline-flex;
+}
+
+/* Con la puerta cerrada por el conmutador (sin que el sistema pida reducir), las view transitions que React o la isla
+   lleguen a iniciar terminan al instante. `animation-duration` y no `animation`: no anima nada fuera de la puerta. */
+html:not([data-movimiento="completo"])::view-transition-group(*),
+html:not([data-movimiento="completo"])::view-transition-old(*),
+html:not([data-movimiento="completo"])::view-transition-new(*) {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
+/* Un sistema con «reducir movimiento» no anima ni transiciona nada, salvo que la persona haya activado el
+   movimiento en esta página (`data-movimiento="completo"`). Sin JavaScript no hay atributo: queda reducido.
+   `transition-property: none` además de la duración: con una duración mínima pero no nula, cualquier cambio de estilo
+   en `<html>` (Next pone y quita `scroll-behavior` al navegar) creaba una transición de `scrollbar-color`, que se
+   hereda, en cada elemento de la página: 853 en la portada y ~130 ms de recálculo antes de cambiar de página. */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-movimiento="completo"]) *,
+  html:not([data-movimiento="completo"]) *::before,
+  html:not([data-movimiento="completo"]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-property: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  html:not([data-movimiento="completo"])::view-transition-group(*),
+  html:not([data-movimiento="completo"])::view-transition-old(*),
+  html:not([data-movimiento="completo"])::view-transition-new(*) {
+    animation: none !important;
+  }
+}

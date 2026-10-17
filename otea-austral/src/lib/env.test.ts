@@ -1,0 +1,270 @@
+import { describe, expect, it, vi } from "vitest";
+import { EnvSchema, MODELOS_ASISTENTE } from "./env";
+
+describe("EnvSchema", () => {
+  it("por defecto la lista de espera está cerrada", () => {
+    expect(EnvSchema.parse({}).WAITLIST_MODE).toBe("cerrada");
+  });
+
+  it("no permite la lista en memoria en producción", () => {
+    const r = EnvSchema.safeParse({ NODE_ENV: "production", WAITLIST_MODE: "memoria" });
+    expect(r.success).toBe(false);
+  });
+
+  it("la permite en producción solo para pruebas e2e", () => {
+    const r = EnvSchema.safeParse({ NODE_ENV: "production", WAITLIST_MODE: "memoria", OTEA_E2E: "1" });
+    expect(r.success).toBe(true);
+  });
+
+  it("exige https en la URL del sitio (salvo localhost)", () => {
+    expect(EnvSchema.safeParse({ NEXT_PUBLIC_SITE_URL: "http://oteaustral.com" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" }).success).toBe(true);
+  });
+
+  it("HTTPS_FORZADO está activo por omisión y solo admite 0 o 1", () => {
+    expect(EnvSchema.parse({}).HTTPS_FORZADO).toBe("1");
+    expect(EnvSchema.parse({ HTTPS_FORZADO: "0" }).HTTPS_FORZADO).toBe("0");
+    for (const malo of ["true", "2", "no", " 1"]) expect(EnvSchema.safeParse({ HTTPS_FORZADO: malo }).success, malo).toBe(false);
+  });
+
+  it("valida el contacto de seguridad", () => {
+    expect(EnvSchema.safeParse({ SECURITY_CONTACT: "javascript:alert(1)" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ SECURITY_CONTACT: "mailto:seguridad@oteaustral.com" }).success).toBe(true);
+  });
+});
+
+describe("EnvSchema · tercio 3", () => {
+  const HASH = `pbkdf2-sha256$600000$${"s".repeat(22)}$${"h".repeat(43)}`;
+  const TOTP = "A".repeat(32);
+  const SESION = "x".repeat(43);
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const LISTA = "l".repeat(43);
+
+  it("la lista abierta exige base de datos, clave de correo y secreto de la lista", () => {
+    const completa = { WAITLIST_MODE: "abierta", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab", WAITLIST_SECRETO: LISTA };
+    expect(EnvSchema.safeParse({ WAITLIST_MODE: "abierta" }).success).toBe(false);
+    expect(EnvSchema.safeParse(completa).success).toBe(true);
+    for (const falta of ["DATABASE_URL", "RESEND_API_KEY", "WAITLIST_SECRETO"] as const) {
+      const { [falta]: _omitida, ...incompleta } = completa;
+      void _omitida;
+      expect(EnvSchema.safeParse(incompleta).success, falta).toBe(false);
+    }
+  });
+
+  it("el secreto de la lista debe tener 256 bits en base64url", () => {
+    expect(EnvSchema.safeParse({ WAITLIST_SECRETO: LISTA }).success).toBe(true);
+    for (const malo of ["corto", "l".repeat(42), `${"l".repeat(43)} `, `${"l".repeat(42)}+`]) {
+      expect(EnvSchema.safeParse({ WAITLIST_SECRETO: malo }).success, malo).toBe(false);
+    }
+  });
+
+  it("en producción exige la URL https del sitio, pero no mientras se construye la imagen", () => {
+    const base = {
+      NODE_ENV: "production",
+      WAITLIST_MODE: "abierta",
+      DATABASE_URL: DB,
+      RESEND_API_KEY: "re_1234567890ab",
+      WAITLIST_SECRETO: LISTA,
+    };
+    expect(EnvSchema.safeParse(base).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...base, NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" }).success).toBe(true);
+    // Sin configuración alguna (la URL por omisión es localhost): tampoco se arranca.
+    expect(EnvSchema.safeParse({ NODE_ENV: "production" }).success).toBe(false);
+    // Las pruebas e2e y el desarrollo local siguen funcionando sin URL.
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", OTEA_E2E: "1" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ NODE_ENV: "development" }).success).toBe(true);
+
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    try {
+      expect(EnvSchema.safeParse({ NODE_ENV: "production" }).success).toBe(true);
+      // La CI define una base local sin TLS durante el build de las pruebas e2e.
+      const sinTls = "postgresql://otea_web:clave@localhost:5432/postgres";
+      expect(EnvSchema.safeParse({ NODE_ENV: "production", DATABASE_URL: sinTls }).success).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    // Al ejecutar sí se exige.
+    const sinTls = "postgresql://otea_web:clave@localhost:5432/postgres";
+    expect(
+      EnvSchema.safeParse({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com", DATABASE_URL: sinTls })
+        .success,
+    ).toBe(false);
+  });
+
+  it("en producción la base de datos debe verificar el certificado", () => {
+    const sinTls = "postgresql://otea_web:clave@host.neon.tech/neondb?sslmode=require";
+    const sitio = { NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" };
+    expect(EnvSchema.safeParse({ ...sitio, DATABASE_URL: sinTls }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...sitio, DATABASE_URL: DB }).success).toBe(true);
+  });
+
+  it("el tope diario de correos tiene un valor por omisión y límites", () => {
+    expect(EnvSchema.parse({}).WAITLIST_ENVIOS_DIARIOS).toBe(80);
+    expect(EnvSchema.parse({ WAITLIST_ENVIOS_DIARIOS: "50" }).WAITLIST_ENVIOS_DIARIOS).toBe(50);
+    for (const malo of ["0", "-1", "10000", "mucho"]) {
+      expect(EnvSchema.safeParse({ WAITLIST_ENVIOS_DIARIOS: malo }).success).toBe(false);
+    }
+  });
+
+  it("el panel se configura completo o no se configura", () => {
+    expect(EnvSchema.safeParse({ ADMIN_CLAVE_HASH: HASH }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ADMIN_CLAVE_HASH: HASH, ADMIN_TOTP_SECRETO: TOTP, ADMIN_SESION_SECRETO: SESION }).success).toBe(
+      false,
+    );
+    expect(
+      EnvSchema.safeParse({
+        ADMIN_CLAVE_HASH: HASH,
+        ADMIN_TOTP_SECRETO: TOTP,
+        ADMIN_SESION_SECRETO: SESION,
+        DATABASE_URL: DB,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rechaza hashes débiles, secretos cortos y alias con correo", () => {
+    const debil = `pbkdf2-sha256$100000$${"s".repeat(22)}$${"h".repeat(43)}`;
+    expect(EnvSchema.safeParse({ ADMIN_CLAVE_HASH: debil }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ADMIN_SESION_SECRETO: "corto" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ADMIN_ALIAS: "persona@correo.cl" }).success).toBe(false);
+  });
+
+  it("valida el remitente y los proxies de confianza", () => {
+    expect(EnvSchema.parse({}).EMAIL_REMITENTE).toBe("Otea Austral <alertas@oteaustral.com>");
+    expect(EnvSchema.safeParse({ EMAIL_REMITENTE: "x\r\nBcc: otro@x.cl" }).success).toBe(false);
+    expect(EnvSchema.parse({ IP_PROXIES_CONFIABLES: "2" }).IP_PROXIES_CONFIABLES).toBe(2);
+    expect(EnvSchema.safeParse({ IP_PROXIES_CONFIABLES: "9" }).success).toBe(false);
+  });
+});
+
+describe("EnvSchema · asistente de preguntas", () => {
+  const CLAVE = `sk-ant-api03-${"x".repeat(40)}`;
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const ia = {
+    ASISTENTE_MODO: "ia",
+    ANTHROPIC_API_KEY: CLAVE,
+    ASISTENTE_MODELO: "claude-haiku-5-5",
+    ASISTENTE_PRECIO_ENTRADA: "0.1",
+    ASISTENTE_PRECIO_SALIDA: "0.5",
+    ASISTENTE_TOPE_DIARIO_USD: "1",
+  };
+
+  it("por omisión responde con la base de conocimiento: sin IA, sin clave y sin costo", () => {
+    const e = EnvSchema.parse({});
+    expect(e.ASISTENTE_MODO).toBe("base");
+    expect(e.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" }).success).toBe(true);
+  });
+
+  it("el modo ia pide todo de forma explícita: clave, modelo, precios y tope de gasto", () => {
+    expect(EnvSchema.safeParse(ia).success).toBe(true);
+    for (const falta of Object.keys(ia).filter((k) => k !== "ASISTENTE_MODO")) {
+      const { [falta]: _omitida, ...incompleta } = ia as Record<string, string>;
+      void _omitida;
+      const r = EnvSchema.safeParse(incompleta);
+      expect(r.success, falta).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0]), falta).toContain(falta);
+    }
+  });
+
+  it("el modo ia no trae valores por omisión para el gasto", () => {
+    const e = EnvSchema.parse(ia);
+    expect(e.ASISTENTE_TOPE_DIARIO_USD).toBe(1);
+    expect(EnvSchema.parse({}).ASISTENTE_TOPE_DIARIO_USD).toBeUndefined();
+    expect(EnvSchema.parse({}).ASISTENTE_MODELO).toBeUndefined();
+    expect(EnvSchema.parse({}).ASISTENTE_PRECIO_ENTRADA).toBeUndefined();
+  });
+
+  it("solo admite los modelos con los que se probó", () => {
+    for (const ok of MODELOS_ASISTENTE) expect(EnvSchema.safeParse({ ...ia, ASISTENTE_MODELO: ok }).success, ok).toBe(true);
+    for (const malo of ["claude-haiku-4-5", "claude-opus-4-8", "gpt-5", "claude-haiku-5-5 ", "haiku"]) {
+      expect(EnvSchema.safeParse({ ...ia, ASISTENTE_MODELO: malo }).success, malo).toBe(false);
+    }
+  });
+
+  it("valida la clave y las cifras", () => {
+    for (const mala of ["corta", "sk-ant-", "re_1234567890abcdef", ` ${CLAVE}`, `${CLAVE}\n`]) {
+      expect(EnvSchema.safeParse({ ...ia, ANTHROPIC_API_KEY: mala }).success, mala).toBe(false);
+    }
+    for (const campo of ["ASISTENTE_PRECIO_ENTRADA", "ASISTENTE_PRECIO_SALIDA", "ASISTENTE_TOPE_DIARIO_USD"]) {
+      for (const malo of ["0", "-1", "abc", "1000"]) {
+        expect(EnvSchema.safeParse({ ...ia, [campo]: malo }).success, `${campo}=${malo}`).toBe(false);
+      }
+    }
+    expect(EnvSchema.safeParse({ ...ia, ASISTENTE_LLAMADAS_DIARIAS: "0" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...ia, ASISTENTE_IA_POR_PERSONA_DIA: "9999" }).success).toBe(false);
+    expect(EnvSchema.parse(ia).ASISTENTE_LLAMADAS_DIARIAS).toBe(300);
+    expect(EnvSchema.parse(ia).ASISTENTE_IA_POR_PERSONA_DIA).toBe(30);
+  });
+
+  it("en producción el tope diario se cuenta en la base: sin DATABASE_URL no se activa", () => {
+    const produccion = { ...ia, NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com" };
+    expect(EnvSchema.safeParse(produccion).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...produccion, DATABASE_URL: DB }).success).toBe(true);
+    // Fuera de producción (desarrollo y pruebas) basta la memoria.
+    expect(EnvSchema.safeParse(ia).success).toBe(true);
+  });
+
+  it("la dirección de pruebas de la API solo se admite en las pruebas e2e", () => {
+    const prueba = { ...ia, ASISTENTE_URL_API_PRUEBA: "http://127.0.0.1:3299" };
+    expect(EnvSchema.safeParse(prueba).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...prueba, OTEA_E2E: "1" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ ...prueba, OTEA_E2E: "1", NODE_ENV: "production" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ ASISTENTE_URL_API_PRUEBA: "http://127.0.0.1:3299" }).success).toBe(false);
+  });
+});
+
+describe("EnvSchema · cuentas de personas usuarias", () => {
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const SECRETO = "c".repeat(43);
+  const completas = { CUENTAS_MODO: "abiertas", DATABASE_URL: DB, RESEND_API_KEY: "re_1234567890ab", CUENTAS_SECRETO: SECRETO };
+
+  it("por omisión están cerradas: no guardan nada ni piden nada", () => {
+    const e = EnvSchema.parse({});
+    expect(e.CUENTAS_MODO).toBe("cerradas");
+    expect(e.CUENTAS_SECRETO).toBeUndefined();
+    expect(e.CUENTAS_ENVIOS_DIARIOS).toBe(20);
+  });
+
+  it("abiertas exige base de datos, clave de correo y el secreto de las cuentas", () => {
+    expect(EnvSchema.safeParse({ CUENTAS_MODO: "abiertas" }).success).toBe(false);
+    expect(EnvSchema.safeParse(completas).success).toBe(true);
+    for (const falta of ["DATABASE_URL", "RESEND_API_KEY", "CUENTAS_SECRETO"] as const) {
+      const { [falta]: _omitida, ...incompleta } = completas;
+      void _omitida;
+      const r = EnvSchema.safeParse(incompleta);
+      expect(r.success, falta).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0]), falta).toContain(falta);
+    }
+  });
+
+  it("la modalidad solo admite cerradas, memoria o abiertas", () => {
+    for (const mala of ["abierta", "cerrada", "on", "1", ""]) expect(EnvSchema.safeParse({ CUENTAS_MODO: mala }).success, mala).toBe(false);
+  });
+
+  it("memoria no se permite en producción, salvo para las pruebas e2e", () => {
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", CUENTAS_MODO: "memoria" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ NODE_ENV: "production", CUENTAS_MODO: "memoria", OTEA_E2E: "1" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ NODE_ENV: "development", CUENTAS_MODO: "memoria" }).success).toBe(true);
+  });
+
+  it("el secreto debe tener 256 bits en base64url y no repetirse en otro uso", () => {
+    expect(EnvSchema.safeParse({ CUENTAS_SECRETO: SECRETO }).success).toBe(true);
+    for (const malo of ["corto", "c".repeat(42), `${"c".repeat(42)}+`, `${"c".repeat(43)} `]) {
+      expect(EnvSchema.safeParse({ CUENTAS_SECRETO: malo }).success, malo).toBe(false);
+    }
+    expect(EnvSchema.safeParse({ CUENTAS_SECRETO: SECRETO, WAITLIST_SECRETO: SECRETO }).success).toBe(false);
+    expect(EnvSchema.safeParse({ CUENTAS_SECRETO: SECRETO, ADMIN_SESION_SECRETO: SECRETO }).success).toBe(false);
+    expect(EnvSchema.safeParse({ CUENTAS_SECRETO: SECRETO, WAITLIST_SECRETO: "d".repeat(43) }).success).toBe(true);
+  });
+
+  it("el tope diario de correos es un entero positivo", () => {
+    expect(EnvSchema.parse({ CUENTAS_ENVIOS_DIARIOS: "30" }).CUENTAS_ENVIOS_DIARIOS).toBe(30);
+    for (const malo of ["0", "-1", "2.5", "abc", "5001"]) expect(EnvSchema.safeParse({ CUENTAS_ENVIOS_DIARIOS: malo }).success, malo).toBe(false);
+  });
+
+  it("la dirección de pruebas del correo solo existe con OTEA_E2E=1 (si no, la clave de Resend podría viajar a un servidor ajeno)", () => {
+    expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "http://127.0.0.1:3298/emails" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "http://127.0.0.1:3298/emails", OTEA_E2E: "1" }).success).toBe(true);
+    expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "no es una url", OTEA_E2E: "1" }).success).toBe(false);
+  });
+});

@@ -1,0 +1,8 @@
+{
+  "GHSA-vfj7-8cjw-p6xm": {
+    "paquete": "braces",
+    "alcance": "desarrollo",
+    "motivo": "Denegación de servicio por patrones de llaves anidados en braces <=3.0.3 (CWE-674). Llega solo por eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch, es decir, por el lint local y de la CI; no está en el código que se despliega (npm audit --omit=dev está limpio) y los patrones los fija el propio plugin, no un usuario. No hay versión corregida publicada (la última de braces es 3.0.3) y la «corrección» que sugiere npm es bajar eslint-config-next a la 14.",
+    "revisar": "2027-01-10"
+  }
+}
