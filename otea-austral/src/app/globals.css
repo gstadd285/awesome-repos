@@ -1885,8 +1885,10 @@ html[data-movimiento="completo"] {
   }
 
   /* Transición entre páginas (React <ViewTransition> en `template.tsx`): la página que se va sube 8 px y se funde en
-     180 ms; la que llega entra desde 12 px en 420 ms, 60 ms después. La cabecera no se mueve y el filete de la página actual viaja al enlace nuevo (420 ms, curva de énfasis). Los clics atraviesan
-     la capa de la transición. */
+     180 ms; la que llega entra desde 12 px en 420 ms, 60 ms después. La cabecera no se mueve y el filete de la página
+     actual viaja al enlace nuevo (420 ms, curva de énfasis). Los clics atraviesan la capa de la transición. (La página
+     no puede viajar en la imagen de la raíz: React le quita el nombre a `<html>` cuando nada cambia fuera de sus
+     límites.) */
   &::view-transition {
     pointer-events: none;
   }
@@ -2706,7 +2708,10 @@ html:not([data-movimiento="completo"])::view-transition-new(*) {
 }
 
 /* Un sistema con «reducir movimiento» no anima ni transiciona nada, salvo que la persona haya activado el
-   movimiento en esta página (`data-movimiento="completo"`). Sin JavaScript no hay atributo: queda reducido. */
+   movimiento en esta página (`data-movimiento="completo"`). Sin JavaScript no hay atributo: queda reducido.
+   `transition-property: none` además de la duración: con una duración mínima pero no nula, cualquier cambio de estilo
+   en `<html>` (Next pone y quita `scroll-behavior` al navegar) creaba una transición de `scrollbar-color`, que se
+   hereda, en cada elemento de la página: 853 en la portada y ~130 ms de recálculo antes de cambiar de página. */
 @media (prefers-reduced-motion: reduce) {
   html:not([data-movimiento="completo"]) *,
   html:not([data-movimiento="completo"]) *::before,
@@ -2714,6 +2719,7 @@ html:not([data-movimiento="completo"])::view-transition-new(*) {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-property: none !important;
     scroll-behavior: auto !important;
   }
 

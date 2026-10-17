@@ -598,6 +598,72 @@ test.describe("navegación con continuidad", () => {
     await expect.poll(async () => Math.abs((await page.evaluate(() => window.scrollY)) - antes)).toBeLessThanOrEqual(2);
   });
 
+  test("con la puerta cerrada no hay view transition y la página cambia en menos de 500 ms, también desde la portada", async ({
+    browser,
+  }, info) => {
+    soloEscritorio(info.project.name);
+    // Reducido por el sistema y por el conmutador del pie; escritorio y teléfono. Antes React iniciaba una view
+    // transition igual y, en la portada, Chromium tardaba ~4,4 s en abortarla: el clic no hacía nada.
+    const casos = [
+      { ancho: 1440, alto: 900, sistema: true },
+      { ancho: 1440, alto: 900, sistema: false },
+      { ancho: 390, alto: 844, sistema: true },
+    ];
+    for (const { ancho, alto, sistema } of casos) {
+      const contexto = await browser.newContext({
+        viewport: { width: ancho, height: alto },
+        hasTouch: ancho < 1024,
+        reducedMotion: sistema ? "reduce" : "no-preference",
+      });
+      const page = await contexto.newPage();
+      await page.addInitScript((sistema) => {
+        const ventana = window as Window & { __vt?: number };
+        ventana.__vt = 0;
+        if (!sistema) {
+          try {
+            localStorage.setItem("otea-movimiento", "reducido");
+          } catch {}
+        }
+        const original = document.startViewTransition?.bind(document);
+        if (original) {
+          document.startViewTransition = ((...args: Parameters<typeof original>) => {
+            ventana.__vt = (ventana.__vt ?? 0) + 1;
+            return original(...args);
+          }) as typeof document.startViewTransition;
+        }
+      }, sistema);
+      for (const [desde, hacia] of [
+        ["/", "/metodologia"],
+        ["/metodologia", "/fuentes"],
+      ]) {
+        await page.goto(desde);
+        await expect(page.locator("html")).toHaveAttribute("data-movimiento", "reducido");
+        await page.waitForLoadState("networkidle");
+        // Se mide con temporizadores (corren aunque no se pinte ningún cuadro), desde el clic hasta la URL nueva.
+        const ms = await page.evaluate(
+          (hacia) =>
+            new Promise<number>((resolver) => {
+              const t0 = performance.now();
+              const ruta = location.pathname;
+              const sondear = () => {
+                if (location.pathname !== ruta) resolver(performance.now() - t0);
+                else if (performance.now() - t0 > 4000) resolver(Number.POSITIVE_INFINITY);
+                else setTimeout(sondear, 4);
+              };
+              document.querySelector<HTMLAnchorElement>(`a[href="${hacia}"]`)!.click();
+              setTimeout(sondear, 0);
+            }),
+          hacia,
+        );
+        const caso = `${ancho} px, ${sistema ? "sistema" : "conmutador"}, ${desde} → ${hacia}: ${Math.round(ms)} ms`;
+        expect(ms, caso).toBeLessThan(500);
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        expect(await page.evaluate(() => (window as Window & { __vt?: number }).__vt), caso).toBe(0);
+      }
+      await contexto.close();
+    }
+  });
+
   test("con movimiento reducido el ancla funciona como siempre (sin fundido ni transición)", async ({ browser }, info) => {
     soloEscritorio(info.project.name);
     const contexto = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });

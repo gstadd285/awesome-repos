@@ -145,7 +145,17 @@ describe("movimiento", () => {
     const reduce = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
     expect(reduce).toMatch(/animation-duration:\s*0\.01ms !important/);
     expect(reduce).toMatch(/transition-duration:\s*0\.01ms !important/);
+    // Sin esto, cada cambio de estilo en <html> creaba una transición de `scrollbar-color` en cada elemento.
+    expect(reduce).toMatch(/transition-property:\s*none !important/);
     expect(reduce).toMatch(/::view-transition-group\(\*\)/);
+  });
+
+  it("con la puerta cerrada la transición de página no le pide nada a React (que llamaría a startViewTransition)", () => {
+    const transicion = readFileSync(join(process.cwd(), "src/components/layout/PageTransition.tsx"), "utf8");
+    // Al navegar con la puerta cerrada se monta sin <ViewTransition>, y la salida de la plantilla hidratada es «none».
+    expect(transicion).toMatch(/useState\(\(\) => !hidratada \|\| puertaAbierta\(\)\)/);
+    expect(transicion).toMatch(/if \(!conLimite\) return contenido;/);
+    expect(transicion).toMatch(/abierta \? "otea-pagina" : "none"/);
   });
 
   it("con la puerta cerrada por el conmutador, las view transitions terminan al instante (sin animar fuera de la puerta)", () => {
