@@ -284,9 +284,45 @@ test.describe("cabecera isla", () => {
     expect(xAbajo).toBeGreaterThan(isla.izquierda);
     expect(xAbajo - xArriba).toBeGreaterThan(80);
     // El avance de lectura recorre el borde de la isla.
-    const avance = await page.evaluate(() => getComputedStyle(document.querySelector(".cabecera-progreso")!).scale);
+    const avance = await page.evaluate(() => getComputedStyle(document.querySelector(".cabecera-progreso")!, "::after").scale);
     expect(Number.parseFloat(avance)).toBeGreaterThan(0);
     expect(errores).toEqual([]);
+  });
+
+  test("a mitad de la condensación el logo y las acciones van siempre dentro de la isla (1440 y 1920)", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    for (const ancho of [1440, 1920]) {
+      const contexto = await browser.newContext({ viewport: { width: ancho, height: 900 } });
+      const page = await contexto.newPage();
+      await page.goto("/fuentes");
+      await expect(page.locator("html")).toHaveAttribute("data-movimiento", "completo");
+      for (const y of [30, 60, 90]) {
+        await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), y);
+        await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(y);
+        const g = await page.evaluate(() => {
+          const cabecera = document.querySelector("header.cabecera")!;
+          const caja = cabecera.getBoundingClientRect();
+          const s = getComputedStyle(cabecera, "::before");
+          const isla = {
+            izquierda: caja.left + Number.parseFloat(s.left),
+            derecha: caja.right - Number.parseFloat(s.right),
+            arriba: caja.top + Number.parseFloat(s.top),
+            abajo: caja.bottom - Number.parseFloat(s.bottom),
+          };
+          const logo = document.querySelector(".cabecera-logo")!.getBoundingClientRect();
+          const acciones = document.querySelector(".cabecera-acciones")!.getBoundingClientRect();
+          return { isla, logo: [logo.left, logo.right, logo.top, logo.bottom], acciones: [acciones.left, acciones.right, acciones.top, acciones.bottom], opacidad: Number(s.opacity) };
+        });
+        const contexto = `${ancho} px, scrollY ${y}: ${JSON.stringify(g)}`;
+        for (const [izquierda, derecha, arriba, abajo] of [g.logo, g.acciones]) {
+          expect(izquierda, contexto).toBeGreaterThanOrEqual(g.isla.izquierda + 4);
+          expect(derecha, contexto).toBeLessThanOrEqual(g.isla.derecha - 4);
+          expect(arriba, contexto).toBeGreaterThanOrEqual(g.isla.arriba - 0.5);
+          expect(abajo, contexto).toBeLessThanOrEqual(g.isla.abajo + 0.5);
+        }
+      }
+      await contexto.close();
+    }
   });
 
   test("la pastilla sigue al ratón y el subrayado marca solo la página actual", async ({ page }, info) => {

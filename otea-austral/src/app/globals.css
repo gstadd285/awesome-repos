@@ -99,6 +99,16 @@
   inherits: false;
 }
 
+/* Avance de la isla de la cabecera (0 arriba, 1 a los 120 px de scroll). Una sola línea de tiempo para la píldora, el
+   logo, las acciones y el avance de lectura: el borde de la isla acompaña al contenido en cada píxel, en vez de tener
+   su forma final desde el primero mientras el logo y la CTA todavía viajan por fuera. Hereda, para que lo lean los
+   hijos y `::before`; sin la animación (puerta cerrada, sin línea de tiempo) vale 0 y nada lo usa. */
+@property --isla {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
 /* Variantes con puerta (forma de bloque: la de una línea desalinea `quitarBloques` de motion.test.ts).
    `mov:` solo con el movimiento activado; `fino:` solo con ratón o trackpad. Nunca `motion-safe:`/`motion-reduce:`:
    obedecen a la consulta de medios y no al conmutador del pie. */
@@ -543,15 +553,23 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   }
 }
 
-/* Avance de lectura: un filete de latón (≥ 3:1 en `brass-deep`) que solo existe donde lo mueve una línea de tiempo. */
+/* Avance de lectura: un filete de latón (≥ 3:1 en `brass-deep`) que solo existe donde lo mueve una línea de tiempo.
+   El elemento es el riel y `::after`, el latón que lo llena (la escala no deforma el riel). */
 .cabecera-progreso {
   display: none;
   position: absolute;
   inset: auto 0 0;
   height: 2px;
   pointer-events: none;
-  background-image: linear-gradient(90deg, var(--color-brass), var(--color-brass-deep));
-  transform-origin: left center;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: linear-gradient(90deg, var(--color-brass), var(--color-brass-deep));
+    transform-origin: left center;
+  }
 }
 
 /* Pastilla de hover: tinta al 6 %, detrás de los enlaces. La coloca `DirectorEscena` (`--nx --nw` en px y `--nv` de
@@ -1535,12 +1553,21 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   }
 }
 
-/* Cabecera isla, ligada a scroll(root) en los primeros 120 px: la isla aparece y crece un 3 %, el logo entra en ella
-   y baja al 94 % (sin tocar su geometría) y las acciones se acercan. El progreso es una escala horizontal. */
+/* Cabecera isla, ligada a scroll(root) en los primeros 120 px: `--isla` va de 0 a 1 (la barra a todo el ancho se
+   condensa en la píldora y el logo y las acciones la acompañan) y la isla aparece. El progreso es una escala
+   horizontal. */
+@keyframes cab-isla-avance {
+  from {
+    --isla: 0;
+  }
+  to {
+    --isla: 1;
+  }
+}
+
 @keyframes cab-isla {
   from {
     opacity: 0;
-    scale: 0.97;
   }
 }
 
@@ -1561,19 +1588,6 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 @keyframes cab-progreso-ver {
   from {
     opacity: 0;
-  }
-}
-
-@keyframes cab-logo {
-  to {
-    translate: var(--cab-dx-logo) 0;
-    scale: 0.94;
-  }
-}
-
-@keyframes cab-acciones {
-  to {
-    translate: calc(-1 * var(--cab-dx-acciones)) 0;
   }
 }
 
@@ -2122,8 +2136,22 @@ html[data-movimiento="completo"] {
 html[data-movimiento="completo"] {
   @media (min-width: 1024px) {
     @supports (animation-timeline: view()) {
+      /* Un solo avance para todo (`--isla`, curva de cámara: ligada al dedo, se condensa a lo largo de los 120 px en
+         vez de formarse casi entera en los primeros 30). */
+      .cabecera {
+        animation: cab-isla-avance var(--ease-enfasis) both;
+        animation-timeline: scroll(root);
+        animation-range: 0px 120px;
+      }
+
+      /* La píldora nace de la barra a todo el ancho (6 px del borde del logo) y se condensa hasta su sitio (16 px de
+         aire, 1200 px como máximo, 10 px arriba y abajo) con el mismo avance que el logo y las acciones: el logo queda
+         siempre 18 px dentro de ella y las acciones, entre 18 y 6 px. Una capa pequeña de un solo seudoelemento. */
       .cabecera::before {
-        inset: 10px max(16px, 50% - 600px);
+        --isla-borde-0: max(6px, 50% - 714px);
+        --isla-borde-1: max(16px, 50% - 600px);
+        --isla-borde: calc(var(--isla-borde-0) + var(--isla) * (var(--isla-borde-1) - var(--isla-borde-0)));
+        inset: calc(var(--isla) * 10px) var(--isla-borde);
         border-radius: var(--radius-pill);
         background-color: rgb(252 250 246 / 0.99);
         box-shadow:
@@ -2131,8 +2159,6 @@ html[data-movimiento="completo"] {
           inset 0 1px 0 rgb(255 255 255 / 0.9),
           0 1px 2px rgb(15 27 45 / 0.06),
           0 18px 40px -22px rgb(15 27 45 / 0.34);
-        /* Curva de cámara (énfasis) y no de aterrizaje: ligada al dedo, la isla se condensa a lo largo de los
-           120 px en vez de formarse casi entera en los primeros 30. */
         animation:
           cab-isla var(--ease-enfasis) both,
           cab-isla-ver linear both;
@@ -2149,28 +2175,34 @@ html[data-movimiento="completo"] {
         background-origin: border-box;
       }
 
+      /* El logo entra en la isla y baja al 94 % (sin tocar su geometría); las acciones se acercan a su borde. */
       .cabecera-logo {
         transform-origin: left center;
-        animation: cab-logo var(--ease-enfasis) both;
-        animation-timeline: scroll(root);
-        animation-range: 0px 120px;
+        translate: calc(var(--isla) * var(--cab-dx-logo)) 0;
+        scale: calc(1 - var(--isla) * 0.06);
       }
 
       .cabecera-acciones {
-        animation: cab-acciones var(--ease-enfasis) both;
-        animation-timeline: scroll(root);
-        animation-range: 0px 120px;
+        translate: calc(var(--isla) * -1 * var(--cab-dx-acciones)) 0;
       }
 
+      /* El avance recorre el borde inferior de la isla, 28 px dentro de sus extremos, sobre un riel de tinta muy
+         tenue: así se lee como progreso desde el primer píxel, también en la portada, donde al principio es corto. */
       .cabecera-progreso {
         display: block;
-        inset: auto calc(max(16px, 50% - 600px) + 28px) 11px;
+        inset: auto
+          calc(max(6px, 50% - 714px) + var(--isla) * (max(16px, 50% - 600px) - max(6px, 50% - 714px)) + 28px)
+          calc(var(--isla) * 10px + 1px);
         border-radius: 1px;
-        animation:
-          cab-progreso linear both,
-          cab-progreso-ver var(--ease-enfasis) both;
-        animation-timeline: scroll(root), scroll(root);
-        animation-range: normal, 0px 120px;
+        background-color: rgb(15 27 45 / 0.12);
+        animation: cab-progreso-ver var(--ease-enfasis) both;
+        animation-timeline: scroll(root);
+        animation-range: 0px 120px;
+
+        &::after {
+          animation: cab-progreso linear both;
+          animation-timeline: scroll(root);
+        }
       }
     }
   }
@@ -2180,6 +2212,9 @@ html[data-movimiento="completo"] {
     @supports (animation-timeline: view()) {
       .cabecera-progreso {
         display: block;
+      }
+
+      .cabecera-progreso::after {
         animation: cab-progreso linear both;
         animation-timeline: scroll(root);
       }
