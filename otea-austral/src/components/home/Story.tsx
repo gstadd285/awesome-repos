@@ -59,8 +59,9 @@ export function Story() {
               </div>
             </div>
           </div>
-          {/* Solo si el sistema pide menos movimiento: va en el cielo (escritorio) o en su propia fila, sin mover el
-              héroe, que así queda idéntico al fotograma final de la entrada. */}
+          {/* Solo si el sistema pide menos movimiento: va en el cielo (escritorio), bajo las acciones junto a la alerta
+              (tableta) o después de la alerta (teléfono). Nunca mueve el héroe, que así queda idéntico al fotograma
+              final de la entrada. La alerta viva es decorativa (`aria-hidden`): el orden de lectura y de foco no cambia. */}
           <div className="hero-aviso">
             <AvisoMovimiento />
           </div>

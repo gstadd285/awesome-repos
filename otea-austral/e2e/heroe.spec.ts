@@ -37,6 +37,27 @@ const fotograma = () => {
   };
 };
 
+/**
+ * Aire entre el final de la línea del H1 que descansa sobre el horizonte y el borde izquierdo del sol. Mide los glifos
+ * (rangos de los nodos de texto), no las cajas: en el teléfono «DEL» y «HORIZONTE» son bloques a todo el ancho.
+ */
+const aireSol = () => {
+  const horizonte = document.querySelector(".h-horizonte")!.getBoundingClientRect().top;
+  const fuente = Number.parseFloat(getComputedStyle(document.querySelector(".h1-horizonte")!).fontSize);
+  const recorrido = document.createTreeWalker(document.querySelector(".h1-linea-1")!, NodeFilter.SHOW_TEXT);
+  const cajas: DOMRect[] = [];
+  for (let n = recorrido.nextNode(); n; n = recorrido.nextNode()) {
+    if (!n.textContent?.trim()) continue;
+    const rango = document.createRange();
+    rango.selectNodeContents(n);
+    cajas.push(...rango.getClientRects());
+  }
+  // La línea que toca el horizonte: su base cae a menos de media letra de él.
+  const fin = Math.max(...cajas.filter((c) => c.bottom > horizonte - fuente * 0.6).map((c) => c.right));
+  const sol = document.querySelector(".sol")!.getBoundingClientRect();
+  return { aire: sol.left - fin, solArriba: sol.top, horizonte };
+};
+
 test.describe("héroe Horizonte vivo", () => {
   test("el titular sale del horizonte y está completo antes de 1,3 s; sin residuo a los 2,5 s", async ({ browser }, info) => {
     soloEscritorio(info.project.name);
@@ -113,6 +134,52 @@ test.describe("héroe Horizonte vivo", () => {
     expect(m.alto - m.baseMasBaja).toBeLessThan(40);
     expect(m.alto - m.baseMasBaja).toBeGreaterThanOrEqual(0);
     await contexto.close();
+  });
+
+  test("la retícula del suelo nace bajo la entrada y los botones (franja de la cinta), a cualquier alto de escritorio", async ({
+    browser,
+  }, info) => {
+    soloEscritorio(info.project.name);
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 1280, height: 720 },
+      { width: 1024, height: 768 },
+      { width: 1920, height: 1080 },
+    ]) {
+      const { contexto, page } = await abrir(browser, { viewport });
+      await page.waitForTimeout(3200);
+      const m = await page.evaluate(() => {
+        const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+        // `getBoundingClientRect` de un plano 3D da su proyección: el borde superior es su borde lejano.
+        return { reticula: r(".h-reticula").top, texto: r(".hero-texto").bottom, acciones: r(".hero-acciones").bottom };
+      });
+      expect(m.reticula, `${viewport.width}×${viewport.height}`).toBeGreaterThanOrEqual(Math.max(m.texto, m.acciones));
+      await contexto.close();
+    }
+  });
+
+  test("el sol nunca choca con el H1: queda a más de 24 px de la línea que toca el horizonte", async ({ browser }, info) => {
+    soloEscritorio(info.project.name);
+    for (const [width, height, movil] of [
+      [360, 740, true],
+      [390, 844, true],
+      [414, 896, true],
+      [768, 1024, false],
+      [1024, 768, false],
+      [1440, 900, false],
+    ] as const) {
+      const { contexto, page } = await abrir(browser, {
+        viewport: { width, height },
+        isMobile: movil,
+        hasTouch: movil || width < 1024,
+        reducedMotion: "reduce",
+      });
+      await page.evaluate(() => document.fonts.ready);
+      const m = await page.evaluate(aireSol);
+      expect(m.aire, `${width}×${height}`).toBeGreaterThan(24);
+      expect(m.solArriba).toBeLessThan(m.horizonte);
+      await contexto.close();
+    }
   });
 
   test("a 390×844 el primer pliegue muestra el H1, los dos botones a todo el ancho y 200 px de la alerta viva", async ({
@@ -197,11 +264,41 @@ test.describe("héroe Horizonte vivo", () => {
     expect(quieto.solTransform).toBe("none");
     expect(quieto.pulsos.split(",").every((o) => o === "0")).toBe(true);
     expect(quieto.laminas.split(",").every((o) => o === "1")).toBe(true);
-    // Idéntico al fotograma de los 5 s (el aviso de movimiento ocupa su sitio bajo los botones, no mueve el héroe).
+    // Idéntico al fotograma de los 5 s (en escritorio el aviso de movimiento va en el cielo: no mueve el héroe).
     expect(quieto.linea1).toEqual(final.linea1);
     expect(quieto.linea2).toEqual(final.linea2);
     expect(quieto.sol).toEqual(final.sol);
     expect(quieto.horizonte).toEqual(final.horizonte);
+    await contexto.close();
+  });
+
+  test("con movimiento reducido en el teléfono el aviso no desplaza la alerta: el primer pliegue es el del fotograma final", async ({
+    browser,
+  }, info) => {
+    soloEscritorio(info.project.name);
+    const telefono = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
+    const pliegue = () => {
+      const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+      return {
+        h1: Math.round(r(".h1-horizonte").top),
+        botones: Math.round(r(".hero-acciones").bottom),
+        alerta: Math.round(r(".alerta-viva").top),
+        aviso: Math.round(r(".hero-aviso").top),
+        alto: innerHeight,
+      };
+    };
+    const animado = await abrir(browser, telefono);
+    await animado.page.waitForTimeout(3800);
+    const final = await animado.page.evaluate(pliegue);
+    await animado.contexto.close();
+
+    const { contexto, page } = await abrir(browser, { ...telefono, reducedMotion: "reduce" });
+    await expect(page.getByRole("button", { name: "Ver con animaciones" })).toBeVisible();
+    const quieto = await page.evaluate(pliegue);
+    expect(quieto.alto - quieto.alerta).toBeGreaterThanOrEqual(200);
+    expect([quieto.h1, quieto.botones, quieto.alerta]).toEqual([final.h1, final.botones, final.alerta]);
+    // El aviso va después de la alerta.
+    expect(quieto.aviso).toBeGreaterThan(quieto.alerta);
     await contexto.close();
   });
 
