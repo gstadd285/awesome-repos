@@ -157,11 +157,15 @@ que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 
   en la fila: oculto, no suma alto.
 - «Desliza» va en dos capas: el `<p>` lleva la salida ligada a `--historia` y el `span` interior la entrada por tiempo
   (una clave de salida con relleno `both` en el mismo elemento pisa la entrada diferida).
-- Bajo 1024 px con línea de tiempo, las láminas se ponen de pie ligadas a la `view-timeline` de la cinta
-  (`--cinta`, ola por `--x`), no por tiempo: la cinta queda bajo la alerta, fuera del primer pliegue.
+- Bajo 1024 px la cinta se pone de pie **una sola vez, por tiempo**, nunca ligada al scroll (ligada a su `view-timeline`
+  quedaba a medio armar en reposo: en la tableta, en el primer pliegue, `cover` no pasaba del ~15 %). Si al cargar ya
+  se ve, sigue la entrada; si no, `DirectorEscena` la marca `data-cinta="espera"` (oculta) y `"vista"` al entrar en
+  pantalla, y el CSS la arma con la misma ola, más apretada. Solo su salida (`m-cinta-salir`) va ligada al scroll.
 - Los **pulsos son trazos 2D** apuntados al sol con `atan2()` sobre `cqw`/`cqh` (`.h-suelo` es contenedor de tamaño):
   cada uno cae en su grupo (`--lx`, `--ly`) y solo recorre su `--tramo` (franja de la cinta en escritorio, del sol al filo
-  de la alerta en la tableta, el hueco bajo los botones en el teléfono). **Nada de máscaras ni planos 3D para ellos.**
+  de la alerta en la tableta). **Nada de máscaras ni planos 3D para ellos.** En el teléfono no hay pulsos: el sol queda
+  lejos y en el hueco de 28 px bajo los botones se leían como motas; la luz llega por una chispa que recorre el filete
+  de la alerta (`.alerta-viva::after`, `hz-chispa`).
 - En la historia fija, apagado el héroe (24 %), el cielo, el suelo, el grano y el horizonte pasan a `display: none`
   (`hz-retirar`) y la cinta a `visibility: hidden`: así no se dibujan bajo una capa invisible.
 - **Maquetación diferida de la carga:** con JS, hasta el evento `load` las secciones bajo la historia llevan
