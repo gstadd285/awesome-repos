@@ -1289,7 +1289,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
    Cada pulso cae en `--lx` (el centro de su grupo de láminas) a la altura `--ly` y solo recorre el último `--tramo` del
    camino (en vertical): en escritorio, la franja de la cinta (nunca pasa por detrás de un texto); en la tableta, del sol
-   al filo de la alerta; en el teléfono, el hueco bajo los botones hasta el filo de la alerta. Quieto, no se ve. */
+   al filo de la alerta (en el teléfono no hay pulsos: ver la chispa del filete). Quieto, no se ve. */
 .h-pulsos {
   position: absolute;
   inset: 0;
@@ -1307,7 +1307,8 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   left: var(--lx);
   bottom: calc(100cqh - var(--pulsos-y));
   width: 6px;
-  height: calc(var(--largo) * 0.42);
+  /* Estela larga (60 % del tramo) que se aviva hacia la cabeza: se lee como luz que viaja, no como una mota. */
+  height: calc(var(--largo) * 0.6);
   margin-left: -3px;
   border-radius: 6px;
   transform-origin: 50% 100%;
@@ -1315,11 +1316,12 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   background-image: linear-gradient(
     180deg,
     rgb(176 141 87 / 0),
-    rgb(176 141 87 / 0.5) 62%,
+    rgb(176 141 87 / 0.28) 40%,
+    rgb(214 178 118 / 0.7) 74%,
     #F2D69E 90%,
     #FFF8E8 100%
   );
-  box-shadow: 0 0 12px 2px rgb(240 210 150 / 0.4);
+  box-shadow: 0 6px 14px 1px rgb(240 210 150 / 0.45);
   opacity: 0;
 }
 
@@ -1549,32 +1551,38 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 .lamina-tinta { --c1: #2E405A; --c2: #0F1B2D; }
 .lamina-bruma { --c1: #B6BFCB; --c2: #7C8796; }
 
-/* Posición en la pista, profundidad, giro (30°–64°: nunca de canto; menor a la derecha, donde la perspectiva ya las
-   gira), altura y llegada de su pulso (grupo de 3). */
-.lamina-0 { --x: 2%; --z: -15cqh; --giro: 62deg; --alto: 34cqh; --d: 1950ms; }
-.lamina-1 { --x: 6.17%; --z: -9cqh; --giro: 63deg; --alto: 39.3cqh; --d: 2020ms; }
-.lamina-2 { --x: 10.35%; --z: -3.1cqh; --giro: 63.6deg; --alto: 38.8cqh; --d: 2090ms; }
-.lamina-3 { --x: 14.52%; --z: 2.5cqh; --giro: 63.5deg; --alto: 39.8cqh; --d: 2250ms; }
-.lamina-4 { --x: 18.7%; --z: 7.9cqh; --giro: 62.4deg; --alto: 45.9cqh; --d: 2320ms; }
-.lamina-5 { --x: 22.87%; --z: 12.8cqh; --giro: 60.4deg; --alto: 48.9cqh; --d: 2390ms; }
-.lamina-6 { --x: 27.04%; --z: 17.2cqh; --giro: 57.4deg; --alto: 47.1cqh; --d: 2550ms; }
-.lamina-7 { --x: 31.22%; --z: 20.9cqh; --giro: 53.9deg; --alto: 49.1cqh; --d: 2620ms; }
-.lamina-8 { --x: 35.39%; --z: 24.1cqh; --giro: 50.1deg; --alto: 54.3cqh; --d: 2690ms; }
-.lamina-9 { --x: 39.57%; --z: 26.5cqh; --giro: 46.4deg; --alto: 54.2cqh; --d: 2850ms; }
-.lamina-10 { --x: 43.74%; --z: 28.1cqh; --giro: 43.2deg; --alto: 51.5cqh; --d: 2920ms; }
-.lamina-11 { --x: 47.91%; --z: 28.9cqh; --giro: 40.8deg; --alto: 54cqh; --d: 2990ms; }
-.lamina-12 { --x: 52.09%; --z: 28.9cqh; --giro: 39.4deg; --alto: 56.9cqh; --d: 3150ms; }
-.lamina-13 { --x: 56.26%; --z: 28.1cqh; --giro: 39deg; --alto: 53.7cqh; --d: 3220ms; }
-.lamina-14 { --x: 60.43%; --z: 26.5cqh; --giro: 39.4deg; --alto: 50.7cqh; --d: 3290ms; }
-.lamina-15 { --x: 64.61%; --z: 24.1cqh; --giro: 40.3deg; --alto: 53cqh; --d: 3450ms; }
-.lamina-16 { --x: 68.78%; --z: 20.9cqh; --giro: 41.4deg; --alto: 52.9cqh; --d: 3520ms; }
-.lamina-17 { --x: 72.96%; --z: 17.2cqh; --giro: 42.1deg; --alto: 47.4cqh; --d: 3590ms; }
-.lamina-18 { --x: 77.13%; --z: 12.8cqh; --giro: 42.3deg; --alto: 45cqh; --d: 3750ms; }
-.lamina-19 { --x: 81.3%; --z: 7.9cqh; --giro: 41.6deg; --alto: 46.6cqh; --d: 3820ms; }
-.lamina-20 { --x: 85.48%; --z: 2.5cqh; --giro: 39.8deg; --alto: 43.4cqh; --d: 3890ms; }
-.lamina-21 { --x: 89.65%; --z: -3.1cqh; --giro: 37.2deg; --alto: 37.1cqh; --d: 4050ms; }
-.lamina-22 { --x: 93.83%; --z: -9cqh; --giro: 33.8deg; --alto: 36cqh; --d: 4120ms; }
-.lamina-23 { --x: 98%; --z: -15cqh; --giro: 30deg; --alto: 36.6cqh; --d: 4190ms; }
+/* Profundidad, giro (30°–64°: nunca de canto; menor a la derecha, donde la perspectiva ya las gira) y altura de cada
+   lámina. Su orden `--n` da la posición (repartidas del 2 al 98 % de la pista) y la llegada de su pulso: grupos de 3,
+   300 ms entre grupos y 70 ms dentro de cada uno, desde 1,7 s. */
+.lamina {
+  --x: calc(2% + var(--n) * 96% / 23);
+  --d: calc(1700ms + round(down, var(--n) / 3) * 300ms + mod(var(--n), 3) * 70ms);
+}
+
+.lamina-0 { --n: 0; --z: -15cqh; --giro: 62deg; --alto: 34cqh; }
+.lamina-1 { --n: 1; --z: -9cqh; --giro: 63deg; --alto: 39.3cqh; }
+.lamina-2 { --n: 2; --z: -3.1cqh; --giro: 63.6deg; --alto: 38.8cqh; }
+.lamina-3 { --n: 3; --z: 2.5cqh; --giro: 63.5deg; --alto: 39.8cqh; }
+.lamina-4 { --n: 4; --z: 7.9cqh; --giro: 62.4deg; --alto: 45.9cqh; }
+.lamina-5 { --n: 5; --z: 12.8cqh; --giro: 60.4deg; --alto: 48.9cqh; }
+.lamina-6 { --n: 6; --z: 17.2cqh; --giro: 57.4deg; --alto: 47.1cqh; }
+.lamina-7 { --n: 7; --z: 20.9cqh; --giro: 53.9deg; --alto: 49.1cqh; }
+.lamina-8 { --n: 8; --z: 24.1cqh; --giro: 50.1deg; --alto: 54.3cqh; }
+.lamina-9 { --n: 9; --z: 26.5cqh; --giro: 46.4deg; --alto: 54.2cqh; }
+.lamina-10 { --n: 10; --z: 28.1cqh; --giro: 43.2deg; --alto: 51.5cqh; }
+.lamina-11 { --n: 11; --z: 28.9cqh; --giro: 40.8deg; --alto: 54cqh; }
+.lamina-12 { --n: 12; --z: 28.9cqh; --giro: 39.4deg; --alto: 56.9cqh; }
+.lamina-13 { --n: 13; --z: 28.1cqh; --giro: 39deg; --alto: 53.7cqh; }
+.lamina-14 { --n: 14; --z: 26.5cqh; --giro: 39.4deg; --alto: 50.7cqh; }
+.lamina-15 { --n: 15; --z: 24.1cqh; --giro: 40.3deg; --alto: 53cqh; }
+.lamina-16 { --n: 16; --z: 20.9cqh; --giro: 41.4deg; --alto: 52.9cqh; }
+.lamina-17 { --n: 17; --z: 17.2cqh; --giro: 42.1deg; --alto: 47.4cqh; }
+.lamina-18 { --n: 18; --z: 12.8cqh; --giro: 42.3deg; --alto: 45cqh; }
+.lamina-19 { --n: 19; --z: 7.9cqh; --giro: 41.6deg; --alto: 46.6cqh; }
+.lamina-20 { --n: 20; --z: 2.5cqh; --giro: 39.8deg; --alto: 43.4cqh; }
+.lamina-21 { --n: 21; --z: -3.1cqh; --giro: 37.2deg; --alto: 37.1cqh; }
+.lamina-22 { --n: 22; --z: -9cqh; --giro: 33.8deg; --alto: 36cqh; }
+.lamina-23 { --n: 23; --z: -15cqh; --giro: 30deg; --alto: 36.6cqh; }
 
 /* Rótulos de temas: a la profundidad de su lámina y de frente, con una guía de 1 px que baja hasta ella. */
 .cinta-rotulo {
@@ -1610,10 +1618,10 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   background-image: linear-gradient(var(--color-brass-deep), rgb(122 94 51 / 0.15));
 }
 
-.rotulo-0 { --x: 18.7%; --z: 7.9cqh; --alto: 45.9cqh; --guia: 11cqh; --dr: 2420ms; }
-.rotulo-1 { --x: 43.74%; --z: 28.1cqh; --alto: 51.5cqh; --guia: 6cqh; --dr: 3020ms; }
-.rotulo-2 { --x: 68.78%; --z: 20.9cqh; --alto: 52.9cqh; --guia: 9cqh; --dr: 3620ms; }
-.rotulo-3 { --x: 93.83%; --z: -9cqh; --alto: 36cqh; --guia: 13cqh; --dr: 4220ms; }
+.rotulo-0 { --x: 18.7%; --z: 7.9cqh; --alto: 45.9cqh; --guia: 11cqh; --dr: 2170ms; }
+.rotulo-1 { --x: 43.74%; --z: 28.1cqh; --alto: 51.5cqh; --guia: 6cqh; --dr: 2770ms; }
+.rotulo-2 { --x: 68.78%; --z: 20.9cqh; --alto: 52.9cqh; --guia: 9cqh; --dr: 3370ms; }
+.rotulo-3 { --x: 93.83%; --z: -9cqh; --alto: 36cqh; --guia: 13cqh; --dr: 3970ms; }
 
 /* ── Alerta viva (solo bajo 1024 px) ───────────────────────────────────────
  * Decorativa y con los datos reales de la alerta de ejemplo de Ormuz (`AlertaViva.tsx`). Porcelana con un filo de
@@ -1898,7 +1906,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     --cinta-alto: clamp(150px, 24svh, 240px);
     grid-template-rows:
       [cielo] minmax(72px, 1fr) [titulo] auto [debajo] auto [aviso] auto
-      [cinta] var(--cinta-alto);
+      [cinta] calc(0.76 * var(--cinta-alto));
   }
 
   .hero-aviso {
@@ -1955,9 +1963,13 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 
   /* Aquí la cinta queda bajo la alerta, fuera del primer pliegue: no se maqueta ni se pinta hasta acercarse (su tamaño
-     ya lo fija la fila). */
+     ya lo fija la fila). Su cuarto superior está vacío (las láminas más altas llegan al 69 %): la fila mide el 76 % y
+     la cinta sube ese vacío sobre el margen de la alerta. Sin eso, a 768×1024 quedaba un hueco de ~125 px entre la
+     alerta y las láminas y sus pies se cortaban en el borde inferior. */
   .cinta {
     content-visibility: auto;
+    height: var(--cinta-alto);
+    margin-top: calc(-0.24 * var(--cinta-alto));
   }
 
   /* El grano no se aprecia en una pantalla de alta densidad y su ruido (`feTurbulence`) se rasteriza a 3×: medido en el
@@ -2031,7 +2043,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     --cinta-alto: clamp(120px, 17svh, 170px);
     grid-template-rows:
       [cielo] minmax(72px, 1fr) [titulo] auto [debajo] auto [alerta] auto [aviso] auto
-      [cinta] var(--cinta-alto);
+      [cinta] calc(0.76 * var(--cinta-alto));
     --l1: 2;
   }
 
@@ -2050,31 +2062,20 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     grid-row: titulo / alerta;
   }
 
-  /* El suelo llega hasta el filo de la alerta (que deja 28 px bajo los botones): los pulsos solo recorren ese hueco,
-     repartidos a lo ancho, y se apagan en el filo de latón. */
+  /* El suelo llega hasta el filo de la alerta (que deja 28 px bajo los botones). Sin pulsos: el sol queda ~350 px más
+     arriba, detrás del titular, y en el único hueco libre (28 px bajo los botones) se leían como motas sueltas. La luz
+     llega a la alerta por su filete (una chispa que lo recorre desde el lado del sol, en la puerta). */
   .h-suelo {
     margin-bottom: -28px;
   }
 
   .h-pulsos {
-    --pulsos-ancho: calc(100cqw - 48px);
-    --pulsos-y: 100cqh;
-    /* Menos que el hueco (28 px) con su estela: con 34 px la cabeza asomaba sobre el borde del botón «Ver una alerta». */
-    --tramo: 20px;
+    display: none;
   }
 
-  .pulso-0 { --p: 0.08; }
-  .pulso-1 { --p: 0.2; }
-  .pulso-2 { --p: 0.32; }
-  .pulso-3 { --p: 0.44; }
-  .pulso-4 { --p: 0.56; }
-  .pulso-5 { --p: 0.68; }
-  .pulso-6 { --p: 0.8; }
-  .pulso-7 { --p: 0.92; }
-
   /* Sin retícula: aquí el suelo va del horizonte al filo de la alerta y el texto lo ocupa entero (la retícula pasaba
-     por detrás del párrafo y de los botones). Quedan el sol, su reflejo, la luz del suelo y los pulsos en el hueco
-     bajo los botones. Además ahorra una capa 3D que a 3× pesaba en el primer pintado. */
+     por detrás del párrafo y de los botones). Quedan el sol, su reflejo y la luz del suelo. Además ahorra una capa 3D
+     que a 3× pesaba en el primer pintado. */
   .h-reticula {
     display: none;
   }
@@ -2104,6 +2105,26 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     grid-column: marco;
     grid-row: alerta;
     margin-block: 28px 24px;
+    /* La chispa del filete viaja desde fuera del filo derecho: se recorta en la tarjeta (con margen para su halo). */
+    overflow: clip;
+    overflow-clip-margin: 6px;
+  }
+
+  /* Chispa del filete: una cabeza incandescente con estela de 1 px sobre el filo de latón. Quieta, apagada. */
+  .alerta-viva::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    top: -4px;
+    height: 9px;
+    background-image:
+      radial-gradient(16px 4.5px at 8px 50%, #FFF8E8, rgb(242 214 158 / 0.75) 45%, rgb(242 214 158 / 0)),
+      linear-gradient(90deg, rgb(240 210 150 / 0) 4px, rgb(240 210 150 / 0.8) 10px, rgb(240 210 150 / 0) 110px);
+    background-size: 100% 100%, 100% 1px;
+    background-position: 0 0, 0 4px;
+    background-repeat: no-repeat;
+    opacity: 0;
   }
 }
 
@@ -2114,13 +2135,13 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 }
 
 /* Teléfonos bajos (360×740 y similares, muy comunes en Android): el cielo cede hasta 48 px, la entrada se aprieta un poco
-   (interlineado 1,42) y los espacios bajo el horizonte pasan de 24 a 18 px. Así la alerta asoma unos 40 px más en el
-   primer pliegue sin tocar el tamaño del H1 ni el de la entrada. */
+   (interlineado 1,38) y los espacios bajo el horizonte pasan de 24 a 16 px. La alerta sube y su cabecera se compacta:
+   en el primer pliegue se lee hasta el medidor de confianza, sin tocar el tamaño del H1 ni el de la entrada. */
 @media (max-width: 767.98px) and (max-height: 799.98px) {
   .h-hero {
     grid-template-rows:
       [cielo] minmax(48px, 1fr) [titulo] auto [debajo] auto [alerta] auto [aviso] auto
-      [cinta] var(--cinta-alto);
+      [cinta] calc(0.76 * var(--cinta-alto));
   }
 
   .hero-antetitulo {
@@ -2128,12 +2149,40 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 
   .hero-texto {
-    line-height: 1.42;
+    line-height: 1.38;
   }
 
   .hero-debajo {
-    gap: 18px;
-    margin-top: 18px;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .alerta-viva {
+    margin-top: 16px;
+    padding-top: 12px;
+  }
+
+  .h-suelo {
+    margin-bottom: -16px;
+  }
+
+  .av-ejemplo {
+    padding-block: 2px;
+  }
+
+  .av-titulo {
+    margin-top: 6px;
+    font-size: 20px;
+    line-height: 1.12;
+  }
+
+  .av-fuente {
+    margin-top: 6px;
+  }
+
+  .av-confianza {
+    margin-top: 8px;
+    padding-block: 10px;
   }
 }
 
@@ -2466,10 +2515,10 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 @keyframes hz-pulso {
   0% {
     opacity: 0;
-    transform: rotate(var(--th)) translateY(calc(-1 * var(--largo))) scaleY(0.2);
+    transform: rotate(var(--th)) translateY(calc(-1 * var(--largo))) scaleY(0.35);
     animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
   }
-  14% {
+  12% {
     opacity: 1;
     animation-timing-function: linear;
   }
@@ -2591,6 +2640,34 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   to {
     transform: none;
     clip-path: inset(-120px -120px -40px -120px);
+  }
+}
+
+/* Chispa del filete (teléfono): corre del filo derecho al izquierdo con la misma curva que el trazo, en su borde. */
+@keyframes hz-chispa {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes hz-chispa-luz {
+  0% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  8% {
+    opacity: 1;
+    animation-timing-function: linear;
+  }
+  72% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  100% {
+    opacity: 0;
   }
 }
 
@@ -3232,8 +3309,9 @@ html[data-movimiento="completo"] {
 
 /* Héroe «Horizonte vivo»: la entrada en tres tiempos, por tiempo (igual con y sin línea de tiempo y a cualquier
    ancho). 0–1,1 s la línea se traza desde el sol; 0,22–1,24 s el titular sale del horizonte (completo antes de 1,3 s);
-   0,26–2,2 s amanece; 0,6–4,9 s los pulsos cruzan el suelo y cada llegada pone de pie un grupo de láminas. En el
-   teléfono y la tableta, los pulsos encienden la alerta viva fila a fila. Retrasos con clases finitas (`--d`, `--k`,
+   0,26–2,2 s amanece; desde 0,35 s (0,6 bajo 1024 px) los pulsos cruzan el suelo y desde 1,7 s cada llegada pone de
+   pie un grupo de láminas. En la tableta los pulsos encienden la alerta viva fila a fila; en el teléfono, la chispa
+   que recorre su filete. Retrasos con clases finitas (`--d`, `--k`,
    `--dr`), nunca `style`. */
 html[data-movimiento="completo"] {
   .h-horizonte {
@@ -3272,7 +3350,7 @@ html[data-movimiento="completo"] {
   }
 
   .h-pulsos {
-    animation: hz-velar 1ms 599ms backwards;
+    animation: hz-velar 1ms 349ms backwards;
   }
 
   .h-reflejo {
@@ -3309,12 +3387,12 @@ html[data-movimiento="completo"] {
 
   /* Antes del primer grupo no hay nada que ver en la cinta: no se pinta (las láminas conservan su reloj). */
   .cinta-pista {
-    animation: hz-velar 1ms 1899ms backwards;
+    animation: hz-velar 1ms 1649ms backwards;
   }
 
   /* La sombra común llega con el primer grupo (antes no hay nada que la proyecte). */
   .cinta::before {
-    animation: hz-encender 2400ms var(--ease-salida) 1850ms backwards;
+    animation: hz-encender 2400ms var(--ease-salida) 1600ms backwards;
   }
 
   .cinta-rotulo {
@@ -3402,7 +3480,9 @@ html[data-movimiento="completo"] {
     animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
   }
 
-  /* En escritorio, ya armada la cinta, los pulsos siguen en un bucle tranquilo (uno cada 0,9 s). Es uno de los dos
+  /* En escritorio los pulsos salen 250 ms antes (llegan a su grupo a 1,7 + 0,3·k s): acompañan el final del titular y
+     no queda un hueco entre el H1 completo y la primera lámina. Ya armada la cinta, siguen en un bucle tranquilo (uno
+     cada 0,9 s). Es uno de los dos
      únicos bucles del héroe; su contenedor lleva `data-bucle` y se pausa fuera de vista. En el teléfono y la
      tableta no hay bucle: los pulsos pasarían por detrás del texto mientras se lee. */
   @media (min-width: 1024px) {
@@ -3410,7 +3490,7 @@ html[data-movimiento="completo"] {
       animation:
         hz-pulso 1500ms backwards,
         hz-pulso-bucle 7200ms infinite;
-      animation-delay: calc(600ms + var(--k) * 300ms), calc(4200ms + var(--k) * 900ms);
+      animation-delay: calc(350ms + var(--k) * 300ms), calc(3950ms + var(--k) * 900ms);
     }
   }
 
@@ -3432,35 +3512,55 @@ html[data-movimiento="completo"] {
     }
   }
 
+  /* Bajo 1024 px la cinta puede quedar fuera del primer pliegue (siempre en el teléfono, bajo la alerta). Ahí se pone
+     de pie una sola vez, por tiempo, cuando entra en pantalla: `DirectorEscena` la marca en `espera` (oculta y sin
+     reloj) y en `vista` cuando su borde superior pasa el 90 % de la ventana. Misma ola y mismo resorte que en la
+     entrada, más apretados (≈ 2 s en total): ningún reposo la muestra a medio armar. Si al cargar ya se ve (la
+     tableta), no lleva marca y sigue la entrada por tiempo; sin la isla, también. */
+  @media (max-width: 1023.98px) {
+    .h-cinta[data-cinta="espera"] {
+      visibility: hidden;
+    }
+
+    .h-cinta[data-cinta] .cinta-pista,
+    .h-cinta[data-cinta="espera"]::before,
+    .h-cinta[data-cinta="espera"] .lamina,
+    .h-cinta[data-cinta="espera"] .lamina::after {
+      animation: none;
+    }
+
+    .h-cinta[data-cinta="vista"] .lamina,
+    .h-cinta[data-cinta="vista"] .lamina::after {
+      animation-delay: calc((var(--d) - 1700ms) * 0.55 + 80ms);
+    }
+
+    .h-cinta[data-cinta="vista"]::before {
+      animation-delay: 40ms;
+    }
+  }
+
+  /* Teléfono: la luz llega a la alerta por su filo de latón. El filete se traza desde el lado del sol (la derecha) y una
+     chispa corre delante de él y se apaga al llegar; después las filas se encienden una a una. */
+  @media (max-width: 767.98px) {
+    .alerta-viva::before {
+      transform-origin: 100% 50%;
+      animation-duration: 1100ms;
+      animation-timing-function: var(--ease-enfasis);
+    }
+
+    .alerta-viva::after {
+      animation:
+        hz-chispa 1100ms var(--ease-enfasis) 1880ms backwards,
+        hz-chispa-luz 1100ms 1880ms backwards;
+    }
+  }
+
+  /* Al imprimir, todo el héroe en su estado final (cualquier pieza de la entrada, también las que se sumen). */
   @media print {
-    .h-horizonte,
-    .hero-antetitulo,
-    .h1-linea-1,
-    .h1-linea-2,
-    .sol,
-    .sol-halo,
-    .h-cielo::before,
-    .h-suelo::before,
-    .h-reticula,
-    .h-pulsos,
-    .h-reflejo,
-    .hero-texto,
-    .hero-mando,
-    .hero-acciones .boton-laton::after,
-    .pulso,
-    .cinta-pista,
-    .lamina,
-    .lamina::after,
-    .cinta::before,
-    .cinta-rotulo,
-    .cinta-rotulo::after,
-    .hero-desliza,
-    .hero-desliza-asomo,
-    .hero-gota,
-    .alerta-viva,
-    .alerta-viva::before,
-    .alerta-viva *,
-    .av-lleno::after {
+    .h-hero,
+    .h-hero *,
+    .h-hero *::before,
+    .h-hero *::after {
       animation: none !important;
     }
   }
@@ -3472,33 +3572,11 @@ html[data-movimiento="completo"] {
 html[data-movimiento="completo"] {
   @media (max-width: 1023.98px) {
     @supports (animation-timeline: view()) {
-      /* Aquí la cinta queda bajo la alerta, casi siempre fuera del primer pliegue: si sus láminas se pusieran de pie
-         por tiempo, la persona llegaría a una cinta ya quieta. Se ponen de pie al entrar en pantalla, ligadas al
-         scroll y en ola de izquierda a derecha (el arranque de cada una depende de su posición, `--x`), entre el 4 %
-         y el ~38 % de su recorrido por la pantalla: entera antes de llegar a la mitad. Al salir por arriba, se pliega. */
+      /* Al salir por arriba, la cinta se pliega (su entrada va por tiempo: ver más abajo). */
       .h-cinta {
-        view-timeline: --cinta block;
         animation: m-cinta-salir linear both;
         animation-timeline: view();
         animation-range: exit 0% exit 100%;
-      }
-
-      .h-cinta .lamina,
-      .h-cinta .lamina::after {
-        animation: m-erguir linear both;
-        animation-timeline: --cinta;
-        animation-range: cover calc(4% + var(--x) * 0.2) cover calc(18% + var(--x) * 0.2);
-      }
-
-      .h-cinta .lamina::after {
-        animation-name: hz-destello;
-      }
-
-      /* La sombra común se enciende con la primera ola (antes no hay nada que la proyecte). */
-      .h-cinta::before {
-        animation: hz-encender linear both;
-        animation-timeline: --cinta;
-        animation-range: cover 4% cover 30%;
       }
 
       .h-plano {

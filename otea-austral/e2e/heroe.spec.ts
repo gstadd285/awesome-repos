@@ -365,4 +365,56 @@ test.describe("héroe Horizonte vivo", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Del horizonte al mercado." })).toBeVisible();
     await contexto.close();
   });
+
+  test("bajo 1024 px la cinta nunca reposa a medio armar: de pie al cargar en la tableta y al llegar a ella en el teléfono", async ({
+    browser,
+  }, info) => {
+    soloEscritorio(info.project.name);
+    // Ninguna lámina tendida (giro en X: m22 = cos θ; tendida a −88° da 0,035) ni a medio aparecer.
+    const cinta = () => {
+      const laminas = [...document.querySelectorAll(".lamina")];
+      const c = document.querySelector<HTMLElement>(".h-cinta")!;
+      return {
+        marca: c.dataset.cinta ?? "",
+        visible: getComputedStyle(c).visibility,
+        m22: Math.min(...laminas.map((l) => new DOMMatrix(getComputedStyle(l).transform).m22)),
+        opacidad: Math.min(...laminas.map((l) => Number(getComputedStyle(l).opacity))),
+        abajo: c.getBoundingClientRect().bottom - innerHeight,
+      };
+    };
+
+    // Tableta vertical: la cinta está en el primer pliegue y se arma con la entrada, sin hacer scroll.
+    const tableta = await abrir(browser, { viewport: { width: 768, height: 1024 }, isMobile: true, hasTouch: true });
+    await tableta.page.waitForTimeout(5500);
+    const t = await tableta.page.evaluate(cinta);
+    expect(t.abajo).toBeLessThanOrEqual(2);
+    expect(t.marca).toBe("");
+    expect(t.m22).toBeGreaterThan(0.999);
+    expect(t.opacidad).toBe(1);
+    await tableta.contexto.close();
+
+    // Teléfono: bajo la alerta espera oculta; al entrar en pantalla se pone de pie una vez, por tiempo, y queda entera.
+    const telefono = await abrir(browser, {
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    });
+    await telefono.page.waitForTimeout(1200);
+    expect(await telefono.page.evaluate(cinta)).toMatchObject({ marca: "espera", visible: "hidden" });
+    await telefono.page.evaluate(() => {
+      const r = document.querySelector(".h-cinta")!.getBoundingClientRect();
+      window.scrollBy({ top: r.bottom - innerHeight + 40, behavior: "instant" });
+    });
+    await expect.poll(() => telefono.page.evaluate(cinta).then((c) => c.marca)).toBe("vista");
+    await telefono.page.waitForTimeout(2600);
+    const m = await telefono.page.evaluate(cinta);
+    expect(m.visible).toBe("visible");
+    expect(m.m22).toBeGreaterThan(0.999);
+    expect(m.opacidad).toBe(1);
+    // Y en el teléfono no hay pulsos (en el hueco bajo los botones se leían como motas).
+    await expect(telefono.page.locator(".h-pulsos")).toBeHidden();
+    expect(telefono.errores).toEqual([]);
+    await telefono.contexto.close();
+  });
 });

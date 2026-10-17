@@ -17,7 +17,8 @@ const mayuscula = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice
  *
  * Decorativa (`aria-hidden`): la versión accesible y completa está en «Así se ve una alerta.» (`#ejemplos`). Sin
  * movimiento se ve completa y quieta; con la puerta abierta sale de su línea de base, los checks hacen *pop*, el
- * medidor se llena por segmentos y cada fila se enciende cuando llega un pulso del horizonte (`globals.css`).
+ * medidor se llena por segmentos, la luz llega por su filete (los pulsos en la tableta, una chispa en el teléfono) y
+ * las filas se encienden una a una (`globals.css`).
  */
 export function AlertaViva() {
   const alerta = vistaEjemplo("ejemplo-ormuz");

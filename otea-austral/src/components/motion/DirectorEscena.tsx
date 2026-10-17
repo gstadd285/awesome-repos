@@ -17,6 +17,8 @@ const VARIABLES_NAV = ["--nx", "--nw", "--nv"] as const;
 const SALTO_LARGO = 1.5;
 /** Luz del héroe: posición del cursor en la ventana (0 a 1), escrita en `.h-hero` mientras el héroe se ve. */
 const VARIABLES_LUZ = ["--cx", "--cy"] as const;
+/** Bajo este ancho la cinta del héroe puede quedar fuera del primer pliegue (ver `encenderCinta`). */
+const ESTRECHA = "(max-width: 1023.98px)";
 
 const acotar = (valor: number, minimo: number, maximo: number) => Math.min(maximo, Math.max(minimo, valor));
 
@@ -52,6 +54,10 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   láminas lo sigue. Las borra al salir de la ventana o al cerrarse la puerta. Van en `.h-hero` y no en `.historia`:
  *   las propiedades personalizadas se heredan, y escribirlas en la historia invalidaba en cada cuadro el estilo de
  *   todo su subárbol (plano, tablero y pasos) cuando solo las leen el sol y las láminas.
+ * - **Cinta del héroe bajo 1024 px:** se pone de pie una sola vez, por tiempo, al entrar en pantalla. Si al montarse
+ *   ya se ve (la tableta, con la cinta en el primer pliegue), no se toca: sigue la entrada por tiempo desde la carga.
+ *   Si no, marca `data-cinta="espera"` (oculta, sin animación) y, cuando su borde superior pasa el 90 % de la ventana,
+ *   `data-cinta="vista"`: el CSS la arma en ola con el mismo resorte. Ligada al scroll quedaba a medio armar en reposo.
  * - **Pastilla de la navegación:** al pasar el ratón por un enlace de `[data-nav-indicador]` escribe en la navegación
  *   `--nx --nw` (posición y ancho del enlace, leídos solo al cambiar de enlace) y `--nv` (0 o 1). Si estaba apagada,
  *   marca `data-nav-salto` durante un cuadro para que aparezca en su sitio en vez de viajar.
@@ -80,6 +86,7 @@ export function DirectorEscena() {
     const fino = window.matchMedia("(hover: hover) and (pointer: fine)");
 
     let bucles: IntersectionObserver | null = null;
+    let vigiaCinta: IntersectionObserver | null = null;
     let punteroActivo = false;
     let cuadro = 0;
     let ultimo: PointerEvent | null = null;
@@ -291,10 +298,40 @@ export function DirectorEscena() {
       for (const el of document.querySelectorAll("[data-bucle][data-fuera]")) el.removeAttribute("data-fuera");
     };
 
+    const apagarCinta = () => {
+      vigiaCinta?.disconnect();
+      vigiaCinta = null;
+      // Una cinta que esperaba no queda oculta (fuera de la puerta no se oculta, pero tampoco se deja la marca).
+      const cinta = document.querySelector<HTMLElement>('.h-cinta[data-cinta="espera"]');
+      cinta?.removeAttribute("data-cinta");
+    };
+
+    const encenderCinta = () => {
+      const cinta = document.querySelector<HTMLElement>(".h-cinta");
+      if (vigiaCinta || !cinta || cinta.dataset.cinta || typeof IntersectionObserver === "undefined") return;
+      if (!window.matchMedia(ESTRECHA).matches) return;
+      const caja = cinta.getBoundingClientRect();
+      // Ya a la vista (al menos media cinta dentro de la ventana: las láminas asoman): la entrada por tiempo la arma.
+      if (caja.bottom > 0 && caja.top < window.innerHeight - caja.height * 0.5) return;
+      cinta.dataset.cinta = "espera";
+      vigiaCinta = new IntersectionObserver(
+        (entradas) => {
+          if (!entradas.some((e) => e.isIntersecting)) return;
+          cinta.dataset.cinta = "vista";
+          vigiaCinta?.disconnect();
+          vigiaCinta = null;
+        },
+        { rootMargin: "0px 0px -10% 0px" },
+      );
+      vigiaCinta.observe(cinta);
+    };
+
     const sincronizar = () => {
       const abierta = raiz.dataset.movimiento === "completo";
       if (abierta) encenderBucles();
       else apagarBucles();
+      if (abierta) encenderCinta();
+      else apagarCinta();
       if (abierta && fino.matches) encenderPuntero();
       else apagarPuntero();
     };
@@ -315,6 +352,7 @@ export function DirectorEscena() {
       document.removeEventListener("focusout", alSalirDelMenu, true);
       apagarPuntero();
       apagarBucles();
+      apagarCinta();
     };
   }, [ruta]);
 
