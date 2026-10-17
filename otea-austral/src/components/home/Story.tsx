@@ -66,9 +66,13 @@ export function Story() {
           </div>
           <AlertaViva />
           <Ribbon className="h-cinta" />
+          {/* Dos capas: el párrafo lleva la salida ligada a la historia y el `span`, la entrada por tiempo (en un solo
+              elemento, la clave de salida en su 0 % pisaba la entrada diferida). */}
           <p className="hero-desliza" aria-hidden="true" data-bucle>
-            Desliza
-            <span className="hero-gota" />
+            <span className="hero-desliza-asomo">
+              Desliza
+              <span className="hero-gota" />
+            </span>
           </p>
         </div>
 

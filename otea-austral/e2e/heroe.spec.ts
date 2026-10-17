@@ -53,7 +53,19 @@ test.describe("héroe Horizonte vivo", () => {
       }),
     );
     expect(Math.max(...fin)).toBeLessThanOrEqual(1300);
-    await page.waitForTimeout(2500);
+    // «Desliza» es lo último en llegar (desde los 3 s): mientras el titular entra no se ve, y su gota espera recogida
+    // (sin trazo fijo que luego salte).
+    await page.waitForTimeout(1200);
+    const indicio = await page.evaluate(() => {
+      const op = (s: string) => Number(getComputedStyle(document.querySelector(s)!).opacity);
+      return {
+        visible: op(".hero-desliza") * op(".hero-desliza-asomo"),
+        gota: new DOMMatrix(getComputedStyle(document.querySelector(".hero-gota")!).transform).d,
+      };
+    });
+    expect(indicio.visible).toBe(0);
+    expect(indicio.gota).toBe(0);
+    await page.waitForTimeout(1300);
     const estados = await lineas.evaluateAll((ls) => ls.map((l) => [getComputedStyle(l).transform, getComputedStyle(l).opacity]));
     expect(estados).toEqual([
       ["none", "1"],

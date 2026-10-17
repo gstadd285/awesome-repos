@@ -1462,6 +1462,10 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   display: none;
 }
 
+.hero-desliza-asomo {
+  display: block;
+}
+
 .hero-gota {
   display: block;
   width: 1px;
@@ -3252,12 +3256,15 @@ html[data-movimiento="completo"] {
     animation-delay: calc(var(--dr) + 120ms);
   }
 
-  .hero-desliza {
+  /* La entrada va en el `span` interior: el párrafo lleva la salida ligada a la historia (si ambas vivieran en el
+     mismo elemento, el 0 % de la salida, con relleno `both`, pisaría la entrada diferida). La gota espera con relleno
+     `backwards` (recogida, sin trazo) hasta que le toca bajar. */
+  .hero-desliza-asomo {
     animation: hz-asomar 600ms var(--ease-salida) 3000ms backwards;
   }
 
   .hero-gota {
-    animation: hz-gota 1800ms 3200ms infinite;
+    animation: hz-gota 1800ms 3200ms infinite backwards;
   }
 
   /* Alerta viva (solo existe bajo 1024 px): sube de 0,6 a 1,6 s; el check hace pop; el medidor se llena por
@@ -3377,6 +3384,7 @@ html[data-movimiento="completo"] {
     .cinta-rotulo,
     .cinta-rotulo::after,
     .hero-desliza,
+    .hero-desliza-asomo,
     .hero-gota,
     .alerta-viva,
     .alerta-viva::before,
@@ -3580,11 +3588,9 @@ html[data-movimiento="completo"] {
       }
 
       .hero-desliza {
-        animation:
-          hz-asomar 600ms var(--ease-salida) 3000ms backwards,
-          hz-desliza-salir linear both;
-        animation-timeline: auto, --historia;
-        animation-range: normal, contain 0% contain 2%;
+        animation: hz-desliza-salir linear both;
+        animation-timeline: --historia;
+        animation-range: contain 0% contain 2%;
       }
 
       .h-cinta {
