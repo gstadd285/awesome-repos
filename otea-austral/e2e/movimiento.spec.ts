@@ -260,6 +260,9 @@ test.describe("sin JavaScript", () => {
     }
     await expect(page.getByRole("heading", { name: "Tu panel antes de la apertura." })).toBeVisible();
     await expect(page.locator(".aviso-mov")).toBeHidden();
+    // El riel y el velo solo existen en la historia fija.
+    await expect(page.getByRole("navigation", { name: "Pasos de la historia" })).toBeHidden();
+    await expect(page.locator(".h-velo")).toBeHidden();
     await contexto.close();
   });
 });

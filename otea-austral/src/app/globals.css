@@ -1080,7 +1080,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 .plano-evento-titulo {
   margin-top: 1.2cqw;
   font-family: var(--font-serif);
-  font-size: max(12px, 2.7cqw);
+  font-size: max(12px, 3cqw);
   line-height: 1.15;
   color: var(--color-texto);
   text-wrap: balance;
@@ -3128,6 +3128,12 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
+@keyframes h-vaciar {
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes h-trazar-y {
   from {
     transform: scaleY(0);
@@ -4798,19 +4804,35 @@ html[data-movimiento="completo"] {
         animation-range: contain 8% contain 48%;
       }
 
+      /* Al cerrar el paso el plano se vacía (evento, hilos y cotas se apagan) y queda una superficie lisa: la tableta
+         aparece encima con la misma forma, así el cambio de pieza se lee como una sola que gana bisel. */
       .h-plano .plano-evento {
-        animation: h-evento var(--ease-salida) backwards;
+        animation:
+          h-evento var(--ease-salida) backwards,
+          h-vaciar var(--ease-entrada) forwards;
         animation-timeline: --historia;
-        animation-range: contain 13% contain 19%;
+        animation-range:
+          contain 13% contain 19%,
+          contain 45.2% contain 46.4%;
       }
 
       .h-plano .plano-cotas {
-        animation: h-cotas var(--ease-salida) backwards;
+        animation:
+          h-cotas var(--ease-salida) backwards,
+          h-vaciar var(--ease-entrada) forwards;
         animation-timeline: --historia;
-        animation-range: contain 13% contain 20%;
+        animation-range:
+          contain 13% contain 20%,
+          contain 45.6% contain 46.8%;
       }
 
-      /* Las fichas se ponen de pie una tras otra (22–26,6 %) y, al cerrar el paso, se pliegan sobre el plano (44–47 %):
+      .h-plano .plano-hilos {
+        animation: h-vaciar var(--ease-entrada) forwards;
+        animation-timeline: --historia;
+        animation-range: contain 44.6% contain 46%;
+      }
+
+      /* Las fichas se ponen de pie una tras otra (22–26,6 %) y, al cerrar el paso, se pliegan sobre el plano (43–46 %):
          el plano queda liso antes de volverse tableta. */
       .h-plano .plano-ficha {
         --f: calc((var(--fx) - 16) / 34);
@@ -4820,7 +4842,7 @@ html[data-movimiento="completo"] {
         animation-timeline: --historia;
         animation-range:
           contain calc(22% + var(--f) * 0.8%) contain calc(25% + var(--f) * 0.8%),
-          contain calc(44.2% + var(--f) * 0.4%) contain calc(46.6% + var(--f) * 0.4%);
+          contain calc(43.4% + var(--f) * 0.4%) contain calc(45.4% + var(--f) * 0.4%);
       }
 
       .h-plano .plano-hilo {

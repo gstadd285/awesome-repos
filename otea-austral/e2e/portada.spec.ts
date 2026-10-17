@@ -175,6 +175,28 @@ test.describe("movimiento", () => {
     expect(await arriba()).not.toBe("#lista-de-espera");
   });
 
+  test("en escritorio el riel 01 · 02 · 03 lleva a cada paso de la historia fija", async ({ page }, info) => {
+    test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
+    await page.goto("/");
+    const riel = page.getByRole("navigation", { name: "Pasos de la historia" });
+    // Aparece con el primer paso (en el héroe se aparta).
+    await page.evaluate(() => {
+      const s = document.querySelector<HTMLElement>(".historia")!;
+      window.scrollTo({ top: s.offsetTop + 0.25 * (s.offsetHeight - innerHeight), behavior: "instant" });
+    });
+    await expect.poll(() => riel.evaluate((e) => Number(getComputedStyle(e).opacity))).toBeGreaterThan(0.9);
+    for (const [enlace, paso] of [
+      ["02 Impacto", ".h-paso-3"],
+      ["03 Tu panel", ".h-paso-4"],
+      ["01 Verificación", ".h-paso-2"],
+    ] as const) {
+      // Clic por coordenadas (locator.click desplazaría la página antes del salto).
+      const caja = (await riel.getByRole("link", { name: enlace }).boundingBox())!;
+      await page.mouse.click(caja.x + caja.width / 2, caja.y + caja.height / 2);
+      await expect.poll(() => page.locator(paso).evaluate((e) => Number(getComputedStyle(e).opacity)), { message: enlace }).toBeGreaterThan(0.9);
+    }
+  });
+
   test("en escritorio la historia queda fija y avanza con el scroll", async ({ page }, info) => {
     test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
     await page.goto("/");
