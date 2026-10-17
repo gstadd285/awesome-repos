@@ -99,9 +99,10 @@ Reglas:
   lleva `aria-current` (`<SiteHeader actual="/ruta" />`) y un filete `.nav-subrayado` de 2 px en `brass-deep`. 72 px en
   escritorio y 60 px bajo 1024 px (`scroll-padding-top` 88 / 76 px). El material es `header::before`: barra sólida por
   defecto; con la puerta abierta, ≥ 1024 px y `animation-timeline`, transparente arriba y **isla** de 1200 px en los
-  primeros 120 px de `scroll(root)` (logo y acciones se acercan; `.cabecera-progreso` es el avance de lectura). La
-  pastilla de hover (`.nav-indicador`) lee `--nx --nw --nv` de `DirectorEscena`. Bajo 1024 px, botón «Menú» de 44 px que
-  abre `<nav id="menu-movil" popover>` (pantalla completa bajo 640 px, panel de 440 px encima; sin `@supports`); bajo
+  primeros 120 px de `scroll(root)`: una sola propiedad registrada, `--isla` (0 → 1), mueve el borde de la píldora, el
+  logo, las acciones y el avance, así que el logo y la CTA nunca quedan fuera de ella (`.cabecera-progreso` es el riel
+  del avance de lectura y su `::after`, el latón). La pastilla de hover (`.nav-indicador`) lee `--nx --nw --nv` de
+  `DirectorEscena`. Bajo 1024 px, botón «Menú» de 44 px que abre `<nav id="menu-movil" popover>` (pantalla completa bajo 640 px, panel de 440 px encima; sin `@supports`); bajo
   400 px «Alertas» vive solo en el menú. El pie lleva la navegación completa (`#pie-navegacion`). Las páginas
   interiores usan `ContentPage` (ruta de navegación `Migas`).
 - Contraste mínimo AA: lo verifica `src/lib/design/contrast.test.ts` leyendo `globals.css`. El
@@ -151,7 +152,7 @@ movimiento»):
 | `otea-ola`, `otea-flotar` | La cinta ondea y los rótulos flotan (bucles con `data-bucle`: se pausan fuera de vista) |
 | `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
 | `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista; escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
-| `<PageTransition>` | Transición entre páginas (React `ViewTransition`), **solo en `src/app/template.tsx`**: dentro de un `page.tsx` React nunca la iniciaba. La cabecera no se mueve; el subrayado, el logo y las acciones viajan con nombre propio |
+| `<PageTransition>` | Transición entre páginas (React `ViewTransition`), **solo en `src/app/template.tsx`**: dentro de un `page.tsx` React nunca la iniciaba. La cabecera no se mueve; el subrayado, el logo y las acciones viajan con nombre propio. **Con la puerta cerrada no monta el límite** al navegar (la plantilla hidratada lo conserva con salida `none`): ninguna view transition |
 | `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
 
 ### Texto en movimiento (`src/components/motion/TextoEnMovimiento.tsx`)
@@ -562,6 +563,21 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   verse igual hasta el último fotograma (como `flex-direction`) va en la regla base, no en `:popover-open`.
 - **`:is()` toma la especificidad de su argumento más fuerte**: un atajo `transition` dentro de `:is(a > b, c)` pisa los
   `transition-delay` más débiles de `c`.
+- **React llama a `startViewTransition` cada vez que entra un `<ViewTransition>`, aunque su clase sea `none`**: con la
+  puerta cerrada hay que no montarlo (no basta con `enter="none"`). En la portada con movimiento reducido, Chromium no
+  llegaba a capturar la página vieja y abortaba a los ~4,4 s: el clic no hacía nada. La e2e mide clic → URL con
+  temporizadores (`setTimeout`), que corren aunque no se pinte ningún cuadro; `toHaveURL` espera 5 s y no lo veía.
+- **React le quita el nombre a `<html>`** (`view-transition-name: none` y oculta `::view-transition-group(root)`) cuando
+  nada cambia fuera de sus límites: la página no puede viajar en la imagen de la raíz, tiene que ir en su contenedor.
+- **En el bloque reduce, `transition-duration: 0.01ms` sin `transition-property: none` crea transiciones**: Next cambia
+  `scroll-behavior` en `<html>` al navegar y Chromium transicionaba `scrollbar-color` (heredado) en los 853 elementos de la
+  portada, ~130 ms de recálculo antes de cada cambio de página.
+- **Lo que un borde animado debe contener se mueve con la misma variable**: la isla tenía su forma final desde el primer
+  píxel y el logo viajaba por fuera. `@property --isla` (número, heredado) animado por `scroll(root)` en `.cabecera` y
+  leído por `::before`, el logo, las acciones y el avance. Una capa pequeña, así que el `inset` animado no pesa.
+- **Con capturas por software (headless) una view transition de la portada tarda ~250-450 ms en empezar**: casi todo es
+  el compositor por software (`SoftwareRenderer`). Quitar nombres o `content-visibility` no lo cambia; hay que medirlo en un
+  dispositivo real antes de recortar la coreografía.
 - **El borde transparente que sube el `main` bajo la cabecera necesita `background-origin: border-box`**: si no, los
   degradados repiten su mosaico en la banda y queda un escalón de color a los 72 px.
 
