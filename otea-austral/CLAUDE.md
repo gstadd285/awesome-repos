@@ -114,16 +114,29 @@ Reglas:
 
 ### Portada: la historia en 3D (`src/components/home/Story.tsx`)
 
-El héroe «Horizonte vivo» y tres pasos (`01 — 03`): la **cinta** de láminas (`Ribbon`) que se pliega sobre el **plano técnico** con una gota de metal (`Blueprint`), el **tablero** con alertas
-que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 3D:
+El héroe «Horizonte vivo» y tres pasos (`01 — 03`) como **un solo plano-secuencia**: el titular se pone tras el horizonte,
+la **cinta** (`Ribbon`) se tiende y se junta en la ficha del evento mientras la cámara se inclina sobre el suelo, que se
+vuelve el **plano técnico** (`Blueprint`: evento, medidor de confianza, tres fichas de pie con las comprobaciones reales y
+una lente de latón con mango que las verifica; **no** es el emblema); el plano se vuelve el **tablero** (`Board`: tres
+corrientes, nueve alertas de ejemplo, contadores, «Corregida», una «Nueva» y el aviso del resumen pre-apertura), que queda
+de frente y nítido con el alba detrás. Todo es CSS 3D:
 
 - **Historia fija**: en escritorio (≥ 1024 px), con `animation-timeline` y con el movimiento activado, el
-  escenario queda fijo (`position: sticky`) durante `470vh` y cada pieza usa la línea de tiempo `--historia`
-  (claves `h-*` en `globals.css`).
+  escenario queda fijo (`position: sticky`) y **a sangre** durante `470vh`, y cada pieza usa la línea de tiempo
+  `--historia` (claves `h-*` en `globals.css`) **con su propio `animation-range`** y la curva en cada clave. El recorrido
+  empieza con la página arriba: `view-timeline-inset: 72px 0` (por omisión la línea de tiempo descuenta el
+  `scroll-padding-top` y la historia arrancaba 16 px antes). Progreso real = `(scrollY − top + 72) / (alto − vh + 72)`.
+  Guion: héroe 0–10 %, cámara y plano 6–20 %, paso 01 (verificar) 21–47 %, paso 02 (impacto) 46–73 %, paso 03 (de frente,
+  `transform: none` al 84 %) 72–100 %, velo del relevo 92–100 %. Los textos de los pasos están en la columna del marco
+  (`--marco-x`, `--col-w`) y las piezas centradas en el resto (`--piezas-cx`, `--tab-w`). Riel `01 · 02 · 03` abajo a la
+  izquierda (una línea de avance) con tres anclas (`#paso-verificar`, `#paso-impacto`, `#paso-panel`: 30, 60 y 86 %).
 - **Piezas que se arman al entrar** (< 1024 px, p. ej. un panel lateral o un teléfono): las mismas piezas se
   apilan en orden de lectura y cada una se arma al entrar en pantalla (claves `m-*`; las piezas llevan la
   clase `escena`): ligadas al scroll donde hay `animation-timeline` y, donde no (Firefox, Safari anterior al
-  26), disparadas una vez por el motor al entrar en pantalla.
+  26), disparadas una vez por el motor al entrar en pantalla. Las fichas del plano se sellan **por tiempo**
+  (`escena-vista`) y el texto se revela una vez (`data-texto`). Desde 768 px, rejilla alternada (tableta: zigzag; con
+  movimiento reducido en escritorio, el tablero junto a los pasos 02 y 03). El tablero se apila en una columna (un panel
+  de teléfono, texto ≥ 12 px) si su contenedor mide menos de 480 px, y ahí cada alerta cae con su propia `view()`.
 - **Quieta** (movimiento reducido sin activar, o sin JavaScript): las piezas apiladas se ven completas y
   quietas. El DOM es plano y sirve para los tres modos.
 - *Lección:* antes de esta corrección la animación existía solo con las tres condiciones a la vez (≥ 1024 px,
@@ -166,14 +179,22 @@ que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 
   de la alerta en la tableta). **Nada de máscaras ni planos 3D para ellos.** En el teléfono no hay pulsos: el sol queda
   lejos y en el hueco de 28 px bajo los botones se leían como motas; la luz llega por una chispa que recorre el filete
   de la alerta (`.alerta-viva::after`, `hz-chispa`).
-- En la historia fija, apagado el héroe (24 %), el cielo, el suelo, el grano y el horizonte pasan a `display: none`
-  (`hz-retirar`) y la cinta a `visibility: hidden`: así no se dibujan bajo una capa invisible.
+- En la historia fija el héroe sale **por piezas**: el grano y el suelo se apagan, el cielo y el horizonte salen por
+  arriba (`translate`), la cinta se tiende y la línea 2 del H1 sube antes que la 1 (nunca las dos a medio recortar). Desde
+  el 21 % la clave discreta de `.h-hero` pone `visibility: hidden` (heredada): las capas del héroe dejan de pintar; las
+  acciones (`.hero-mando`) declaran `visibility: visible` y siguen enfocables. Ya no hay `hz-retirar` (`display`
+  animado = hilo principal).
 - **Maquetación diferida de la carga:** con JS, hasta el evento `load` las secciones bajo la historia llevan
   `content-visibility: auto` (primer pintado más liviano); `DirectorEscena` marca `data-maquetado` en `<html>` tras
   `load` o al primer clic en un ancla de la página. No se aplica sin JS ni si la dirección trae ancla (`:target`).
-- Los bloques de la historia son absolutos y se apilan: **lo que se desvanece debe dejar de interceptar clics**.
-  `pointer-events` se anima en `h-hero`, `h-paso` y `h-paso-final`, y las piezas decorativas llevan
-  `pointer-events: none` (`e2e/portada.spec.ts` lo comprueba con `elementFromPoint`).
+- Los bloques de la historia son absolutos y se apilan: **lo que se desvanece debe dejar de interceptar clics**. Solo
+  `.h-hero` anima `pointer-events` (y `visibility`), en una clave discreta: es la única animación de hilo principal. Los
+  pasos y las piezas que aún no entran o ya salieron se **apartan** con `translate: 0 ±200vh` en el primer o el último
+  instante de su tramo (`h-entrar`, `h-salir`, `h-apagar`), y las piezas decorativas llevan `pointer-events: none`
+  (`e2e/portada.spec.ts` lo comprueba con `elementFromPoint`).
+- **Una opacidad en un elemento `preserve-3d` lo aplana** (las fichas de pie se proyectaban sobre el plano): `.plano`
+  es plana, con su propia `perspective`, y lleva la opacidad y la posición; `.plano-mundo` lleva la postura 3D. La tableta
+  no usa `preserve-3d`: sus tarjetas caen en 2D y la postura la lleva el conjunto.
 
 ### Movimiento
 
@@ -202,7 +223,8 @@ una `sr-only` para lectores de pantalla y otra `aria-hidden` partida, así que e
 | `letras` + `carga` | H1 de cada página | Cada letra sube desde una máscara (< 1,5 s) |
 | `palabras` + `scroll` | H2 de sección | Cada palabra sube desde una máscara al bajar (reversible) |
 | `lectura` + `scroll` / `carga` | Textos de entrada | Cada tramo de 3 palabras pasa de tenue a pleno |
-| En la historia fija | Pasos 01 a 03 | El texto se escribe al ritmo de `--historia` (reglas `.historia .h-paso-N …`) |
+| En la historia fija | Pasos 01 a 03 | El paso entra **entero** (sube 24 px y se enciende, con un pequeño solape con el anterior); las unidades no se animan (`.historia .h-paso .kx-scroll …: none`) |
+| `data-texto="unico"` | Táctil o < 1024 px | Cada bloque se revela **una sola vez, por tiempo**, al entrar (`kx-visto`): nunca queda a medias al dejar de deslizar |
 
 - Letras **solo en los H1**: partir en letras pierde el kerning (medido +0,74 % de ancho en el titular).
 - La CSP prohíbe `style`: el índice de cada unidad va en una clase `kx-i-N` (0 a 79, `MAX_INDICE`); pasado el
@@ -224,6 +246,7 @@ pintado y escribe en `<html>`:
 | `data-timeline` | `no` (si falta) | El navegador no soporta `animation-timeline` |
 | `data-mov-ui` | `1` | Hay algo que elegir: se muestra el conmutador del pie |
 | `data-motor` | `listo` | El respaldo está en marcha; solo entonces el CSS oculta algo |
+| `data-texto` | `unico` | Pantalla táctil o estrecha (`(max-width: 1023.98px), (pointer: coarse)`): el texto se revela una vez, por tiempo, y el motor observa como sin líneas de tiempo |
 
 - **Por defecto manda el sistema**; la persona puede activar el movimiento (aviso de la portada y conmutador del
   pie, `data-mov-conmutar`) y la elección se recuerda en `localStorage` (`otea-movimiento`). Sin JavaScript no
@@ -641,6 +664,24 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **Fotogramas deterministas de una entrada por tiempo**: las animaciones terminadas sin relleno `forwards` desaparecen
   de `getAnimations()`. Antes de navegar, `Animation.setPlaybackRate({ playbackRate: 0 })` por CDP detiene el reloj y
   después se fija `currentTime` (`verificacion/T3/hoja.mjs` del rediseño).
+
+## Lo aprendido (historia plano-secuencia)
+
+- **Turbopack puede servir CSS viejo**: tras cambiar `globals.css` el build reutilizó la hoja anterior (mismo nombre de
+  archivo, sin las clases nuevas) hasta borrar `.next/cache`. Si un cambio de CSS no aparece, `rm -rf .next/cache` y
+  volver a construir antes de buscar el error en el código.
+- **La `view-timeline` descuenta el `scroll-padding-top`** (inset `auto`): sin `view-timeline-inset` el 0 % de `contain`
+  llegaba 16 px antes de que la página se moviera. Las e2e siguen usando `top + p × (alto − vh)`, que queda ~1 % por detrás.
+- **Medir con el compositor por software**: casi todo el costo de un cuadro es `SoftwareRenderer::DoDrawQuad` (píxeles que
+  cubren las capas), no el hilo principal. Lo que pesa son las capas grandes y las 3D (el plano, las 24 láminas, el cielo);
+  quitar piezas con CSS inyectado y trazar `VizCompositorThread` por tramo (`verificacion/T4/traza.mjs` del rediseño) lo
+  muestra. Apagar pronto lo que ya cumplió (grano, suelo) subió la historia de ~54 a ~57 fps.
+- **Una animación ligada al scroll mantiene su capa mientras esté «en curso»**, también antes de su tramo y con relleno
+  `none`: cambiar el relleno no baja el número de capas (probado). Lo que sí: una `visibility` heredada (deja de pintar) y
+  animar contenedores en vez de piezas.
+- **El atajo `animation` reinicia `animation-timeline` y `animation-range`**: van siempre después, en la misma regla.
+- Un elemento con dos animaciones (entrada por tiempo y salida por scroll) usa `forwards` en la de salida: con `both`, su
+  0 % pisaría la entrada mientras corre.
 
 ## Lo aprendido (cuentas de personas usuarias)
 
