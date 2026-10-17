@@ -145,6 +145,20 @@ que caen (`Board`, datos de ejemplo) y el **panel** en perspectiva. Todo es CSS 
   va en el primer pliegue. La entrada es por tiempo y nada parte de opacidad 0 en la entrada ni en los botones (LCP).
 - Bucles del héroe: los pulsos (`hz-pulso-bucle`, solo ≥ 1024 px) y la gota de «Desliza» (`hz-gota`); sus contenedores
   llevan `data-bucle`. `DirectorEscena` escribe `--cx --cy` en `.h-hero` (paralaje del sol y brillo de las láminas).
+- La **retícula del suelo** solo vive en la franja de la cinta: el plano nace en el filo superior de esa fila
+  (`top: calc(100% - 0,88 × --cinta-alto)`, origen arriba, `rotateX(82deg)` hacia la cámara). En `z = 0` la perspectiva
+  no escala, así que el borde cae ahí a cualquier alto; **una máscara en coordenadas de un plano girado no sirve para
+  apartarlo del texto** (se proyecta en diagonal y depende del alto del suelo). En el teléfono no hay retícula.
+- El sol se sitúa por **glifos**, no por cajas: «HORIZONTE» mide 5,5 em (en el teléfono `.h1-palabra` es un bloque a
+  todo el ancho y su caja engaña). Sol al 84 % en escritorio, 86 % en la tableta y 96 % en el teléfono (cortado por el
+  marco). `e2e/heroe.spec.ts` exige más de 24 px de aire de 360 a 1440.
+- El aviso de movimiento reducido nunca desplaza el héroe: en el cielo (escritorio), junto a la alerta y alineado con su
+  pie (tableta, la alerta abarca la fila `aviso`) o después de la alerta (teléfono). Su margen va en `.aviso-mov`, no
+  en la fila: oculto, no suma alto.
+- «Desliza» va en dos capas: el `<p>` lleva la salida ligada a `--historia` y el `span` interior la entrada por tiempo
+  (una clave de salida con relleno `both` en el mismo elemento pisa la entrada diferida).
+- Bajo 1024 px con línea de tiempo, las láminas se ponen de pie ligadas a la `view-timeline` de la cinta
+  (`--cinta`, ola por `--x`), no por tiempo: la cinta queda bajo la alerta, fuera del primer pliegue.
 - Los **pulsos son trazos 2D** apuntados al sol con `atan2()` sobre `cqw`/`cqh` (`.h-suelo` es contenedor de tamaño):
   cada uno cae en su grupo (`--lx`, `--ly`) y solo recorre su `--tramo` (franja de la cinta en escritorio, del sol al filo
   de la alerta en la tableta, el hueco bajo los botones en el teléfono). **Nada de máscaras ni planos 3D para ellos.**
