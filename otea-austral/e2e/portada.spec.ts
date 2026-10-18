@@ -194,7 +194,20 @@ test.describe("movimiento", () => {
       const caja = (await riel.getByRole("link", { name: enlace }).boundingBox())!;
       await page.mouse.click(caja.x + caja.width / 2, caja.y + caja.height / 2);
       await expect.poll(() => page.locator(paso).evaluate((e) => Number(getComputedStyle(e).opacity)), { message: enlace }).toBeGreaterThan(0.9);
+      // El paso en curso va en tinta (su copia del nombre encendida) y solo ese.
+      const actual = await riel.evaluate((r) =>
+        [...r.querySelectorAll(".h-riel-nombre")].map((e) => Number(getComputedStyle(e, "::after").opacity)),
+      );
+      const i = ["01 Verificación", "02 Impacto", "03 Tu panel"].indexOf(enlace);
+      actual.forEach((o, j) => expect(o, `${enlace}: paso ${j + 1}`).toBeCloseTo(j === i ? 1 : 0, 1));
     }
+    // El anillo de foco no toca los glifos: cada paso tiene aire a los lados y esquinas redondeadas.
+    const forma = await riel.getByRole("link", { name: "01 Verificación" }).evaluate((a) => {
+      const cs = getComputedStyle(a);
+      return { aire: parseFloat(cs.paddingLeft), radio: parseFloat(cs.borderTopLeftRadius) };
+    });
+    expect(forma.aire).toBeGreaterThanOrEqual(8);
+    expect(forma.radio).toBeGreaterThan(0);
   });
 
   test("en escritorio la historia queda fija y avanza con el scroll", async ({ page }, info) => {

@@ -167,7 +167,11 @@ export function Story() {
               <li key={paso.ancla}>
                 <a href={`#${paso.ancla}`} className="h-riel-paso">
                   <span className="h-riel-numero">0{i + 1}</span>
-                  {paso.nombre}
+                  {/* `data-texto`: la copia en tinta del paso en curso (un `::after` sin texto alternativo, que no
+                      duplica el nombre accesible). */}
+                  <span className="h-riel-nombre" data-texto={paso.nombre}>
+                    {paso.nombre}
+                  </span>
                 </a>
               </li>
             ))}

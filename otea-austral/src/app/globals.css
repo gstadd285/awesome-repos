@@ -3402,6 +3402,24 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
+/* El paso en curso del riel: se enciende al entrar su paso y se apaga al salir. */
+@keyframes h-riel-actual {
+  0% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  9% {
+    opacity: 1;
+  }
+  91% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @keyframes h-avance {
   from {
     transform: scaleX(0);
@@ -5220,21 +5238,77 @@ html[data-movimiento="completo"] {
         gap: clamp(16px, 2.2vw, 32px);
       }
 
+      /* Cada paso lleva 10 px de aire a los lados (devueltos con margen: el riel no cambia de medida), así el anillo de
+         foco, redondeado como el de los botones, no toca los glifos. */
       .h-riel-paso {
         position: relative;
         display: flex;
         align-items: center;
         gap: 8px;
         min-height: 44px;
-        padding-bottom: 6px;
+        margin-inline: -10px;
+        padding: 0 10px 6px;
+        border-radius: 10px;
         font-family: var(--font-mono);
         font-size: 12px;
         letter-spacing: 0.04em;
         color: var(--color-apoyo);
+        transition: color var(--dur-2) var(--ease-salida);
       }
 
       .h-riel-numero {
         color: var(--color-brass-deep);
+      }
+
+      /* El paso en curso, en tinta: una copia del nombre encima (sin texto alternativo) que se enciende en el tramo de
+         su paso. Solo opacidad, en el compositor. */
+      .h-riel-nombre {
+        position: relative;
+      }
+
+      .h-riel-nombre::after {
+        content: attr(data-texto) / "";
+        position: absolute;
+        inset: 0;
+        color: var(--color-texto);
+        opacity: 0;
+        animation: h-riel-actual linear both;
+        animation-timeline: --historia;
+      }
+
+      li:nth-child(1) .h-riel-nombre::after {
+        animation-range: contain 21% contain 47%;
+      }
+      li:nth-child(2) .h-riel-nombre::after {
+        animation-range: contain 46.2% contain 73%;
+      }
+      li:nth-child(3) .h-riel-nombre::after {
+        animation-range: contain 72.2% contain 100%;
+      }
+
+      /* Al pasar el cursor: el nombre en tinta y un filete de latón de 2 px que se tiende bajo el paso. */
+      .h-riel-paso::before {
+        content: "";
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 5px;
+        height: 2px;
+        border-radius: 1px;
+        background-color: var(--color-brass-deep);
+        transform: scaleX(0);
+        transform-origin: 0 50%;
+        transition: transform var(--dur-2) var(--ease-salida);
+      }
+
+      @media (hover: hover) {
+        .h-riel-paso:hover {
+          color: var(--color-texto);
+        }
+
+        .h-riel-paso:hover::before {
+          transform: none;
+        }
       }
 
       /* Una sola línea de 1 px bajo los tres pasos, que se llena en latón oscuro con la historia (una capa). */
