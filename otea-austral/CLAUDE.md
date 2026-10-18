@@ -127,7 +127,7 @@ de frente y nítido con el alba detrás. Todo es CSS 3D:
   empieza con la página arriba: `view-timeline-inset: 72px 0` (por omisión la línea de tiempo descuenta el
   `scroll-padding-top` y la historia arrancaba 16 px antes). Progreso real = `(scrollY − top + 72) / (alto − vh + 72)`.
   Guion: héroe 0–10 %, cámara y plano 6–20 %, paso 01 (verificar) 21–47 %, paso 02 (impacto) 46–73 %, paso 03 (de frente,
-  `transform: none` al 84 %) 72–100 %, velo del relevo 92–100 %. Los textos de los pasos están en la columna del marco
+  `transform: none` al 84 %) 72–100 %, velo del relevo del 94 % al 25 % de la salida (termina cuando ya asoma la sección siguiente). Los textos de los pasos están en la columna del marco
   (`--marco-x`, `--col-w`) y las piezas centradas en el resto (`--piezas-cx`, `--tab-w`). Riel `01 · 02 · 03` abajo a la
   izquierda (una línea de avance) con tres anclas (`#paso-verificar`, `#paso-impacto`, `#paso-panel`: 30, 60 y 86 %).
 - **Piezas que se arman al entrar** (< 1024 px, p. ej. un panel lateral o un teléfono): las mismas piezas se
@@ -179,8 +179,9 @@ de frente y nítido con el alba detrás. Todo es CSS 3D:
   de la alerta en la tableta). **Nada de máscaras ni planos 3D para ellos.** En el teléfono no hay pulsos: el sol queda
   lejos y en el hueco de 28 px bajo los botones se leían como motas; la luz llega por una chispa que recorre el filete
   de la alerta (`.alerta-viva::after`, `hz-chispa`).
-- En la historia fija el héroe sale **por piezas**: el grano y el suelo se apagan, el cielo y el horizonte salen por
-  arriba (`translate`), la cinta se tiende y la línea 2 del H1 sube antes que la 1 (nunca las dos a medio recortar). Desde
+- En la historia fija el héroe sale **por piezas**: el grano se va al moverse la página, la retícula y los pulsos se
+  apagan, la línea 2 del H1 sube antes que la 1 (nunca las dos a medio recortar) y, ya puesto el titular, cielo, línea y
+  suelo suben juntos (`h-alzar`, 10–17 %) mientras la cinta se tiende. Desde
   el 21 % la clave discreta de `.h-hero` pone `visibility: hidden` (heredada): las capas del héroe dejan de pintar; las
   acciones (`.hero-mando`) declaran `visibility: visible` y siguen enfocables. Ya no hay `hz-retirar` (`display`
   animado = hilo principal).
@@ -209,7 +210,7 @@ movimiento»):
 | `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
 | `hz-*` | Entrada en tres tiempos del héroe: la línea se traza, el titular sale del horizonte (< 1,3 s), amanece y los pulsos ponen de pie la cinta; bucle de pulsos con `data-bucle` |
 | `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
-| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista; escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.h-hero` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); marca `data-maquetado` en `<html>` tras `load` (fin de la maquetación diferida); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
+| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista (el mismo observador marca `data-fuera` en las vigías de la historia y en la copia decorativa del texto ligado al scroll, que así no se dibujan lejos de la pantalla); lleva el foco que llega a una parte de la historia fija fuera de su tramo a ese momento (`data-tramo`); escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.h-hero` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); marca `data-maquetado` en `<html>` tras `load` (fin de la maquetación diferida); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
 | `<PageTransition>` | Transición entre páginas (React `ViewTransition`), **solo en `src/app/template.tsx`**: dentro de un `page.tsx` React nunca la iniciaba. La cabecera no se mueve; el subrayado, el logo y las acciones viajan con nombre propio. **Con la puerta cerrada no monta el límite** al navegar (la plantilla hidratada lo conserva con salida `none`): ninguna view transition |
 | `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
 
@@ -682,6 +683,27 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **El atajo `animation` reinicia `animation-timeline` y `animation-range`**: van siempre después, en la misma regla.
 - Un elemento con dos animaciones (entrada por tiempo y salida por scroll) usa `forwards` en la de salida: con `both`, su
   0 % pisaría la entrada mientras corre.
+- **Lo que sube junto lleva la misma clave**: el cielo (con `overflow: clip`) subía solo y el suelo se apagaba; entre los
+  dos asomaba el fondo de la página con bordes rectos y la línea 1 del H1 quedaba cortada donde ya no estaba el horizonte.
+  Cielo, línea y suelo comparten `h-alzar` (10–17 %), y el horizonte no se mueve hasta que el titular está puesto.
+- **Vigías en vez de animar `visibility`**: para que una pieza fuera de su tramo deje de pintar sin sumar animaciones de
+  hilo principal, la historia tiene franjas invisibles (`.h-vigia-*`, `data-vigia`) que el observador de `DirectorEscena`
+  marca con `data-fuera` (64 px de margen); el CSS oculta la pieza con `:has()`. Una franja toca la pantalla justo cuando el
+  progreso está entre `--a` y `--b` (mínimo ~0,27 de recorrido). Solo piezas `aria-hidden`: `visibility: hidden` saca del
+  árbol de accesibilidad (por eso el H1 `sr-only`, el antetítulo y la entrada declaran `visible` dentro del héroe apagado).
+  Capas que dibujan: de 125 a 72 como máximo; la copia decorativa del texto lejano (`.kx-visual`) tampoco se dibuja.
+- **Un grupo dentro de un `preserve-3d` con hijos animados o con opacidad es una superficie aparte** del tamaño del grupo,
+  proyectada en cada cuadro: las cotas e hilos del plano costaban ~4 ms por cuadro. Grupo `preserve-3d` sin opacidad y la
+  clave en cada pieza.
+- **`translate: none !important` no le gana a una animación de `translate` en Chrome** (`opacity: 1 !important` sí);
+  `translate: 0 0 !important`, sí. Lo usa la regla de foco de la historia.
+- **El foco no salta dentro de una view transition**: con el desplazamiento en el callback del fundido, el desplazamiento
+  propio del navegador hacia el foco se colaba y el salto aterrizaba hasta 100 px antes. `DirectorEscena` lleva el foco
+  al tramo de su parte (`data-tramo="desde hasta destino"`) al instante, dentro del evento `focusin`.
+- **Un elemento que no cabe en su pista de cuadrícula se alinea al inicio aunque pida `center`** (el tablero del teléfono
+  se salía 8 px por la derecha): margen negativo para devolver lo que sobra.
+- **Medir el costo por cuadro con la traza, no con fps**: los fps por tramo varían ±8 entre pasadas; la mediana de tres
+  trazas (`dibujo/cuadro`, `verificacion/T4/r1/medir.sh` del rediseño) distingue cambios de 1–2 ms.
 
 ## Lo aprendido (cuentas de personas usuarias)
 
