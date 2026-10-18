@@ -3007,33 +3007,16 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-/* El cielo respira (0–3 %) y, cuando la cámara se inclina, sale por arriba con el sol (8–20 %). */
-@keyframes h-cielo {
-  0% {
-    scale: 1;
-    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-  }
-  20% {
+/* El cielo respira (0–3 %) y, cuando la cámara se inclina, el horizonte entero sube y sale por arriba (10–17 %): cielo,
+   línea y suelo con la misma clave, así entre ellos nunca asoma el fondo. */
+@keyframes h-respirar {
+  to {
     scale: 1.02;
-    translate: 0 0;
-  }
-  40% {
-    scale: 1.02;
-    translate: 0 0;
-    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-  }
-  100% {
-    scale: 1.02;
-    translate: 0 -62vh;
   }
 }
 
-@keyframes h-horizonte {
-  40% {
-    translate: 0 0;
-    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-  }
-  100% {
+@keyframes h-alzar {
+  to {
     translate: 0 -62vh;
   }
 }
@@ -3100,7 +3083,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
 @keyframes h-plano-mundo {
   0% {
-    transform: translateY(34%) rotateX(82deg) rotateZ(0deg) scale(2.6);
+    transform: translateY(30%) rotateX(82deg) rotateZ(0deg) scale(2.2);
     animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   }
   30% {
@@ -4729,34 +4712,62 @@ html[data-movimiento="completo"] {
         animation-range: contain 0% contain 2%;
       }
 
-      /* El cielo y el horizonte salen por arriba cuando la cámara se inclina; el suelo y el grano se apagan. Ya fuera de
-         vista, la pausa de `data-bucle` detiene los pulsos (antes vivían bajo una capa invisible). */
+      /* El horizonte sale por arriba cuando la cámara se inclina, ya con el titular puesto (la línea 1 termina al 10 %):
+         cielo, línea y suelo suben juntos (`h-alzar`), así la luz del suelo sigue pegada a la línea y nunca asoma el
+         fondo entre ellos. La retícula se apaga antes de subir (su borde inferior es recto) mientras nace el plano. Ya
+         fuera de vista, la pausa de `data-bucle` detiene los pulsos. */
       .h-cielo {
         transform-origin: 50% 100%;
-        animation: h-cielo linear both;
+        animation:
+          h-respirar var(--ease-enfasis) forwards,
+          h-alzar var(--ease-enfasis) forwards;
         animation-timeline: --historia;
-        animation-range: contain 0% contain 15%;
+        animation-range:
+          contain 0% contain 3%,
+          contain 10% contain 17%;
       }
 
       .h-horizonte {
         animation:
           hz-trazar 1100ms var(--ease-salida) backwards,
-          h-horizonte linear forwards;
+          h-alzar var(--ease-enfasis) forwards;
         animation-timeline: auto, --historia;
-        animation-range: normal, contain 0% contain 15%;
-      }
-
-      /* El grano solo tiene sentido quieto: se va con el titular. El suelo cede su lugar al plano. */
-      .h-grano {
-        animation: h-apagar var(--ease-entrada) forwards;
-        animation-timeline: --historia;
-        animation-range: contain 2% contain 6%;
+        animation-range: normal, contain 10% contain 17%;
       }
 
       .h-suelo {
+        animation: h-alzar var(--ease-enfasis) forwards;
+        animation-timeline: --historia;
+        animation-range: contain 10% contain 17%;
+      }
+
+      .h-reticula {
+        animation:
+          hz-diferir 1ms 519ms backwards,
+          hz-encender 1200ms var(--ease-enfasis) 520ms backwards,
+          h-apagar var(--ease-entrada) forwards;
+        animation-timeline: auto, auto, --historia;
+        animation-range: normal, normal, contain 6% contain 10%;
+      }
+
+      /* Los pulsos se apagan con la retícula: subiendo con el suelo se leían como estelas sueltas en el cielo. La clave
+         de salida va en cada pulso (una opacidad en `.h-pulsos` haría de todo el suelo una superficie aparte). */
+      .pulso {
+        animation:
+          hz-pulso 1500ms backwards,
+          hz-pulso-bucle 7200ms infinite,
+          h-apagar var(--ease-entrada) forwards;
+        animation-delay: calc(350ms + var(--k) * 300ms), calc(3950ms + var(--k) * 900ms), 0s;
+        animation-timeline: auto, auto, --historia;
+        animation-range: normal, normal, contain 6% contain 10%;
+      }
+
+      /* El grano solo tiene sentido quieto: se va en cuanto la página se mueve (es una capa de pantalla entera que se
+         dibuja en cada cuadro: ~2,5 ms por cuadro con rasterizado por software) y su vigía deja de dibujarlo. */
+      .h-grano {
         animation: h-apagar var(--ease-entrada) forwards;
         animation-timeline: --historia;
-        animation-range: contain 7% contain 12%;
+        animation-range: contain 0% contain 2%;
       }
 
       .cinta-rotulo {
@@ -4774,7 +4785,7 @@ html[data-movimiento="completo"] {
           hz-velar 1ms 1649ms backwards,
           h-tender linear forwards;
         animation-timeline: auto, --historia;
-        animation-range: normal, contain 0% contain 16%;
+        animation-range: normal, contain 0% contain 14%;
       }
 
       .h-cinta {
@@ -4782,7 +4793,7 @@ html[data-movimiento="completo"] {
         --cinta-dy: -30vh;
         animation: h-cinta linear forwards;
         animation-timeline: --historia;
-        animation-range: contain 6% contain 15%;
+        animation-range: contain 5% contain 13.5%;
       }
 
       /* Plano técnico: centrado en las piezas, 1,12 veces el ancho de la tableta (que encaja en él al 48 %). */

@@ -212,4 +212,36 @@ test.describe("movimiento", () => {
     });
     await expect.poll(async () => Number(await paso3.evaluate((e) => getComputedStyle(e).opacity))).toBeGreaterThan(0.9);
   });
+
+  /** Lleva la historia fija a un progreso exacto (0 a 1): `(scrollY − top + 72) / (alto − vh + 72)`. */
+  const progreso = (page: import("@playwright/test").Page, p: number) =>
+    page.evaluate((f) => {
+      const s = document.querySelector<HTMLElement>(".historia")!;
+      window.scrollTo({ top: s.offsetTop - 72 + f * (s.offsetHeight - innerHeight + 72), behavior: "instant" });
+    }, p);
+
+  test("en escritorio el horizonte sale entero: cielo, línea y suelo suben juntos, sin franja de fondo entre ellos", async ({ page }, info) => {
+    test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
+    await page.goto("/");
+    await page.waitForTimeout(1800);
+    const medir = () =>
+      page.evaluate(() => {
+        const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+        return { cielo: r(".h-cielo").bottom, suelo: r(".h-suelo").top, linea: r(".h-horizonte").top, caja1: r(".h1-caja-1").bottom };
+      });
+    const reposo = await medir();
+    // Mientras el titular se pone (hasta el 10 %) el horizonte no se mueve: la línea 1 se recorta justo en él.
+    await progreso(page, 0.095);
+    const poniendo = await medir();
+    expect(Math.abs(poniendo.linea - reposo.linea)).toBeLessThan(1);
+    // Al subir, el pie del cielo, la línea y el borde del suelo siguen juntos.
+    for (const p of [0.12, 0.14, 0.16]) {
+      await progreso(page, p);
+      const m = await medir();
+      expect(m.linea, `al ${p * 100} %`).toBeLessThan(reposo.linea - 20);
+      expect(Math.abs(m.cielo - m.suelo), `al ${p * 100} %`).toBeLessThan(1.5);
+      expect(Math.abs(m.linea - m.suelo), `al ${p * 100} %`).toBeLessThan(2);
+    }
+  });
+
 });
