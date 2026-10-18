@@ -2967,6 +2967,12 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
+/* Al saltar a la vitrina, el foco del salto se pinta sobre el filo de la hoja, en latón oscuro (5,7:1 sobre papel), en
+   vez de un segundo anillo tinta por fuera del filo. */
+#ejemplos:focus-visible {
+  outline-color: var(--color-brass-deep);
+  outline-offset: -2px;
+}
 
 /* Vigía de cada capítulo del producto (vitrina, noche y lista): una franja invisible que se extiende media pantalla por
    encima y por debajo de su sección. `DirectorEscena` le pone `data-fuera` cuando no toca la pantalla, y entonces las
@@ -3031,6 +3037,14 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
 .vitrina-segmento:has(.vitrina-radio:checked) {
   color: var(--color-ivory);
+}
+
+/* Los segmentos sin marcar responden al puntero: el texto se oscurece sobre un fondo un punto más claro. */
+@media (hover: hover) {
+  .vitrina-segmento:not(:has(:checked)):hover {
+    background-color: var(--color-papel-alto);
+    color: var(--color-texto);
+  }
 }
 
 .vitrina-segmento:has(.vitrina-radio:focus-visible),
@@ -3252,8 +3266,9 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   color: var(--color-texto);
 }
 
+/* El numeral es decorativo (texto alternativo vacío): la lista `<ol>` ya da el orden a los lectores de pantalla. */
 .nota-titulo::before {
-  content: counter(nota, decimal-leading-zero);
+  content: counter(nota, decimal-leading-zero) / "";
   counter-increment: nota;
   font-family: var(--font-mono);
   font-weight: 500;
@@ -3312,8 +3327,9 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 }
 
 /* Escritorio: la tarjeta grande al centro y las notas a los lados, unidas a su borde por un filete con su punto. Cada
-   nota se alinea con lo que explica (alto en % de la tarjeta, por escenario). */
-@media (min-width: 1200px) {
+   nota se alinea con lo que explica (alto en px desde el borde de la tarjeta, por escenario). Desde 1280 px: más
+   estrechas, las notas partían el rótulo «02 Confianza calculada» y bajaban de la tarjeta. */
+@media (min-width: 1280px) {
   .vitrina-escena {
     --carta: 600px;
     --hueco: clamp(48px, 4.6vw, 80px);
@@ -3430,6 +3446,12 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   .nota-2 { top: 422px; }
   .nota-3 { top: 458px; }
   .nota-4 { top: 28px; }
+
+  /* Numeradas por su altura, en el orden en que se leen: Correcciones, junto a la cabecera, es la 01. */
+  .nota-4 { counter-set: nota 0; }
+  .nota-1 { counter-set: nota 1; }
+  .nota-2 { counter-set: nota 2; }
+  .nota-3 { counter-set: nota 3; }
   .vitrina-panel-ormuz .nota-1 { top: 219px; }
   .vitrina-panel-ormuz .nota-2 { top: 487px; }
   .vitrina-panel-ormuz .nota-3 { top: 523px; }
