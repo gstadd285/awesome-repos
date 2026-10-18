@@ -724,6 +724,28 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **Salidas de texto en ~30 px**: `h-salir` se apaga en el 70 % de su tramo; con un tramo de 2,2 % de recorrido la opacidad
   pasa de 0,9 a 0,1 en 25–30 px a 1440×900 (pasos y héroe; `medias.mjs` del rediseño lo mide cada 5 px).
 
+## Lo aprendido (producto que se toca: vitrina, «Tu mañana», noche → alba y lista de espera)
+
+- **La vitrina funciona sin JavaScript** (`AlertExamples.tsx`): radios nativos y `.demo:has(#escenario-…:checked)` eligen el
+  panel; la prueba «quita la fuente primaria» pinta en paralelo cada valor que cambia (`span.solo-a` real, `span.solo-b` de
+  la prueba, calculado en el servidor con `vistaSinPrimaria` y las reglas reales) y `.demo:has(#prueba-ormuz:checked)`
+  muestra uno u otro. Sin `:has()` se ve Ormuz completo y sin controles. `AlertCard` sin la prop `alternativa` no cambia.
+- **Una pista de validación que aparece al salir del campo puede comerse el clic**: el `mousedown` sobre «Unirme» saca el foco
+  del correo, `:user-invalid` muestra la pista, el botón baja y el `mouseup` cae en el formulario (sin envío). La pista guarda
+  su renglón con `visibility` (`e2e/producto.spec.ts` comprueba que el botón no se mueve).
+- **El CSS propio de `globals.css` va fuera de las capas y gana a cualquier utilidad** de Tailwind, sea cual sea la
+  especificidad. Mezclar utilidades y una clase propia en el mismo elemento solo funciona si la regla propia no toca esas
+  propiedades (o si se quiere justo que las pise en un ancho, como `.nota` en la vitrina de escritorio).
+- **Menos nodos sin perder nada**: el texto en tinta de un tema es una capa con la misma cuadrícula que el botón
+  (`grid-template-columns/areas: inherit`) en vez de una segunda cara entera; los íconos de dirección los dibuja
+  `.icono-dir::before` según `data-direccion`; el medidor de tres tramos es un solo elemento con máscara; los numerales de las
+  notas son un contador. La portada pasó de 1.503 a 1.381 nodos.
+- **`mask-image` con `var()`**: Lightning CSS escribe la declaración con prefijo tres veces; con valores fijos, una.
+- **Un aviso que se pliega con `grid-template-rows: 0fr`** no puede tener relleno propio (quedaría a la vista): el aire va en
+  los márgenes de sus hijos y el filete es una sombra interior.
+- **En el teléfono las anotaciones de la vitrina son un riel horizontal** (`scroll-snap`, la siguiente asomando): ~250 px
+  menos de alto sin quitar texto.
+
 ## Lo aprendido (cuentas de personas usuarias)
 
 - **La paleta de Tailwind está reiniciada**: `fill-white`, `bg-black`, `text-white`… **no existen** y no avisan. El código QR salió
