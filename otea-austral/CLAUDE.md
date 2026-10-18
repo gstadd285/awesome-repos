@@ -757,8 +757,12 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   deshace. Se tacha un `span` propio y el rótulo va fuera.
 - **Lo ligado a la caja de un grupo termina fuera de pantalla para las piezas de abajo**: cada nota de la vitrina es su
   propia `view-timeline` y su `::before` la lee por nombre.
-- **Tailwind solo escanea `src/`** (`@import "tailwindcss" source("../")`): los `.md` del repositorio generaban utilidades
-  sueltas (`.vidrio`, `.blur`, `.transition`, `.transform` y sus `@property`).
+- **Tailwind solo escanea `src/` y no lee las pruebas** (`@import "tailwindcss" source("../")` y `@source not
+  "../**/*.test.{ts,tsx}"`): los `.md` del repositorio y los textos de las pruebas (`backdrop-filter`, `transition`…)
+  generaban utilidades sueltas (`.vidrio`, `.blur`, `.transform` y sus `@property`).
+- **Un `clip-path` que recoge un botón también recorta su anillo de foco** (y sus sombras de fuera): recogido en círculo,
+  el botón de la lista apaga sus sombras exteriores (mismo número de sombras, para que se interpolen) y con teclado pinta
+  el anillo dentro del círculo (`::before`, tinta sobre latón).
 
 ## Lo aprendido (cuentas de personas usuarias)
 
