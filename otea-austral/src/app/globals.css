@@ -3436,6 +3436,386 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   rotate: 45deg;
 }
 
+/* ── Producto: «Elige qué seguir» y «Tu mañana» ───────────────────────────────
+ * A la izquierda, los seis temas como interruptores compactos; a la derecha, la vista previa en tinta de los avisos de
+ * ejemplo de esos temas. El interruptor se pinta dos veces: la cara clara y la misma cara en tinta, recortada por un
+ * círculo que crece desde la marca. Así el texto siempre se lee sobre su propio fondo, en cada cuadro del cambio. */
+/* El interruptor es una cuadrícula (ícono · nombre y qué cubre · marca). Encima, `.tm-tinta` repite el texto sobre el
+   relleno tinta con la misma cuadrícula (hereda columnas, áreas y relleno), recortado por un círculo nulo en la marca;
+   marcado, el círculo la descubre entera. El ícono y la marca van por encima de las dos capas. */
+.tm-tema,
+.tm-tinta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  grid-template-areas: "n m" "b m";
+  align-content: center;
+  align-items: center;
+  column-gap: 10px;
+  padding: 10px 12px;
+}
+
+.tm-tema {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 60px;
+  border-radius: var(--radius-card);
+  background-color: var(--color-papel-alto);
+  text-align: left;
+  color: var(--color-texto);
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 2px 6px -2px rgb(15 27 45 / 0.08),
+    0 18px 36px -24px rgb(15 27 45 / 0.28);
+}
+
+@media (hover: hover) {
+  .tm-tema:hover {
+    box-shadow:
+      var(--anillo, 0 0 #0000),
+      inset 0 0 0 1px var(--color-linea-fuerte),
+      inset 0 1px 0 rgb(255 255 255 / 0.95),
+      0 4px 10px -4px rgb(15 27 45 / 0.12),
+      0 26px 48px -26px rgb(15 27 45 / 0.38);
+  }
+}
+
+.tm-tinta {
+  --marca-x: calc(100% - 24px);
+  position: absolute;
+  inset: 0;
+  grid-template-columns: inherit;
+  grid-template-areas: inherit;
+  column-gap: inherit;
+  padding: inherit;
+  border-radius: inherit;
+  background-color: var(--color-ink);
+  background-image: radial-gradient(120% 140% at 100% 0%, rgb(176 141 87 / 0.16), rgb(176 141 87 / 0) 60%);
+  color: var(--color-ivory);
+  clip-path: circle(0% at var(--marca-x) 50%);
+  pointer-events: none;
+}
+
+[aria-pressed="true"] > .tm-tinta {
+  clip-path: circle(150% at var(--marca-x) 50%);
+}
+
+.tm-nombre {
+  grid-area: n;
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+/* En el teléfono no hay sitio para el ícono ni para qué cubre cada tema: el nombre manda. */
+.tm-breve {
+  grid-area: b;
+  display: none;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--color-texto-suave);
+}
+
+.tm-tinta .tm-breve {
+  color: var(--color-niebla);
+}
+
+.tm-icono {
+  grid-area: i;
+  position: relative;
+  z-index: 1;
+  display: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--color-fondo);
+}
+
+.tm-icono-svg {
+  width: 18px;
+  height: 18px;
+}
+
+[aria-pressed="true"] > .tm-icono {
+  background-color: rgb(243 238 227 / 0.1);
+  color: var(--color-ivory);
+}
+
+/* Marca: «+» en un círculo con borde (claro) o «✓» tinta sobre un disco de latón que salta (en tinta, 5,6:1). */
+.tm-marca {
+  grid-area: m;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--color-apoyo);
+  color: var(--color-apoyo);
+}
+
+.tm-marca::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-image: linear-gradient(180deg, var(--color-laton-claro), var(--color-brass));
+  box-shadow: inset 0 1px 0 rgb(255 249 235 / 0.5);
+  scale: 0;
+}
+
+.tm-marca svg {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tm-marca-check {
+  stroke-width: 2;
+  opacity: 0;
+}
+
+[aria-pressed="true"] > .tm-marca {
+  color: var(--color-ink);
+}
+
+[aria-pressed="true"] > .tm-marca::before {
+  scale: 1;
+}
+
+[aria-pressed="true"] .tm-marca-mas {
+  opacity: 0;
+}
+
+[aria-pressed="true"] .tm-marca-check {
+  opacity: 1;
+}
+
+/* «Tu mañana»: el panel en tinta. */
+.tm-manana {
+  position: relative;
+  border-radius: 20px;
+  padding: 22px 20px;
+  background-color: var(--color-ink);
+  background-image:
+    radial-gradient(80% 60% at 100% 0%, rgb(176 141 87 / 0.14), rgb(176 141 87 / 0) 70%),
+    linear-gradient(180deg, rgb(243 238 227 / 0.03), rgb(243 238 227 / 0) 40%);
+  color: var(--color-ivory);
+  box-shadow:
+    inset 0 1px 0 rgb(243 238 227 / 0.08),
+    0 36px 64px -36px rgb(15 27 45 / 0.6);
+}
+
+.tm-cabeza {
+  border-bottom: 1px solid rgb(243 238 227 / 0.12);
+}
+
+/* «Datos de ejemplo» sobre tinta. */
+.ejemplo-tinta {
+  flex-shrink: 0;
+  border-radius: var(--radius-badge);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ivory);
+  box-shadow: inset 0 0 0 1px rgb(243 238 227 / 0.3);
+}
+
+/* La cifra cambia subiendo desde una máscara (la vuelve a montar `key`). */
+.tm-cifra-marco {
+  display: inline-block;
+  overflow: clip;
+  font-family: var(--font-mono);
+  font-size: 48px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-cifra {
+  display: inline-block;
+}
+
+.tm-barra {
+  display: flex;
+  gap: 4px;
+  height: 6px;
+  margin-top: 18px;
+  border-radius: 3px;
+  background-color: rgb(243 238 227 / 0.06);
+}
+
+.tm-barra-tramo {
+  flex-basis: 0;
+  min-width: 0;
+  border-radius: 3px;
+}
+
+.tm-barra-gana {
+  background-color: var(--color-gana);
+}
+
+.tm-barra-condicionado {
+  background-color: var(--color-condicionado);
+}
+
+.tm-barra-pierde {
+  background-color: var(--color-pierde);
+}
+
+.barra-0 { flex-grow: 0; }
+.barra-1 { flex-grow: 1; }
+.barra-2 { flex-grow: 2; }
+.barra-3 { flex-grow: 3; }
+.barra-4 { flex-grow: 4; }
+.barra-5 { flex-grow: 5; }
+.barra-6 { flex-grow: 6; }
+.barra-7 { flex-grow: 7; }
+.barra-8 { flex-grow: 8; }
+.barra-9 { flex-grow: 9; }
+.barra-10 { flex-grow: 10; }
+.barra-11 { flex-grow: 11; }
+.barra-12 { flex-grow: 12; }
+
+.tm-leyenda [data-direccion="gana"]::before {
+  color: var(--color-gana);
+}
+
+.tm-leyenda [data-direccion="condicionado"]::before {
+  color: var(--color-condicionado);
+}
+
+.tm-leyenda [data-direccion="pierde"]::before {
+  color: var(--color-pierde);
+}
+
+.tm-avisos {
+  margin-top: 20px;
+  border-top: 1px solid rgb(243 238 227 / 0.12);
+}
+
+/* Cada aviso se pliega (alto 0 y transparente) cuando su tema no está elegido; no se desmonta. Su cuerpo es la fila
+   que se pliega: sin relleno propio (quedaría a la vista), el aire lo dan los márgenes de sus hijos y el filete es una
+   sombra interior. */
+.tm-aviso {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.tm-aviso[data-oculto] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.tm-aviso-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow: inset 0 -1px rgb(243 238 227 / 0.12);
+}
+
+.tm-hora {
+  font-size: 15px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ivory);
+}
+
+.tm-aviso-tema {
+  margin-top: 4px;
+}
+
+/* En el teléfono, a lo sumo tres avisos más «y N más». */
+@media (max-width: 639.98px) {
+  .tm-extra {
+    display: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .tm-tema,
+  .tm-tinta {
+    grid-template-columns: 40px minmax(0, 1fr) 28px;
+    grid-template-areas: "i n m" "i b m";
+    column-gap: 14px;
+    padding: 14px 16px;
+  }
+
+  .tm-tema {
+    min-height: 76px;
+  }
+
+  .tm-tinta {
+    --marca-x: calc(100% - 30px);
+  }
+
+  .tm-icono {
+    display: grid;
+  }
+
+  .tm-nombre {
+    font-size: 15px;
+  }
+
+  .tm-breve {
+    display: block;
+  }
+
+  .tm-marca {
+    width: 28px;
+    height: 28px;
+  }
+
+  .tm-manana {
+    padding: 28px;
+  }
+
+  .tm-aviso-cuerpo {
+    grid-template-columns: 64px minmax(0, 1fr);
+    column-gap: 18px;
+  }
+
+  .tm-aviso-hora {
+    display: block;
+    grid-row: span 3;
+  }
+
+  .tm-hora {
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .tm-aviso-cuerpo > :not(time) {
+    grid-column: 2;
+  }
+
+  .tm-aviso-tema {
+    margin-top: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .tm-manana {
+    padding: 32px;
+  }
+
+  .tm-cifra-marco {
+    font-size: 56px;
+  }
+}
+
 /* ── Texto en movimiento: estructura ──────────────────────────────────────
  * `TextoEnMovimiento` parte el texto en unidades (letras o palabras). La CSP no admite `style`
  * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 79; `MAX_INDICE`).
@@ -6072,6 +6452,74 @@ html[data-movimiento="completo"][data-motor] {
     .vitrina-notas.escena-vista:not(.mov-quieto) .nota::before {
       animation: vitrina-trazo-entrada var(--dur-4) var(--ease-salida) backwards;
       animation-delay: calc(var(--n, 0) * var(--escalon-anotacion));
+    }
+  }
+}
+
+/* «Tu mañana»: el relleno tinta crece desde la marca (420 ms, curva de énfasis) y la marca hace pop con resorte; los
+   avisos se pliegan y despliegan, la barra se reparte y la cifra sube desde su máscara. */
+@keyframes tm-cifra {
+  from {
+    opacity: 0;
+    translate: 0 0.8em;
+  }
+}
+
+html[data-movimiento="completo"] {
+  /* El relleno, el texto del ícono y la marca cambian con la misma duración y curva; el disco de latón salta con
+     resorte al marcar y se recoge sin rebote al desmarcar. */
+  .tm-tinta {
+    transition: clip-path 420ms var(--ease-enfasis);
+  }
+
+  .tm-icono,
+  .tm-marca {
+    transition-property: background-color, color;
+    transition-duration: 420ms;
+    transition-timing-function: var(--ease-enfasis);
+  }
+
+  .tm-marca::before,
+  .tm-marca-check {
+    transition: scale var(--dur-2) var(--ease-salida);
+  }
+
+  .tm-marca-check {
+    transform-box: fill-box;
+    transform-origin: center;
+    scale: 0.4;
+  }
+
+  [aria-pressed="true"] > .tm-marca::before,
+  [aria-pressed="true"] .tm-marca-check {
+    scale: 1;
+    transition-duration: 520ms;
+    transition-delay: 80ms;
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
+  }
+
+  .tm-marca path {
+    transition: opacity var(--dur-2) var(--ease-salida);
+  }
+
+  .tm-aviso {
+    transition:
+      grid-template-rows var(--dur-3) var(--ease-salida),
+      opacity var(--dur-3) var(--ease-salida);
+  }
+
+  .tm-barra-tramo {
+    transition: flex-grow 480ms var(--ease-salida);
+  }
+
+  .tm-cifra {
+    animation: tm-cifra var(--dur-3) var(--ease-salida) backwards;
+  }
+
+  @media print {
+    .tm-cifra {
+      animation: none !important;
     }
   }
 }

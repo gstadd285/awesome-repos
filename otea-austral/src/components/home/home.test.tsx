@@ -11,7 +11,7 @@ import { Blueprint } from "./Blueprint";
 import { Board } from "./Board";
 import { Horizonte } from "./Horizonte";
 import { Story } from "./Story";
-import { TopicPicker } from "./TopicPicker";
+import { Temas } from "./Temas";
 
 describe("Story", () => {
   it("presenta el eslogan como único h1 y los cuatro pasos en orden de lectura", () => {
@@ -166,7 +166,7 @@ describe("Blueprint", () => {
 describe("TopicPicker", () => {
   it("alterna temas con aria-pressed y anuncia la selección", async () => {
     const user = userEvent.setup();
-    render(<TopicPicker />);
+    render(<Temas />);
     const botones = within(screen.getByRole("list", { name: "Temas disponibles" })).getAllByRole("button");
     expect(botones).toHaveLength(TEMAS.length);
 
@@ -178,8 +178,39 @@ describe("TopicPicker", () => {
   });
 
   it("aclara que es una vista previa que no guarda preferencias", () => {
-    render(<TopicPicker />);
+    render(<Temas />);
     expect(screen.getByText(/aún no se guardan/)).toBeInTheDocument();
+  });
+
+  it("«Tu mañana» filtra los avisos de ejemplo por tema: el contador y la barra siguen a los visibles", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Temas />);
+    const manana = screen.getByRole("complementary", { name: "Tu mañana, vista previa" });
+    expect(manana).toHaveTextContent("Datos de ejemplo");
+    // Seis avisos, uno por alerta de ejemplo (las tres nuevas cubren Energía, Chips y Divisas); no se desmontan.
+    const avisos = manana.querySelectorAll(".tm-aviso");
+    expect(avisos).toHaveLength(6);
+    const visibles = () => [...avisos].filter((a) => !a.hasAttribute("data-oculto"));
+    const cifra = () => Number(manana.querySelector(".tm-cifra")!.textContent);
+    // Por defecto (Cobre y Divisas, también sin JavaScript): dos avisos.
+    expect(visibles()).toHaveLength(2);
+    expect(cifra()).toBe(2);
+    for (const oculto of [...avisos].filter((a) => a.hasAttribute("data-oculto"))) {
+      expect(oculto).toHaveAttribute("aria-hidden", "true");
+      expect(oculto).toHaveAttribute("inert");
+    }
+    // La barra suma los sectores de los avisos visibles, por dirección.
+    const sectores = (d: string) => visibles().flatMap((a) => [...a.querySelectorAll(`[data-direccion="${d}"]`)]).length;
+    const leyenda = [...manana.querySelectorAll(".tm-leyenda li")].map((l) => l.textContent);
+    expect(leyenda).toEqual([`${sectores("gana")} gana`, `${sectores("condicionado")} condicionado`, `${sectores("pierde")} pierde`]);
+
+    await user.click(screen.getByRole("button", { name: new RegExp(TEMA_ETIQUETA.energia) }));
+    expect(visibles()).toHaveLength(3);
+    expect(cifra()).toBe(3);
+    expect(visibles()[0]).toHaveTextContent("Energía");
+    // Los avisos no son botones: un solo botón por tema.
+    expect(within(manana).queryAllByRole("button")).toHaveLength(0);
+    expect(container.querySelector("[style]")).toBeNull();
   });
 });
 
