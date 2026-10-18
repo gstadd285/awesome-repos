@@ -745,6 +745,20 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   los márgenes de sus hijos y el filete es una sombra interior.
 - **En el teléfono las anotaciones de la vitrina son un riel horizontal** (`scroll-snap`, la siguiente asomando): ~250 px
   menos de alto sin quitar texto.
+- **Vigías de capítulo para lo ligado al scroll que lleva texto real** (`.vigia-producto`): no se puede ocultar con
+  `visibility` (saldría del árbol de accesibilidad), así que lejos de la pantalla se le quita la **animación** (`animation:
+  none`, su estado final es el mismo). La franja se extiende media pantalla por encima y por debajo de la sección para
+  que la animación vuelva antes de verse (el observador llega un cuadro tarde). Capas de la historia: de 97 a 75 como
+  máximo; animaciones arriba de la portada: de 195 a 122.
+- **Un recorte que se recoge no debe pasar por formas que no interpolan bien**: de `inset(-24px round 0)` a una píldora,
+  el radio crecía mientras los lados ya cortaban las puntas. El de partida es la píldora agrandada (radio = alto / 2) y la
+  clave intermedia la ciñe antes de estrechar los lados (`lista-recoger`).
+- **El tachado de un bloque se pinta a través de sus hijos en línea**: `text-decoration-line: none` en un hijo no lo
+  deshace. Se tacha un `span` propio y el rótulo va fuera.
+- **Lo ligado a la caja de un grupo termina fuera de pantalla para las piezas de abajo**: cada nota de la vitrina es su
+  propia `view-timeline` y su `::before` la lee por nombre.
+- **Tailwind solo escanea `src/`** (`@import "tailwindcss" source("../")`): los `.md` del repositorio generaban utilidades
+  sueltas (`.vidrio`, `.blur`, `.transition`, `.transform` y sus `@property`).
 
 ## Lo aprendido (cuentas de personas usuarias)
 
