@@ -3180,14 +3180,17 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   display: block;
 }
 
-/* La fuente quitada sigue en la lista, tachada (en `apoyo`: se lee, AA). */
-.demo:has(#prueba-ormuz:checked) [data-quitada] :is(a, span, p) {
-  color: var(--color-apoyo);
-  text-decoration-line: line-through;
-}
+/* La fuente quitada sigue en la lista, tachada (en `apoyo`: se lee, AA). Se tachan solo sus textos (organismo, título y
+   fecha): el tachado de un bloque se pinta a través de sus hijos en línea, así que «Quitada en la prueba» va fuera. */
+.demo:has(#prueba-ormuz:checked) [data-quitada] {
+  & :is(a, span) {
+    color: var(--color-apoyo);
+  }
 
-.demo:has(#prueba-ormuz:checked) [data-quitada] .solo-b {
-  text-decoration-line: none;
+  & :is(.fuente-tachable, a, p:last-child),
+  & > span {
+    text-decoration-line: line-through;
+  }
 }
 
 /* Escena: la tarjeta y sus anotaciones. En el teléfono, las notas son una lista numerada bajo la tarjeta. */
@@ -4083,9 +4086,12 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   stroke-linecap: round;
 }
 
-/* Éxito: el botón se recoge en un círculo de 44 px (el recorte también acota dónde se puede pulsar). */
+/* Éxito: el botón se recoge en un círculo de 44 px (el recorte también acota dónde se puede pulsar). En reposo, el
+   recorte es la píldora agrandada 24 px por cada lado (radio 22 + 24), así que nunca toca sus puntas y deja ver la
+   sombra; `grid` hace que el envoltorio mida justo los 44 px del botón (sin el hueco de la línea de base). */
 .lista-enviar {
-  clip-path: inset(-24px round 0);
+  display: grid;
+  clip-path: inset(-24px round 46px);
 }
 
 .boton-check {
@@ -6976,7 +6982,23 @@ html[data-movimiento="completo"][data-motor] {
 }
 
 /* Lista de espera: las notificaciones entran deslizando 16 px, escalonadas 140 ms (ligadas al scroll en escritorio; por
-   tiempo en táctil o estrecho y sin líneas de tiempo). Con éxito, el botón se recoge y el check se dibuja (480 ms). */
+   tiempo en táctil o estrecho y sin líneas de tiempo). Con éxito, el botón se recoge y el check se dibuja (480 ms).
+   El recorte se recoge en dos tiempos para que en ningún cuadro corte las puntas de la píldora: primero se ciñe a ella
+   (concéntrico: alto 44 + 2·d y radio 22 + d) y después solo se estrechan los lados, siempre con radio 22. */
+@keyframes lista-recoger {
+  0% {
+    clip-path: inset(-24px round 46px);
+    animation-timing-function: var(--ease-salida);
+  }
+  24% {
+    clip-path: inset(0 round 22px);
+    animation-timing-function: var(--ease-enfasis);
+  }
+  100% {
+    clip-path: inset(0 calc(50% - 22px) round 22px);
+  }
+}
+
 @keyframes notif-llegar {
   from {
     opacity: 0;
@@ -6989,8 +7011,8 @@ html[data-movimiento="completo"][data-motor] {
 }
 
 html[data-movimiento="completo"] {
-  .lista-enviar {
-    transition: clip-path var(--dur-4) var(--ease-enfasis);
+  [data-estado="ok"] .lista-enviar {
+    animation: lista-recoger var(--dur-4) linear backwards;
   }
 
   .lista-enviar .boton-etiqueta {
@@ -7197,6 +7219,11 @@ html[data-movimiento="completo"] {
 
     [data-magnetico] .boton-etiqueta {
       translate: calc(var(--tx, 0) * 0.45px) calc(var(--ty, 0) * 0.45px);
+    }
+
+    /* Recogido en círculo, el botón ya no sigue al cursor: desplazado, el recorte le aplanaría un lado. */
+    [data-estado="ok"] [data-magnetico] {
+      translate: none;
     }
 
     /* Mientras el cursor está dentro, el botón lo sigue con suavidad; al salir vuelve con el resorte. */

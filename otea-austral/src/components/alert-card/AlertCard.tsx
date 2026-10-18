@@ -196,8 +196,19 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "", alternativa
                 return (
                   <li key={`${fuente.url}-${i}`} className="text-sm" data-quitada={quitada ? "" : undefined}>
                     <p className="text-xs text-apoyo">
-                      {fuente.organismo} · {TIPO_FUENTE_ETIQUETA[fuente.tipo]}
-                      {quitada ? <span className="solo-b"> · Quitada en la prueba</span> : null}
+                      {quitada ? (
+                        // Solo se tacha la fuente: un tachado en el `<p>` se propagaría también al rótulo que lo explica.
+                        <>
+                          <span className="fuente-tachable">
+                            {fuente.organismo} · {TIPO_FUENTE_ETIQUETA[fuente.tipo]}
+                          </span>
+                          <span className="solo-b"> · Quitada en la prueba</span>
+                        </>
+                      ) : (
+                        <>
+                          {fuente.organismo} · {TIPO_FUENTE_ETIQUETA[fuente.tipo]}
+                        </>
+                      )}
                     </p>
                     {href ? (
                       <a

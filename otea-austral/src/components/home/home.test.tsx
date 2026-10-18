@@ -256,6 +256,11 @@ describe("AlertExamples · vitrina", () => {
     expect(ormuz.querySelector("p.solo-b")).toHaveTextContent("No podría publicarse como impacto alto");
     // La fuente primaria queda en la lista, marcada como quitada en la prueba.
     expect(ormuz.querySelectorAll("[data-quitada]")).toHaveLength(1);
+    // Solo se tacha la fuente: el rótulo que lo explica va fuera del tramo tachable (un tachado se propaga a los hijos).
+    const quitada = ormuz.querySelector("[data-quitada]")!;
+    expect(quitada.querySelector(".fuente-tachable")).toHaveTextContent("Fuente primaria");
+    expect(quitada.querySelector(".fuente-tachable .solo-b")).toBeNull();
+    expect(quitada.querySelector(".solo-b")).toHaveTextContent("Quitada en la prueba");
     // La nota de la confianza dice el paso de alta a baja; una frase en una región viva resume el cambio.
     const notaOrmuz = container.querySelector(".vitrina-panel-ormuz .nota-2")!;
     expect(notaOrmuz.querySelector(".solo-b")).toHaveTextContent("Alta → baja");
