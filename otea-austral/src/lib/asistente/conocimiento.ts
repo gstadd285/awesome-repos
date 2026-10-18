@@ -13,7 +13,7 @@
  */
 import { DIRECCION_ETIQUETA, CONFIANZA_ETIQUETA, VERIFICACION_ETIQUETA } from "@/components/alert-card/labels";
 import { TEMA_DESCRIPCION } from "@/components/home/temas";
-import { vistasEjemplo } from "@/data/ejemplo";
+import { vistasPortada } from "@/data/ejemplo";
 import { TEMAS, TEMA_ETIQUETA } from "@/lib/domain/temas";
 import type { AlertView } from "@/lib/domain/view";
 import { fuentesPorAmbito } from "@/lib/sources/registry";
@@ -421,7 +421,9 @@ export const BASE_CONOCIMIENTO: readonly Entrada[] = Object.freeze([
   ...curadas,
   entradaTemas(),
   entradaFuentes(),
-  ...vistasEjemplo.map(entradaEjemplo),
+  // Los tres escenarios de la portada. Las alertas que solo usa «Tu mañana» quedan fuera a propósito: sumar entradas
+  // cambia los puntajes de la búsqueda («cuéntame un chiste» llegaba a la entrada de cuentas).
+  ...vistasPortada.map(entradaEjemplo),
 ]);
 
 export function entradaPorId(id: string, base: readonly Entrada[] = BASE_CONOCIMIENTO): Entrada | undefined {

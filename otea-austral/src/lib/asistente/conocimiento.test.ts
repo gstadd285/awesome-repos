@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { vistasEjemplo } from "@/data/ejemplo";
+import { vistasPortada } from "@/data/ejemplo";
 import { frasesProhibidas } from "@/lib/domain/lenguaje";
 import { calcularConfianza, calcularNivelVerificacion, motivosParaNoPublicar } from "@/lib/domain/rules";
 import type { Alert, AlertAudit } from "@/lib/domain/schemas";
@@ -70,14 +70,14 @@ describe("las reglas del sitio (CLAUDE.md)", () => {
   });
 
   it("lo derivado de alertas de ejemplo dice que es ficticio", () => {
-    expect(ejemplos.length).toBe(vistasEjemplo.length);
+    expect(ejemplos.length).toBe(vistasPortada.length);
     for (const e of ejemplos) {
       expect(e.respuesta, e.id).toContain("alerta de ejemplo (ficticia, no un hecho real)");
     }
   });
 
   it("cada alerta de ejemplo cuenta todos sus sectores, con su dirección", () => {
-    for (const v of vistasEjemplo) {
+    for (const v of vistasPortada) {
       const texto = respuesta(v.id);
       expect(texto, v.id).toContain(v.evento);
       for (const fila of v.filas) expect(texto, `${v.id} · ${fila.sector}`).toContain(fila.sector);

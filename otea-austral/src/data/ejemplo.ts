@@ -57,6 +57,18 @@ export const fuentesEjemplo: Source[] = [
     activa: true,
   },
   {
+    id: "ejemplo-banco-central",
+    nombre: "Comunicado de política monetaria (ejemplo)",
+    organismo: "Banco central extranjero (ejemplo)",
+    url_base: "https://example.org/",
+    tipo: "primaria",
+    temas: ["divisas"],
+    acceso: "manual",
+    condiciones_reutilizacion: CONDICIONES,
+    prioridad: "A",
+    activa: true,
+  },
+  {
     id: "ejemplo-diario-local",
     nombre: "Sección de minería (ejemplo)",
     organismo: "Diario económico local (ejemplo)",
@@ -174,6 +186,103 @@ export const alertasEjemplo: Alert[] = [
     estado: "corregida",
     es_ejemplo: true,
   },
+  // Tres escenarios más, uno por cada tema que no tenía (Energía, Chips y Divisas): los usa «Tu mañana» en la portada.
+  {
+    id: "ejemplo-energia",
+    tema: "energia",
+    evento: "Recorte de producción anunciado por un grupo de productores",
+    resumen:
+      "Escenario de ejemplo: un grupo de países productores anuncia que bombeará menos crudo durante los próximos meses. El efecto depende de si el recorte se cumple y de cuánto compensen otros productores.",
+    filas: [
+      {
+        sector: "Productoras de crudo fuera del grupo",
+        direccion: "gana",
+        condicion: "Si el recorte se aplica completo y el precio sube",
+        confianza: "media",
+      },
+      {
+        sector: "Refinerías",
+        direccion: "condicionado",
+        condicion: "Depende de cuánto suba el crudo frente al precio de los combustibles",
+        confianza: "baja",
+      },
+      {
+        sector: "Transporte por carretera",
+        direccion: "pierde",
+        condicion: "Si el diésel sube y no logra traspasarse a las tarifas",
+        confianza: "media",
+      },
+    ],
+    fecha: "2026-10-08T07:40:00-03:00",
+    revisor: REVISOR,
+    impacto: "medio",
+    estado: "publicada",
+    es_ejemplo: true,
+  },
+  {
+    id: "ejemplo-planta-chips",
+    tema: "chips",
+    evento: "Retraso en la apertura de una nueva planta de chips avanzados",
+    resumen:
+      "Escenario de ejemplo: una planta de semiconductores en construcción posterga su puesta en marcha. La oferta de chips avanzados seguiría ajustada por más tiempo del previsto.",
+    filas: [
+      {
+        sector: "Fundiciones ya instaladas",
+        direccion: "gana",
+        condicion: "Si el retraso mantiene ajustada la oferta",
+        confianza: "media",
+      },
+      {
+        sector: "Equipos para fábricas de chips",
+        direccion: "condicionado",
+        condicion: "Según si los pedidos se postergan o se cancelan",
+        confianza: "baja",
+      },
+      {
+        sector: "Fabricantes de autos",
+        direccion: "pierde",
+        condicion: "Si la falta de chips llega a sus proveedores",
+        confianza: "baja",
+      },
+    ],
+    fecha: "2026-10-07T12:10:00-03:00",
+    revisor: REVISOR,
+    impacto: "medio",
+    estado: "publicada",
+    es_ejemplo: true,
+  },
+  {
+    id: "ejemplo-divisas",
+    tema: "divisas",
+    evento: "Alza inesperada de tasas en una economía grande",
+    resumen:
+      "Escenario de ejemplo: el banco central de una gran economía sube su tasa de interés antes de lo que se esperaba. Podría fortalecer al dólar frente a las monedas de la región.",
+    filas: [
+      {
+        sector: "Exportadores",
+        direccion: "gana",
+        condicion: "Si el peso se deprecia y mejora su ingreso en pesos",
+        confianza: "media",
+      },
+      {
+        sector: "Peso chileno",
+        direccion: "condicionado",
+        condicion: "Depende de si el dólar se fortalece frente a las monedas emergentes",
+        confianza: "media",
+      },
+      {
+        sector: "Importadores",
+        direccion: "pierde",
+        condicion: "Si el dólar sube y encarece sus compras en el exterior",
+        confianza: "media",
+      },
+    ],
+    fecha: "2026-10-07T21:30:00-03:00",
+    revisor: REVISOR,
+    impacto: "medio",
+    estado: "publicada",
+    es_ejemplo: true,
+  },
 ].map((a) => AlertSchema.parse(a));
 
 export const enlacesEjemplo: AlertSource[] = [
@@ -210,6 +319,40 @@ export const enlacesEjemplo: AlertSource[] = [
     fecha_publicacion: "2026-10-06",
     fecha_consulta: "2026-10-06",
   },
+  {
+    alert_id: "ejemplo-energia",
+    source_id: "ejemplo-agencia-energia",
+    titulo_documento: "Seguimiento de la oferta de crudo (ejemplo)",
+    url: "https://example.org/ejemplo/energia-informe",
+    fecha_publicacion: "2026-10-08",
+    fecha_consulta: "2026-10-08",
+    identificador: "EJ-002",
+  },
+  {
+    alert_id: "ejemplo-planta-chips",
+    source_id: "ejemplo-centro-estudios",
+    titulo_documento: "Nota sobre capacidad de fabricación de chips (ejemplo)",
+    url: "https://example.org/ejemplo/chips-capacidad",
+    fecha_publicacion: "2026-10-07",
+    fecha_consulta: "2026-10-07",
+  },
+  {
+    alert_id: "ejemplo-planta-chips",
+    source_id: "ejemplo-agencia-noticias",
+    titulo_documento: "Reporte sobre el calendario de la planta (ejemplo)",
+    url: "https://example.org/ejemplo/chips-prensa",
+    fecha_publicacion: "2026-10-07",
+    fecha_consulta: "2026-10-07",
+  },
+  {
+    alert_id: "ejemplo-divisas",
+    source_id: "ejemplo-banco-central",
+    titulo_documento: "Comunicado de la reunión de política monetaria (ejemplo)",
+    url: "https://example.org/ejemplo/divisas-comunicado",
+    fecha_publicacion: "2026-10-07",
+    fecha_consulta: "2026-10-07",
+    identificador: "EJ-003",
+  },
 ].map((e) => AlertSourceSchema.parse(e));
 
 export const correccionesEjemplo: Correction[] = [
@@ -227,8 +370,27 @@ export const vistasEjemplo: AlertView[] = alertasEjemplo.map((a) =>
   construirVista(a, enlacesEjemplo, fuentesEjemplo, correccionesEjemplo),
 );
 
+/**
+ * Los tres escenarios de la portada (historia, tablero, vitrina y resumen pre-apertura), elegidos por id: sumar
+ * alertas de ejemplo no cambia lo que muestran. Cada uno enseña una regla: primaria + prensa (alta, impacto alto),
+ * una secundaria (media) y una sola nota de prensa (baja, con su corrección).
+ */
+export const ESCENARIOS_PORTADA = ["ejemplo-ormuz", "ejemplo-chips", "ejemplo-cobre"] as const;
+
 export function vistaEjemplo(id: string): AlertView {
   const vista = vistasEjemplo.find((v) => v.id === id);
   if (!vista) throw new Error(`No existe la alerta de ejemplo ${id}`);
   return vista;
+}
+
+/** Las vistas de los tres escenarios de la portada, en ese orden. */
+export const vistasPortada: AlertView[] = ESCENARIOS_PORTADA.map(vistaEjemplo);
+
+/** La alerta de ejemplo sin sus fuentes primarias: la prueba «quita la fuente primaria» de la vitrina. */
+export function vistaSinPrimaria(id: string): AlertView {
+  const alerta = alertasEjemplo.find((a) => a.id === id);
+  if (!alerta) throw new Error(`No existe la alerta de ejemplo ${id}`);
+  const primarias = new Set(fuentesEjemplo.filter((f) => f.tipo === "primaria").map((f) => f.id));
+  const enlaces = enlacesEjemplo.filter((e) => !primarias.has(e.source_id));
+  return construirVista(alerta, enlaces, fuentesEjemplo, correccionesEjemplo);
 }

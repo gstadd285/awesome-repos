@@ -1,4 +1,4 @@
-import { vistasEjemplo } from "@/data/ejemplo";
+import { vistasPortada } from "@/data/ejemplo";
 import { TEMA_ETIQUETA, Tema, type Direccion } from "@/lib/domain/schemas";
 import { CONFIANZA_ETIQUETA, DIRECCION_ETIQUETA } from "@/components/alert-card/labels";
 import { TopicIcon } from "./TopicIcon";
@@ -8,7 +8,7 @@ type Tarjeta = { clave: string; sector: string; evento: string; confianza: strin
 const DIRECCIONES: Direccion[] = ["gana", "condicionado", "pierde"];
 
 /** La alerta de ejemplo más reciente: sus tarjetas son las «nuevas» y su tema, el que se ilumina en el menú. */
-const masReciente = vistasEjemplo.reduce((a, b) => (Date.parse(b.fecha) > Date.parse(a.fecha) ? b : a));
+const masReciente = vistasPortada.reduce((a, b) => (Date.parse(b.fecha) > Date.parse(a.fecha) ? b : a));
 
 /**
  * Tarjetas por dirección, tomadas de las alertas de ejemplo (las tres primeras de cada una), y el total de filas de
@@ -17,7 +17,7 @@ const masReciente = vistasEjemplo.reduce((a, b) => (Date.parse(b.fecha) > Date.p
  */
 function columnas(): { direccion: Direccion; total: number; tarjetas: Tarjeta[] }[] {
   return DIRECCIONES.map((direccion) => {
-    const filas = vistasEjemplo.flatMap((alerta) =>
+    const filas = vistasPortada.flatMap((alerta) =>
       alerta.filas
         .filter((f) => f.direccion === direccion)
         .map((f) => ({
@@ -97,7 +97,7 @@ export function Board({ className = "" }: { className?: string }) {
         <span className="tablero-aviso-sol" />
         <span className="tablero-aviso-texto">
           <span className="tablero-aviso-titulo">Resumen pre-apertura</span>
-          <span className="tablero-aviso-detalle">{vistasEjemplo.length} alertas en tus temas · Datos de ejemplo</span>
+          <span className="tablero-aviso-detalle">{vistasPortada.length} alertas en tus temas · Datos de ejemplo</span>
         </span>
       </div>
     </div>
