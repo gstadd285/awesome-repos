@@ -119,7 +119,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
         defaultValue={valores?.correo}
         placeholder="nombre@correo.cl"
         aria-invalid={errores.correo ? true : undefined}
-        aria-describedby={errores.correo ? "correo-error" : undefined}
+        aria-describedby={errores.correo ? "correo-error" : "correo-pista"}
         className="mt-3 block w-full rounded-badge bg-papel px-4 py-3 text-base text-texto campo placeholder:text-apoyo"
       />
       {errores.correo ? (
@@ -129,10 +129,11 @@ export function WaitlistForm({ marca }: { marca: string }) {
         </p>
       ) : (
         // Validación en línea sin JavaScript: el CSS la muestra con `:user-invalid` (tras escribir y salir del campo). Su
-        // renglón está siempre reservado, para que al aparecer no mueva el botón bajo el clic.
-        <p className="campo-pista">
+        // renglón está siempre reservado, para que al aparecer no mueva el botón bajo el clic. Es también la descripción
+        // del campo (redactada para leerse bien antes y después de escribir): los lectores de pantalla la oyen sin enviar.
+        <p id="correo-pista" className="campo-pista">
           <IconoAviso />
-          Revisa el correo: nombre@correo.cl
+          Escribe un correo como nombre@correo.cl
         </p>
       )}
 

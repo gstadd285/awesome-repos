@@ -161,9 +161,10 @@ describe("WaitlistForm · apartado de condiciones", () => {
     unirse.mockResolvedValue({ estado: "invalida", errores: { correo: "Escribe un correo válido." } });
     const user = userEvent.setup();
     const { container } = render(<WaitlistForm marca="1.abc" />);
-    // Pista de la validación en línea (la muestra el CSS con `:user-invalid`): no forma parte de la descripción.
+    // Pista de la validación en línea (la muestra el CSS con `:user-invalid`): redactada en neutro, es la descripción del
+    // campo desde el principio, así que los lectores de pantalla la oyen sin depender de enviar.
     expect(container.querySelector(".campo-pista")).toHaveTextContent("nombre@correo.cl");
-    expect(screen.getByLabelText("Tu correo")).not.toHaveAttribute("aria-describedby");
+    expect(screen.getByLabelText("Tu correo")).toHaveAccessibleDescription("Escribe un correo como nombre@correo.cl");
     await user.click(screen.getByRole("button", { name: "Unirme a la lista" }));
     await waitFor(() => expect(container.querySelector("form")).toHaveAttribute("data-estado", "invalida"));
     expect(screen.getByLabelText("Tu correo")).toHaveAccessibleDescription("Escribe un correo válido.");
