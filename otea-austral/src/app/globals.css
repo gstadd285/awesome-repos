@@ -4169,6 +4169,32 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   stroke-dashoffset: 0;
 }
 
+/* Recogido, el botón apaga sus sombras de fuera (el círculo las recortaría, y con el recorte a medio camino asomaba un
+   filo de 1 px bajo la píldora) y deja las de dentro (mismo número de sombras: se interpolan). */
+[data-estado="ok"] .lista-enviar .boton-laton {
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 1px 0 rgb(255 250 235 / 0.55),
+    inset 0 -1px 0 rgb(90 68 34 / 0.35),
+    0 0 #0000,
+    0 0 #0000;
+
+  /* El anillo de foco de fuera quedaría recortado por el círculo: con teclado se pinta dentro, tinta sobre latón. */
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible::before {
+    inset: 3px auto;
+    left: calc(50% - 19px);
+    width: 38px;
+    border: 2px solid var(--color-ink);
+    border-radius: 50%;
+    background: none;
+    opacity: 1;
+  }
+}
+
 /* ── Texto en movimiento: estructura ──────────────────────────────────────
  * `TextoEnMovimiento` parte el texto en unidades (letras o palabras). La CSP no admite `style`
  * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 79; `MAX_INDICE`).
