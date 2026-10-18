@@ -3984,6 +3984,137 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
 }
 
+/* ── Producto: lista de espera, como los créditos de la portada ─────────────
+ * El titular se apoya en un horizonte de 1 px a sangre con un sol de 48 px en espejo del héroe (al 16 % del ancho, donde
+ * el héroe lo tiene al 84 %), quieto. «Así llega»: dos notificaciones de ejemplo apiladas (la de atrás a escala 0,96,
+ * con su última línea bajo la de delante). El formulario valida en línea sin JavaScript (`:user-invalid`) y, con éxito,
+ * su botón se recoge en un círculo con un check. */
+.lista-horizonte {
+  position: absolute;
+  left: -100vw;
+  right: -100vw;
+  bottom: 0;
+  height: 1px;
+  background-color: rgb(122 94 51 / 0.42);
+}
+
+/* El sol asoma sobre la línea (su mitad inferior queda recortada), con un halo corto. */
+.lista-sol {
+  position: absolute;
+  bottom: 0;
+  left: calc(116vw - max(24px, 50vw - 696px));
+  width: 176px;
+  height: 72px;
+  overflow: hidden;
+  translate: -50% 0;
+}
+
+/* La caja deja sitio al halo (si no, se ve recortado en un rectángulo): el disco va centrado en su borde inferior. */
+.lista-sol::before {
+  content: "";
+  position: absolute;
+  left: 64px;
+  top: 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+  box-shadow:
+    0 0 0 1px rgb(122 94 51 / 0.18),
+    0 0 28px 6px rgb(232 200 140 / 0.4);
+}
+
+.notif {
+  position: relative;
+  padding: 12px 14px 13px;
+  border-radius: 18px;
+  background-color: var(--color-papel-alto);
+  box-shadow:
+    inset 0 0 0 1px var(--color-linea),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 2px 4px -2px rgb(15 27 45 / 0.1),
+    0 18px 36px -22px rgb(15 27 45 / 0.42);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-texto-suave);
+}
+
+.notif-atras {
+  scale: 0.96;
+  transform-origin: 50% 0;
+  background-color: var(--color-papel);
+}
+
+/* La de delante tapa la última línea de la de atrás (que se corta en una sola línea). */
+.notif-frente {
+  margin-top: -34px;
+}
+
+/* Validación en línea: borde tinta de 2 px y un mensaje con ícono de latón oscuro (sin rojo). */
+.lista-formulario .campo:user-invalid:not(:focus) {
+  box-shadow: inset 0 0 0 2px var(--color-ink);
+}
+
+/* La pista guarda su renglón aunque no se vea: aparece al salir del campo, y si empujara el botón en ese momento (el
+   `mousedown` sobre «Unirme» saca el foco del campo), el clic caería fuera de él y no se enviaría nada. */
+.campo-pista {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--color-texto);
+  visibility: hidden;
+}
+
+.lista-formulario:has(.campo:user-invalid) .campo-pista {
+  visibility: visible;
+}
+
+.campo-pista svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  fill: none;
+  stroke: var(--color-brass-deep);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* Éxito: el botón se recoge en un círculo de 44 px (el recorte también acota dónde se puede pulsar). */
+.lista-enviar {
+  clip-path: inset(-24px round 0);
+}
+
+.boton-check {
+  position: absolute;
+  inset: 0;
+  width: 22px;
+  height: 22px;
+  margin: auto;
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+[data-estado="ok"] .lista-enviar {
+  clip-path: inset(0 calc(50% - 22px) round 22px);
+}
+
+[data-estado="ok"] .lista-enviar .boton-etiqueta {
+  opacity: 0;
+}
+
+[data-estado="ok"] .boton-check {
+  stroke-dashoffset: 0;
+}
+
 /* ── Texto en movimiento: estructura ──────────────────────────────────────
  * `TextoEnMovimiento` parte el texto en unidades (letras o palabras). La CSP no admite `style`
  * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 79; `MAX_INDICE`).
@@ -6840,6 +6971,70 @@ html[data-movimiento="completo"][data-motor] {
   &[data-timeline="no"][data-motor] {
     .noche-alba.escena-vista:not(.mov-quieto) {
       animation: noche-alba 1600ms var(--ease-salida) backwards;
+    }
+  }
+}
+
+/* Lista de espera: las notificaciones entran deslizando 16 px, escalonadas 140 ms (ligadas al scroll en escritorio; por
+   tiempo en táctil o estrecho y sin líneas de tiempo). Con éxito, el botón se recoge y el check se dibuja (480 ms). */
+@keyframes notif-llegar {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}
+
+.notif-frente {
+  --d: 140ms;
+}
+
+html[data-movimiento="completo"] {
+  .lista-enviar {
+    transition: clip-path var(--dur-4) var(--ease-enfasis);
+  }
+
+  .lista-enviar .boton-etiqueta {
+    transition: opacity var(--dur-2) var(--ease-salida);
+  }
+
+  [data-estado="ok"] .boton-check {
+    transition: stroke-dashoffset 480ms var(--ease-salida) 300ms;
+  }
+
+  &:not([data-texto="unico"]) {
+    @supports (animation-timeline: view()) {
+      .bandeja-pila {
+        view-timeline: --bandeja block;
+      }
+
+      .notif {
+        animation: notif-llegar linear both;
+        animation-timeline: --bandeja;
+        animation-range: entry 10% entry 70%;
+      }
+
+      .notif-frente {
+        animation-range: entry 30% entry 90%;
+      }
+    }
+  }
+
+  @media print {
+    .notif {
+      animation: none !important;
+    }
+  }
+}
+
+html[data-movimiento="completo"][data-motor] {
+  &[data-texto="unico"],
+  &[data-timeline="no"][data-motor] {
+    .bandeja-pila:not(.escena-vista) .notif {
+      opacity: 0;
+    }
+    .bandeja-pila.escena-vista:not(.mov-quieto) .notif {
+      animation: notif-llegar var(--dur-4) var(--ease-salida) backwards;
+      animation-delay: calc(120ms + var(--d, 0ms));
     }
   }
 }

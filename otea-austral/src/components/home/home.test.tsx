@@ -7,6 +7,7 @@ import { vistaSinPrimaria } from "@/data/ejemplo";
 import { frasesProhibidas } from "@/lib/domain/lenguaje";
 import { AlertExamples } from "./AlertExamples";
 import { AlertaViva } from "./AlertaViva";
+import { AsiLlega } from "./AsiLlega";
 import { Blueprint } from "./Blueprint";
 import { Board } from "./Board";
 import { Horizonte } from "./Horizonte";
@@ -292,5 +293,20 @@ describe("PreOpening · noche → alba", () => {
     expect(container.querySelector(".noche-fondo")).toHaveAttribute("aria-hidden", "true");
     expect(container.querySelector("[style]")).toBeNull();
     expect(frasesProhibidas(seccion.textContent ?? "")).toEqual([]);
+  });
+});
+
+describe("AsiLlega · bandeja", () => {
+  it("dos notificaciones de ejemplo, decorativas, con «Datos de ejemplo» y la hora marcada como objetivo", () => {
+    const { container } = render(<AsiLlega />);
+    const bandeja = container.querySelector(".bandeja")!;
+    expect(bandeja).toHaveAttribute("aria-hidden", "true");
+    expect(bandeja.querySelectorAll(".notif")).toHaveLength(2);
+    expect(bandeja).toHaveTextContent("Datos de ejemplo");
+    expect(bandeja.querySelector(".notif-atras")).toHaveTextContent("Nueva alerta · Tensión en el estrecho de Ormuz");
+    expect(bandeja.querySelector(".notif-frente")).toHaveTextContent("Pre-apertura · Resumen del 8 oct");
+    expect(bandeja.querySelector(".notif-frente .notif-hora")).toHaveTextContent("(objetivo)");
+    expect(container.querySelector("[style]")).toBeNull();
+    expect(frasesProhibidas(bandeja.textContent ?? "")).toEqual([]);
   });
 });

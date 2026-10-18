@@ -41,6 +41,16 @@ function mensaje(estado: EstadoLista): { texto: string; tono: "exito" | "aviso" 
 }
 
 const CASILLA = "h-6 w-6 shrink-0 accent-ink";
+
+/** Círculo con un signo de exclamación, en latón oscuro (sin rojo). */
+function IconoAviso() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <circle cx="8" cy="8" r="6.6" />
+      <path d="M8 4.6v4.2M8 11.1v.3" />
+    </svg>
+  );
+}
 const ENLACE = "text-texto underline underline-offset-4";
 
 /**
@@ -87,7 +97,12 @@ export function WaitlistForm({ marca }: { marca: string }) {
   const valores = "valores" in estado ? estado.valores : undefined;
 
   return (
-    <form action={accion} noValidate className="superficie rounded-card p-6 sm:p-8">
+    <form
+      action={accion}
+      noValidate
+      data-estado={pendiente ? "enviando" : estado.estado}
+      className="lista-formulario superficie relative rounded-card p-6 sm:p-8"
+    >
       <Pasos enviado={enviado} />
 
       <label htmlFor="correo" className="micro text-texto">
@@ -108,11 +123,18 @@ export function WaitlistForm({ marca }: { marca: string }) {
         className="mt-3 block w-full rounded-badge bg-papel px-4 py-3 text-base text-texto campo placeholder:text-apoyo"
       />
       {errores.correo ? (
-        <p id="correo-error" className="mt-2 text-sm font-medium text-texto">
+        <p id="correo-error" className="mt-1.5 text-sm leading-5 font-medium text-texto">
           <span aria-hidden="true">⚠ </span>
           {errores.correo}
         </p>
-      ) : null}
+      ) : (
+        // Validación en línea sin JavaScript: el CSS la muestra con `:user-invalid` (tras escribir y salir del campo). Su
+        // renglón está siempre reservado, para que al aparecer no mueva el botón bajo el clic.
+        <p className="campo-pista">
+          <IconoAviso />
+          Revisa el correo: nombre@correo.cl
+        </p>
+      )}
 
       <input type="hidden" name="tiempo" value={marca} />
 
@@ -122,7 +144,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
         <input id="sitio_web" name="sitio_web" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
-      <fieldset className="mt-5 rounded-badge p-4 linea-fina">
+      <fieldset className="mt-3 rounded-badge p-4 linea-fina">
         <legend className="micro px-1 text-texto">Antes de enviar</legend>
         <details>
           <summary className="cursor-pointer text-sm font-medium text-texto">Lo esencial de las condiciones de uso</summary>
@@ -192,14 +214,21 @@ export function WaitlistForm({ marca }: { marca: string }) {
         ) : null}
       </fieldset>
 
-      <button
-        type="submit"
-        disabled={pendiente}
-        data-magnetico
-        className={buttonClasses("primary", "mt-6 w-full disabled:opacity-70")}
-      >
-        <span className="boton-etiqueta">{pendiente ? "Enviando…" : "Unirme a la lista"}</span>
-      </button>
+      {/* Con éxito, el envoltorio recorta el botón a un círculo de 44 px (`clip-path`) y se dibuja el check. El nombre
+          accesible no cambia: el aviso de abajo dice qué pasó. */}
+      <div className="lista-enviar mt-6">
+        <button
+          type="submit"
+          disabled={pendiente}
+          data-magnetico
+          className={buttonClasses("primary", "w-full disabled:opacity-70")}
+        >
+          <span className="boton-etiqueta">{pendiente ? "Enviando…" : "Unirme a la lista"}</span>
+          <svg viewBox="0 0 24 24" className="boton-check" aria-hidden="true" focusable="false">
+            <path d="M6.5 12.4 10.3 16.2 17.6 8.4" pathLength={1} />
+          </svg>
+        </button>
+      </div>
 
       <p role="status" aria-live="polite" className="mt-4 min-h-[1.5rem] text-sm text-texto">
         {aviso ? aviso.texto : null}

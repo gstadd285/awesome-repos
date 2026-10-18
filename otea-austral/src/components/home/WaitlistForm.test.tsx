@@ -138,6 +138,38 @@ describe("WaitlistForm · apartado de condiciones", () => {
     expect(screen.getByLabelText(/Acepto que Otea guarde mi correo/)).not.toBeChecked();
   });
 
+  it("el formulario expone su estado en data-estado y, con éxito, el botón se recoge en un check sin perder su nombre", async () => {
+    unirse.mockResolvedValue({ estado: "ok", prueba: false });
+    const user = userEvent.setup();
+    const { container } = render(<WaitlistForm marca="1.abc" />);
+    const formulario = container.querySelector("form")!;
+    expect(formulario).toHaveAttribute("data-estado", "inicial");
+    const boton = screen.getByRole("button", { name: "Unirme a la lista" });
+    // El check vive dentro del botón, decorativo; el envoltorio es el que se recorta a un círculo de 44 px.
+    expect(boton.querySelector("svg.boton-check")).toHaveAttribute("aria-hidden", "true");
+    expect(boton.parentElement).toHaveClass("lista-enviar");
+
+    await user.type(screen.getByLabelText("Tu correo"), "persona@correo.cl");
+    await user.click(screen.getByLabelText(/Acepto las condiciones de uso/));
+    await user.click(screen.getByLabelText(/Acepto que Otea guarde mi correo/));
+    await user.click(boton);
+    await waitFor(() => expect(formulario).toHaveAttribute("data-estado", "ok"));
+    expect(screen.getByRole("button", { name: "Unirme a la lista" })).toBeInTheDocument();
+  });
+
+  it("si el servidor rechaza el envío, data-estado lo dice y la pista en línea deja paso al error del servidor", async () => {
+    unirse.mockResolvedValue({ estado: "invalida", errores: { correo: "Escribe un correo válido." } });
+    const user = userEvent.setup();
+    const { container } = render(<WaitlistForm marca="1.abc" />);
+    // Pista de la validación en línea (la muestra el CSS con `:user-invalid`): no forma parte de la descripción.
+    expect(container.querySelector(".campo-pista")).toHaveTextContent("nombre@correo.cl");
+    expect(screen.getByLabelText("Tu correo")).not.toHaveAttribute("aria-describedby");
+    await user.click(screen.getByRole("button", { name: "Unirme a la lista" }));
+    await waitFor(() => expect(container.querySelector("form")).toHaveAttribute("data-estado", "invalida"));
+    expect(screen.getByLabelText("Tu correo")).toHaveAccessibleDescription("Escribe un correo válido.");
+    expect(container.querySelector(".campo-pista")).toBeNull();
+  });
+
   it("no deja atributos style (la CSP los bloquea)", () => {
     const { container } = render(<WaitlistForm marca="1.abc" />);
     expect(container.querySelector("[style]")).toBeNull();
