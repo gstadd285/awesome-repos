@@ -58,6 +58,11 @@ test.describe("producto: vitrina, «Tu mañana», noche → alba y lista de espe
     await energia.scrollIntoViewIfNeeded();
     await expect(avisosVisibles(page)).toHaveCount(2);
     await expect(page.locator(".tm-cifra")).toHaveText("2");
+    if (page.viewportSize()!.width < 640) {
+      // En el teléfono se ve un solo aviso y «y N más»: la cifra y la barra siguen contando todos.
+      await expect(page.locator("#temas .tm-aviso:visible")).toHaveCount(1);
+      await expect(page.getByText("y 1 aviso más en tus temas")).toBeVisible();
+    }
     await energia.click();
     await expect(energia).toHaveAttribute("aria-pressed", "true");
     await expect(avisosVisibles(page)).toHaveCount(3);
@@ -124,6 +129,9 @@ test.describe("producto: vitrina, «Tu mañana», noche → alba y lista de espe
     await lista.scrollIntoViewIfNeeded();
     await expect(lista.locator(".bandeja")).toContainText("Datos de ejemplo");
     await expect(lista.locator(".notif")).toHaveCount(2);
+    // En el teléfono «Así llega» no se muestra (la pantalla ya es el teléfono, y acorta la portada).
+    const telefono = page.viewportSize()!.width < 640;
+    await expect(lista.locator(".bandeja")).toBeVisible({ visible: !telefono });
     await expect(lista.locator(".campo-pista")).toBeHidden();
     const correo = page.getByLabel("Tu correo");
     const boton = page.getByRole("button", { name: "Unirme a la lista" });

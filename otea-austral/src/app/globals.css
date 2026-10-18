@@ -3783,7 +3783,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   margin-top: 4px;
 }
 
-/* En el teléfono, a lo sumo tres avisos más «y N más». */
+/* En el teléfono, un solo aviso más «y N más» (la cifra y la barra cuentan todos). */
 @media (max-width: 639.98px) {
   .tm-extra {
     display: none;
@@ -4066,6 +4066,13 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   box-shadow:
     0 0 0 1px rgb(122 94 51 / 0.18),
     0 0 28px 6px rgb(232 200 140 / 0.4);
+}
+
+/* «Así llega» no va en el teléfono: ahí la pantalla ya es el teléfono, y la portada se acorta ~260 px. */
+@media (max-width: 639.98px) {
+  .bandeja {
+    display: none;
+  }
 }
 
 .notif {

@@ -27,7 +27,7 @@ export function PreOpening() {
         <span className="noche-alba escena" />
         <span className="noche-horizonte" />
       </div>
-      <div className="noche-contenido mx-auto grid max-w-[1440px] gap-12 py-20 lg:grid-cols-[1fr_1.2fr] lg:items-center lg:py-[120px]">
+      <div className="noche-contenido mx-auto grid max-w-[1440px] gap-10 py-16 sm:gap-12 sm:py-20 lg:grid-cols-[1fr_1.2fr] lg:items-center lg:py-[120px]">
         <div>
           <SectionEyebrow tono="tinta">Pre-apertura</SectionEyebrow>
           <TextoEnMovimiento

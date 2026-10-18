@@ -9,8 +9,8 @@ import { TopicIcon } from "./TopicIcon";
 
 const DIRECCIONES = ["gana", "condicionado", "pierde"] as const;
 
-/** Cuántos avisos se ven en el teléfono antes de «y N más». */
-const MAXIMO_TELEFONO = 3;
+/** Cuántos avisos se ven en el teléfono antes de «y N más»: uno basta para entender el formato y acorta la portada. */
+const MAXIMO_TELEFONO = 1;
 
 /** Clases finitas para el ancho de cada tramo de la barra (`flex-grow`), sin `style` (la CSP lo bloquea). */
 const BARRA = ["barra-0", "barra-1", "barra-2", "barra-3", "barra-4", "barra-5", "barra-6", "barra-7", "barra-8", "barra-9", "barra-10", "barra-11", "barra-12"];

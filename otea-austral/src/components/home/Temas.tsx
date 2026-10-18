@@ -23,7 +23,7 @@ function avisosDeEjemplo(): AvisoPrevia[] {
 /** «Elige qué seguir»: los seis temas como interruptores y, al lado, cómo llegaría tu mañana con esos temas. */
 export function Temas() {
   return (
-    <section id="temas" aria-labelledby="temas-titulo" className="mx-auto max-w-[1440px] scroll-mt-24 px-6 py-20 lg:py-[120px]">
+    <section id="temas" aria-labelledby="temas-titulo" className="mx-auto max-w-[1440px] scroll-mt-24 px-6 py-16 sm:py-20 lg:py-[120px]">
       <SectionEyebrow>Temas</SectionEyebrow>
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-end">
         <TextoEnMovimiento

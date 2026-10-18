@@ -147,7 +147,7 @@ export function AlertExamples() {
     <section id="ejemplos" aria-labelledby="ejemplos-titulo" className="hoja scroll-mt-24">
       {/* Vigía del capítulo: lejos de la pantalla, sus piezas ligadas al scroll sueltan la animación (ver `.vigia-producto`). */}
       <span className="vigia-producto" data-vigia aria-hidden="true" />
-      <div className="mx-auto max-w-[1440px] px-6 py-20 lg:py-[120px]">
+      <div className="mx-auto max-w-[1440px] px-6 py-16 sm:py-20 lg:py-[120px]">
         <SectionEyebrow>Alertas</SectionEyebrow>
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <TextoEnMovimiento
@@ -162,7 +162,7 @@ export function AlertExamples() {
             como="p"
             efecto="lectura"
             disparo="scroll"
-            texto="Quién gana, quién pierde y bajo qué condición, con la confianza calculada desde sus fuentes y las correcciones a la vista. Abre «Fuentes» para ver de dónde sale cada una."
+            texto="Quién gana, quién pierde y bajo qué condición, con la confianza calculada desde sus fuentes y las correcciones a la vista."
             className="max-w-[520px] text-lede text-texto-suave lg:justify-self-end"
           />
         </div>

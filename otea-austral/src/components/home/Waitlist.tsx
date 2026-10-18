@@ -13,7 +13,7 @@ export function Waitlist() {
     <section id="lista-de-espera" aria-labelledby="lista-titulo" className="lista relative scroll-mt-24 overflow-x-clip">
       {/* Vigía del capítulo: lejos de la pantalla, sus piezas ligadas al scroll sueltan la animación (ver `.vigia-producto`). */}
       <span className="vigia-producto" data-vigia aria-hidden="true" />
-      <div className="mx-auto grid max-w-[1440px] gap-10 px-6 py-20 lg:grid-cols-2 lg:items-start lg:gap-12 lg:py-[120px]">
+      <div className="mx-auto grid max-w-[1440px] gap-10 px-6 py-16 sm:py-20 lg:grid-cols-2 lg:items-start lg:gap-12 lg:py-[120px]">
         <div>
           <SectionEyebrow>Lista de espera</SectionEyebrow>
           <div className="relative mt-8 mb-7 pb-8">
