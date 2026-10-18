@@ -329,6 +329,39 @@ test.describe("movimiento", () => {
     for (const s of piezas) expect(medias[s], `${s}: px seguidos a media opacidad`).toBeLessThanOrEqual(40);
   });
 
+  test("en escritorio, en el reposo final, la línea del alba pasa bajo «Ver metodología» y sobre el riel, y la tableta queda de frente", async ({ page }, info) => {
+    test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
+    // Los anchos de portátil más comunes, también los bajos (allí un `%` fijo cruzaba el botón).
+    for (const [width, height] of [
+      [1024, 768],
+      [1280, 720],
+      [1366, 768],
+      [1440, 900],
+      [1536, 864],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      await page.waitForTimeout(800);
+      for (const p of [0.84, 0.9, 0.95]) {
+        await progreso(page, p);
+        const m = await page.evaluate(() => {
+          const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+          return {
+            alba: r(".h-alba").bottom,
+            boton: r(".h-paso-4 a").bottom,
+            riel: r(".h-riel ol").top,
+            tablero: getComputedStyle(document.querySelector(".h-tablero")!).transform,
+          };
+        });
+        const donde = `${width}×${height} al ${Math.round(p * 100)} %`;
+        expect(m.alba - m.boton, `${donde}: aire bajo el botón`).toBeGreaterThanOrEqual(24);
+        expect(m.alba, `${donde}: sobre el riel`).toBeLessThanOrEqual(m.riel);
+        // Sin acercamiento: la tableta no se reescala tras quedar de frente (su texto seguiría blando a 1x).
+        expect(m.tablero, donde).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+      }
+    }
+  });
+
   test("en escritorio el velo no vacía el escenario antes de que asome la sección siguiente", async ({ page }, info) => {
     test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
     await page.goto("/");

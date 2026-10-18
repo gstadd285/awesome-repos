@@ -3223,8 +3223,9 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 }
 
 /* La tableta: aparece encajada en el plano (misma postura, `--encaje` = ancho del plano / ancho de la tableta), gana
-   bisel y se endereza, queda de frente y nítida en el 84 % (`transform: none`), se acerca despacio y retrocede en el
-   relevo. Tramo 46–100 %. */
+   bisel y se endereza, queda de frente y nítida desde el 84 % (`transform: none`) y retrocede en el relevo. Tramo
+   46–100 %. Sin acercamiento final: una escala sobre la capa ya rasterizada (tras claves 3D, Chrome no la vuelve a
+   rasterizar) dejaba blando su texto en pantallas de 1x; la deriva de la meseta la hace el alba (`h-amanecer`). */
 @keyframes h-tablero {
   0% {
     opacity: 0;
@@ -3264,13 +3265,13 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
   }
   92.6% {
-    transform: scale(1.03);
+    transform: none;
     translate: none;
     animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
   }
   100% {
     opacity: 1;
-    transform: scale(1.03);
+    transform: none;
     translate: 0 -6vh;
   }
 }
@@ -3326,6 +3327,29 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     opacity: 0;
     translate: 0 -34vh;
     animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+}
+
+/* Deriva de la meseta final (84–96 %): el sol sube despacio sobre la línea, el cielo se abre desde ella (origen abajo:
+   la línea no se mueve) y su luz cruza una vez el cristal de la tableta (`h-luz`). La tableta queda quieta y nítida. */
+@keyframes h-amanecer {
+  to {
+    translate: -50% 4%;
+  }
+}
+
+@keyframes h-luz {
+  from {
+    translate: 240% 0;
+  }
+  to {
+    translate: -100% 0;
+  }
+}
+
+@keyframes h-abrir {
+  to {
+    scale: 1 1.12;
   }
 }
 
@@ -4992,14 +5016,43 @@ html[data-movimiento="completo"] {
         animation-range: contain 80% contain 84%;
       }
 
-      /* El alba detrás de la tableta: horizonte y sol, de vuelta desde arriba. */
+      /* La luz del alba cruza el cristal una vez (84–96 %), desde el lado del sol: una franja tenue (≤ 14 %: el texto de
+         las tarjetas sigue en AA) que se mueve con `translate`, sin reescalar la tableta, que queda nítida. */
+      .h-tablero .tablero-pantalla {
+        position: relative;
+        overflow: clip;
+      }
+
+      .h-tablero .tablero-pantalla::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 42%;
+        background-image: linear-gradient(
+          104deg,
+          rgb(255 240 212 / 0) 0%,
+          rgb(255 240 212 / 0.14) 50%,
+          rgb(255 240 212 / 0) 100%
+        );
+        pointer-events: none;
+        animation: h-luz linear both;
+        animation-timeline: --historia;
+        animation-range: contain 84% contain 96%;
+      }
+
+      /* El alba detrás de la tableta: horizonte y sol, de vuelta desde arriba. La línea se ancla bajo el paso 03, que va
+         centrado y mide como mucho ~420 px (a 1024 px de ancho): `50% + 244px` la deja siempre 35–60 px bajo «Ver
+         metodología» y por encima del riel, también en pantallas bajas (1280×720, 1024×768). Con un `%` fijo cruzaba el
+         botón en los portátiles comunes. */
       .h-alba {
         display: block;
         z-index: -1;
         left: 0;
         right: 0;
         top: 0;
-        height: 74%;
+        height: calc(50% + 244px);
         overflow: clip;
         animation: h-alba linear both;
         animation-timeline: --historia;
@@ -5013,6 +5066,10 @@ html[data-movimiento="completo"] {
         background-image:
           radial-gradient(40% 70% at var(--alba-x) 100%, rgb(232 200 140 / 0.42), rgb(232 200 140 / 0) 70%),
           linear-gradient(180deg, rgb(236 231 221 / 0) 30%, rgb(241 232 216 / 0.85) 100%);
+        transform-origin: 50% 100%;
+        animation: h-abrir var(--ease-enfasis) both;
+        animation-timeline: --historia;
+        animation-range: contain 84% contain 96%;
       }
 
       .h-alba::after {
@@ -5048,6 +5105,9 @@ html[data-movimiento="completo"] {
         box-shadow:
           0 0 0 1px rgb(122 94 51 / 0.18),
           0 0 60px 10px rgb(232 200 140 / 0.42);
+        animation: h-amanecer var(--ease-enfasis) both;
+        animation-timeline: --historia;
+        animation-range: contain 84% contain 96%;
       }
 
       /* Pasos: textos 2D en la columna del marco, centrados en vertical. Entran desde 24 px mientras el anterior sale
