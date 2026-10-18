@@ -69,6 +69,11 @@ describe("contraste AA sobre tinta (pie, capítulo nocturno, paneles oscuros)", 
     expect(contrastRatio(token(texto), token("ink"))).toBeGreaterThanOrEqual(AA);
   });
 
+  it("marfil al 82 % sobre tinta, ya resuelto (#CAC8C2), pasa AA: la entrada del capítulo nocturno", () => {
+    expect(token("marfil-82")).toBe("#CAC8C2");
+    expect(contrastRatio(token("marfil-82"), token("ink"))).toBeGreaterThanOrEqual(AA);
+  });
+
   it("niebla es #C9CFD8", () => {
     expect(token("niebla")).toBe("#C9CFD8");
   });

@@ -20,6 +20,8 @@
   --color-mist: #8C97A6;
   /* Texto secundario sobre tinta (11:1). */
   --color-niebla: #C9CFD8;
+  /* Marfil al 82 % sobre tinta, ya resuelto (≈ 10:1): la entrada en Source Serif 4 del capítulo nocturno. */
+  --color-marfil-82: #CAC8C2;
   /* Extremos del degradado del botón de latón: tinta sobre ambos ≥ 4,5:1 (7,4 y 4,9). */
   --color-laton-claro: #C7A570;
   --color-laton-oscuro: #A6834D;
@@ -3816,6 +3818,172 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
+/* ── Producto: pre-apertura, de la noche al alba ─────────────────────────────
+ * Una banda a sangre en tinta. Su fondo (decorativo) se abre desde un marco redondeado y, detrás de su borde inferior
+ * (el horizonte), sube un alba de latón. Los textos van siempre dentro del marco: en escritorio el margen interior suma
+ * lo que el marco recorta (3vw) mientras el contenedor no tenga margen propio. El resumen es una terminal. */
+.noche {
+  position: relative;
+  isolation: isolate;
+  color: var(--color-ivory);
+}
+
+.noche-fondo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: clip;
+  background-color: var(--color-ink);
+  background-image: linear-gradient(180deg, var(--color-ink) 0%, var(--color-ink) 45%, #172133 100%);
+}
+
+/* El alba: un disco radial de latón con el centro bajo el horizonte; solo asoma su casquete. */
+.noche-alba {
+  position: absolute;
+  left: 64%;
+  bottom: 0;
+  width: min(1500px, 150vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background-image: radial-gradient(
+    closest-side,
+    rgb(232 196 134 / 0.62),
+    rgb(176 141 87 / 0.34) 34%,
+    rgb(176 141 87 / 0.1) 58%,
+    rgb(176 141 87 / 0) 74%
+  );
+  translate: -50% 60%;
+}
+
+/* El horizonte: un filete de latón a sangre en el borde inferior, encendido bajo el sol. */
+.noche-horizonte {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background-image: linear-gradient(
+    90deg,
+    rgb(176 141 87 / 0),
+    rgb(176 141 87 / 0.55) 28%,
+    rgb(255 232 190 / 0.95) 64%,
+    rgb(176 141 87 / 0.55) 86%,
+    rgb(176 141 87 / 0)
+  );
+}
+
+.noche-contenido {
+  position: relative;
+  padding-inline: 24px;
+}
+
+@media (min-width: 1024px) {
+  .noche-contenido {
+    padding-inline: max(24px, 3vw + 24px - max(0px, (100vw - 1440px) / 2));
+  }
+}
+
+/* Fases de la mañana, sin horas: el punto de latón llega al alba. En el teléfono no están (decorativas). */
+.noche-fases {
+  display: none;
+  max-width: 360px;
+  margin-top: 32px;
+}
+
+@media (min-width: 640px) {
+  .noche-fases {
+    display: block;
+  }
+}
+
+.noche-fases-pista {
+  position: relative;
+  display: block;
+  height: 1px;
+  margin-top: 12px;
+  background-color: rgb(243 238 227 / 0.22);
+}
+
+.noche-fases-avance {
+  position: absolute;
+  inset: 0;
+  translate: 50% 0;
+}
+
+.noche-fases-punto {
+  position: absolute;
+  top: -3.5px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-brass);
+  box-shadow: 0 0 0 4px rgb(176 141 87 / 0.2);
+}
+
+/* La terminal del resumen. */
+.terminal {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  background-color: #0a1322;
+  box-shadow:
+    inset 0 0 0 1px rgb(243 238 227 / 0.12),
+    inset 0 1px 0 rgb(243 238 227 / 0.08),
+    0 48px 96px -48px rgb(0 0 0 / 0.7);
+}
+
+.terminal-cabeza {
+  border-bottom: 1px solid rgb(243 238 227 / 0.1);
+  background-color: rgb(243 238 227 / 0.03);
+}
+
+.terminal-linea {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgb(243 238 227 / 0.07);
+}
+
+.terminal-final {
+  border-bottom: 0;
+}
+
+/* En el teléfono, solo el evento y «Qué mirar». */
+.terminal-chips {
+  display: none;
+}
+
+.terminal-pie {
+  border-top: 1px solid rgb(243 238 227 / 0.1);
+}
+
+/* El cursor de latón: apagado en reposo (salta de renglón en renglón mientras se escribe). */
+.terminal-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 6px;
+  vertical-align: -0.16em;
+  background-color: var(--color-brass);
+  opacity: 0;
+}
+
+
+@media (min-width: 640px) {
+  .terminal-linea {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 20px;
+    padding: 18px 24px;
+  }
+
+  .terminal-chips {
+    display: flex;
+  }
+
+}
+
 /* ── Texto en movimiento: estructura ──────────────────────────────────────
  * `TextoEnMovimiento` parte el texto en unidades (letras o palabras). La CSP no admite `style`
  * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 79; `MAX_INDICE`).
@@ -6520,6 +6688,158 @@ html[data-movimiento="completo"] {
   @media print {
     .tm-cifra {
       animation: none !important;
+    }
+  }
+}
+
+/* Noche → alba: el marco se abre a sangre (0–25 % de su vista), el alba sube (solo `translate` y `opacity`) y el punto
+   llega a «Alba». Las líneas de la terminal se escriben por renglón con una máscara que sube: en escritorio, cada una
+   al entrar en pantalla (ligada al scroll, ~30 px); en táctil y sin líneas de tiempo, una vez por tiempo (480 ms,
+   180 ms entre renglones). El cursor acompaña cada renglón y, en el último, late tres veces y se apaga. */
+@keyframes noche-marco {
+  from {
+    clip-path: inset(0 3vw round 32px);
+  }
+  to {
+    clip-path: inset(0 0 round 0);
+  }
+}
+
+@keyframes noche-alba {
+  from {
+    opacity: 0.2;
+    translate: -50% 84%;
+  }
+  to {
+    opacity: 1;
+    translate: -50% 60%;
+  }
+}
+
+@keyframes noche-fase {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 50% 0;
+  }
+}
+
+@keyframes terminal-renglon {
+  from {
+    opacity: 0;
+    clip-path: inset(100% 0 0 0);
+    translate: 0 10px;
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    translate: none;
+  }
+}
+
+@keyframes terminal-cursor {
+  0% {
+    opacity: 1;
+    animation-timing-function: steps(1, end);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Orden de cada renglón. */
+.terminal-linea-2 { --r: 1; }
+.terminal-linea-3 { --r: 2; }
+.terminal-linea-4 { --r: 3; }
+
+html[data-movimiento="completo"] {
+  @supports (animation-timeline: view()) {
+    .noche-fondo {
+      animation: noche-marco var(--ease-enfasis) both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 35%;
+    }
+
+    .noche-alba {
+      animation: noche-alba var(--ease-salida) both;
+      animation-timeline: --noche;
+      animation-range: cover 15% cover 70%;
+    }
+
+    .noche {
+      timeline-scope: --noche;
+    }
+
+    .noche-fondo {
+      view-timeline: --noche block;
+    }
+
+    .noche-fases-avance {
+      animation: noche-fase var(--ease-enfasis) both;
+      animation-timeline: --noche;
+      animation-range: cover 20% cover 55%;
+    }
+  }
+
+  &:not([data-texto="unico"]) {
+    @supports (animation-timeline: view()) {
+      /* Cada renglón es su propia línea de tiempo: se escribe al asomar (~30 px) y su cursor la lee. */
+      .terminal-linea {
+        view-timeline: --renglon block;
+        animation: terminal-renglon linear both;
+        animation-timeline: --renglon;
+        animation-range: entry 55% entry 85%;
+      }
+
+      .terminal-cursor {
+        animation: terminal-cursor linear both;
+        animation-timeline: --renglon;
+        animation-range: entry 55% entry 150%;
+      }
+
+      /* En el último renglón el cursor se queda un poco más y se apaga. */
+      .terminal-final .terminal-cursor {
+        animation-range: entry 55% cover 60%;
+      }
+    }
+  }
+
+  @media print {
+    .noche-fondo,
+    .noche-alba,
+    .noche-fases-avance,
+    .terminal-linea,
+    .terminal-cursor {
+      animation: none !important;
+    }
+  }
+}
+
+/* Táctil o estrecho, y sin líneas de tiempo: la terminal se escribe una vez, por tiempo, al entrar. Sin líneas de tiempo
+   el alba sube por tiempo (en ese modo no hay marco: la banda ya está a sangre). */
+html[data-movimiento="completo"][data-motor] {
+  &[data-texto="unico"],
+  &[data-timeline="no"][data-motor] {
+    .terminal-lineas:not(.escena-vista) .terminal-linea {
+      opacity: 0;
+    }
+    .terminal-lineas.escena-vista:not(.mov-quieto) .terminal-linea {
+      animation: terminal-renglon 480ms var(--ease-salida) backwards;
+      animation-delay: calc(200ms + var(--r, 0) * 180ms);
+    }
+    .terminal-lineas.escena-vista:not(.mov-quieto) .terminal-cursor {
+      animation: terminal-cursor 180ms linear backwards;
+      animation-delay: calc(200ms + var(--r, 0) * 180ms);
+    }
+    .terminal-lineas.escena-vista:not(.mov-quieto) .terminal-final .terminal-cursor {
+      animation-duration: 1100ms;
+    }
+  }
+
+  &[data-timeline="no"][data-motor] {
+    .noche-alba.escena-vista:not(.mov-quieto) {
+      animation: noche-alba 1600ms var(--ease-salida) backwards;
     }
   }
 }

@@ -9,13 +9,16 @@ export function SectionEyebrow({
   numero,
   children,
   className = "",
+  tono = "claro",
 }: {
   numero?: string;
   children: ReactNode;
   className?: string;
+  /** `tinta` para los capítulos sobre fondo tinta (texto niebla, 11:1). */
+  tono?: "claro" | "tinta";
 }) {
   return (
-    <p className={`flex items-center gap-2.5 text-apoyo ${className}`}>
+    <p className={`flex items-center gap-2.5 ${tono === "tinta" ? "text-niebla" : "text-apoyo"} ${className}`}>
       {numero ? (
         <>
           <span className="contador">{numero}</span>

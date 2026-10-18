@@ -10,6 +10,7 @@ import { AlertaViva } from "./AlertaViva";
 import { Blueprint } from "./Blueprint";
 import { Board } from "./Board";
 import { Horizonte } from "./Horizonte";
+import { PreOpening } from "./PreOpening";
 import { Story } from "./Story";
 import { Temas } from "./Temas";
 
@@ -266,5 +267,30 @@ describe("AlertExamples · vitrina", () => {
   it("los textos de la vitrina no usan lenguaje de recomendación", () => {
     const { container } = render(<AlertExamples />);
     expect(frasesProhibidas(container.querySelector(".vitrina")!.textContent ?? "")).toEqual([]);
+  });
+});
+
+describe("PreOpening · noche → alba", () => {
+  it("el resumen es una terminal con una línea por evento, la hora real del dato y una última línea objetivo", () => {
+    const { container } = render(<PreOpening />);
+    const seccion = container.querySelector("section")!;
+    expect(seccion).toHaveAttribute("aria-labelledby", "pre-apertura-titulo");
+    const terminal = screen.getByRole("article", { name: /Resumen del/ });
+    expect(terminal).toHaveTextContent("Datos de ejemplo");
+    const lineas = terminal.querySelectorAll(".terminal-linea");
+    expect(lineas).toHaveLength(4);
+    expect([...terminal.querySelectorAll(".terminal-evento")].map((e) => e.textContent)).toEqual([
+      "Tensión en el estrecho de Ormuz",
+      "Nuevas restricciones a la exportación de chips avanzados",
+      "Paralización temporal en una gran mina de cobre",
+    ]);
+    expect(terminal.querySelector(".terminal-hora")).toHaveAttribute("dateTime", "2026-10-08T08:15:00-03:00");
+    expect(terminal.querySelector(".terminal-hh")).toHaveTextContent("08:15");
+    expect(lineas[3]).toHaveTextContent("Antes de la apertura del mercado local (objetivo)");
+    for (const linea of [...lineas].slice(0, 3)) expect(linea).toHaveTextContent("Qué mirar:");
+    // El alba y el horizonte son decorativos.
+    expect(container.querySelector(".noche-fondo")).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector("[style]")).toBeNull();
+    expect(frasesProhibidas(seccion.textContent ?? "")).toEqual([]);
   });
 });
