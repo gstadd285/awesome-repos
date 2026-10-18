@@ -26,6 +26,10 @@ const RIEL = [
   { ancla: "paso-panel", nombre: "Tu panel" },
 ];
 
+/** Tramos con vigía (franja observada): lo que ya salió del héroe, la cinta, el plano y lo que verifica sobre él, la
+    tableta y el alba con el velo. */
+const VIGIAS = ["inicio", "salida", "titulo", "cinta", "plano", "verificar", "tablero", "alba"] as const;
+
 export function Story() {
   return (
     <section id="como-funciona" aria-label="Cómo funciona Otea Austral" className="historia">
@@ -175,6 +179,11 @@ export function Story() {
       {/* Anclas del riel: puntos del recorrido de la historia fija (no ocupan lugar). */}
       {RIEL.map((paso, i) => (
         <span key={paso.ancla} id={paso.ancla} className={`h-ancla h-ancla-${i + 1}`} />
+      ))}
+      {/* Vigías: franjas invisibles que `DirectorEscena` observa; fuera de su ventana, las piezas decorativas de ese tramo
+          dejan de dibujarse (ver `.h-vigia` en globals.css). */}
+      {VIGIAS.map((tramo) => (
+        <span key={tramo} className={`h-vigia h-vigia-${tramo}`} data-vigia aria-hidden="true" />
       ))}
     </section>
   );

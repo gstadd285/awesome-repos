@@ -244,4 +244,33 @@ test.describe("movimiento", () => {
     }
   });
 
+  test("en escritorio, lo que no está en su tramo no se dibuja (vigías) y el aviso no tapa «Datos de ejemplo» en una pantalla baja", async ({ page }, info) => {
+    test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto("/");
+    await page.waitForTimeout(1500);
+    const visibilidad = (s: string) => page.locator(s).evaluate((e) => getComputedStyle(e).visibility);
+    await expect.poll(() => visibilidad(".h-plano")).toBe("hidden");
+    await expect.poll(() => visibilidad(".h-tablero")).toBe("hidden");
+    await progreso(page, 0.3);
+    await expect.poll(() => visibilidad(".h-plano")).toBe("visible");
+    for (const p of [0.84, 0.9]) {
+      await progreso(page, p);
+      await expect.poll(() => visibilidad(".h-tablero")).toBe("visible");
+      const [chip, aviso] = await page.evaluate(() =>
+        [".tablero-chip", ".tablero-aviso"].map((s) => document.querySelector(s)!.getBoundingClientRect().toJSON()),
+      );
+      expect(aviso.bottom <= chip.top || aviso.right <= chip.left || aviso.left >= chip.right, `al ${p * 100} %`).toBe(true);
+      await expect.poll(() => visibilidad(".h-plano")).toBe("hidden");
+    }
+  });
+
+  test("en escritorio el velo no vacía el escenario antes de que asome la sección siguiente", async ({ page }, info) => {
+    test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
+    await page.goto("/");
+    await progreso(page, 1);
+    const velo = Number(await page.locator(".h-velo").evaluate((e) => getComputedStyle(e).opacity));
+    expect(velo).toBeGreaterThan(0.1);
+    expect(velo).toBeLessThan(0.9);
+  });
 });

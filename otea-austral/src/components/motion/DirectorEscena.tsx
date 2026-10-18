@@ -17,6 +17,9 @@ const VARIABLES_NAV = ["--nx", "--nw", "--nv"] as const;
 const SALTO_LARGO = 1.5;
 /** Luz del héroe: posición del cursor en la ventana (0 a 1), escrita en `.h-hero` mientras el héroe se ve. */
 const VARIABLES_LUZ = ["--cx", "--cy"] as const;
+/** Lo que el observador de la pantalla marca con `data-fuera`: bucles, vigías de la historia y copias decorativas del
+    texto ligado al scroll (el CSS decide qué hace con cada uno). */
+const VIGILADOS = "[data-bucle],[data-vigia],.kx-scroll>.kx-visual";
 /** Bajo este ancho la cinta del héroe puede quedar fuera del primer pliegue (ver `encenderCinta`). */
 const ESTRECHA = "(max-width: 1023.98px)";
 
@@ -69,6 +72,9 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   (`content-visibility`, para que el primer pintado llegue antes). Tras el evento `load`, o al primer clic en un ancla
  *   de esta página, marca `data-maquetado` en `<html>` y todo se maqueta con su alto real: los saltos de ancla
  *   aterrizan donde deben.
+ * - **Vigías:** el mismo observador marca `data-fuera` en las franjas `[data-vigia]` de la historia y en la copia
+ *   decorativa de los textos ligados al scroll (`.kx-scroll > .kx-visual`). El CSS deja de dibujar lo que no está cerca
+ *   de la pantalla: una animación ligada al scroll mantiene su capa viva también fuera de su tramo.
  * - **Menú del teléfono** (siempre, también con movimiento reducido: no es movimiento): un clic en un enlace del menú
  *   lo cierra (`hidePopover`), y si el enlace es un ancla de esta página el salto es instantáneo, detrás de la hoja que
  *   se funde, y el foco pasa al destino. Si el foco sale del menú con el teclado, también se cierra.
@@ -289,13 +295,13 @@ export function DirectorEscena() {
         },
         { rootMargin: "64px 0px" },
       );
-      for (const el of document.querySelectorAll("[data-bucle]")) bucles.observe(el);
+      for (const el of document.querySelectorAll(VIGILADOS)) bucles.observe(el);
     };
 
     const apagarBucles = () => {
       bucles?.disconnect();
       bucles = null;
-      for (const el of document.querySelectorAll("[data-bucle][data-fuera]")) el.removeAttribute("data-fuera");
+      for (const el of document.querySelectorAll("[data-fuera]")) el.removeAttribute("data-fuera");
     };
 
     const apagarCinta = () => {

@@ -924,9 +924,13 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   box-shadow: inset 0 0 0 1px var(--color-linea);
 }
 
+/* Los grupos de cotas e hilos siguen en la escena 3D (`preserve-3d`, sin opacidad propia): cada línea es su propia hoja
+   pequeña. Un grupo aplanado (o con opacidad) era una superficie transparente del tamaño del plano, proyectada en cada
+   cuadro: medido con rasterizado por software, ~4 ms por cuadro mientras se verifica. */
 .plano-cotas {
   inset: 0;
   transform: translateZ(0.1cqw);
+  transform-style: preserve-3d;
 }
 
 /* Cotas: líneas de 1 px con remates, como en un dibujo técnico. */
@@ -1010,6 +1014,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 .plano-hilos {
   inset: 0;
   transform: translateZ(0.15cqw);
+  transform-style: preserve-3d;
 }
 
 .plano-hilo {
@@ -2811,7 +2816,8 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 .h-alba,
 .h-riel,
 .h-velo,
-.h-ancla {
+.h-ancla,
+.h-vigia {
   display: none;
 }
 
@@ -3119,14 +3125,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   from {
     opacity: 0;
     transform: translateZ(1.2cqw) scale(0.3, 0.7);
-  }
-}
-
-/* Las cotas se tienden desde la esquina del dibujo (una sola capa: el grupo entero). */
-@keyframes h-cotas {
-  from {
-    opacity: 0;
-    transform: translateZ(0.1cqw) scale(0.94);
   }
 }
 
@@ -3873,6 +3871,13 @@ html[data-movimiento="completo"] {
         animation: kx-palabra linear both;
         animation-timeline: --kx;
         animation-range: entry calc(var(--i, 0) * 1.5vh) entry calc(10vh + var(--i, 0) * 1.5vh);
+      }
+
+      /* Lejos de la pantalla la copia decorativa no se dibuja (`DirectorEscena` marca `data-fuera` a más de 64 px; al entrar,
+         sus palabras están aún bajo la máscara o tenues): cada palabra ligada al scroll es una capa viva aunque falte
+         mucho para su tramo. La copia `sr-only` no se toca. */
+      .kx-scroll > .kx-visual[data-fuera] {
+        visibility: hidden;
       }
     }
   }
@@ -4846,20 +4851,28 @@ html[data-movimiento="completo"] {
           contain 45.2% contain 46.4%;
       }
 
-      .h-plano .plano-cotas {
+      /* Las cotas se trazan desde la esquina (la de arriba en x, la de la izquierda en y) y sus rótulos se encienden; al
+         cerrar el paso se apagan. Cada pieza lleva su clave: el grupo no tiene opacidad (ver `.plano-cotas`). */
+      .h-plano .plano-cota,
+      .h-plano .plano-etiqueta {
         animation:
-          h-cotas var(--ease-salida) backwards,
+          hz-trazar var(--ease-salida) backwards,
           h-vaciar var(--ease-entrada) forwards;
         animation-timeline: --historia;
         animation-range:
-          contain 13% contain 20%,
+          contain 13% contain 19%,
           contain 45.6% contain 46.8%;
       }
 
-      .h-plano .plano-hilos {
-        animation: h-vaciar var(--ease-entrada) forwards;
-        animation-timeline: --historia;
-        animation-range: contain 44.6% contain 46%;
+      .h-plano .plano-cota-izquierda {
+        animation-name: h-trazar-y, h-vaciar;
+      }
+
+      .h-plano .plano-etiqueta {
+        animation-name: m-plano, h-vaciar;
+        animation-range:
+          contain 16% contain 20%,
+          contain 45.6% contain 46.8%;
       }
 
       /* Las fichas se ponen de pie una tras otra (22–26,6 %) y, al cerrar el paso, se pliegan sobre el plano (43–46 %):
@@ -4877,9 +4890,13 @@ html[data-movimiento="completo"] {
 
       .h-plano .plano-hilo {
         --f: calc((var(--hx) - 16) / 34);
-        animation: h-trazar-y var(--ease-salida) backwards;
+        animation:
+          h-trazar-y var(--ease-salida) backwards,
+          h-vaciar var(--ease-entrada) forwards;
         animation-timeline: --historia;
-        animation-range: contain calc(23.5% + var(--f) * 0.8%) contain calc(27% + var(--f) * 0.8%);
+        animation-range:
+          contain calc(23.5% + var(--f) * 0.8%) contain calc(27% + var(--f) * 0.8%),
+          contain 44.6% contain 46%;
       }
 
       .h-plano .plano-lente {
@@ -5128,7 +5145,9 @@ html[data-movimiento="completo"] {
       .h-ancla-2 { --p: 0.6; }
       .h-ancla-3 { --p: 0.86; }
 
-      /* Velo del relevo: apaga el escenario mientras sube la sección siguiente. Hermano de las piezas, nunca su ancestro. */
+      /* Velo del relevo: apaga el escenario mientras ya sube con la página y asoma la sección siguiente (termina al 25 % de la
+         salida de la historia). Si terminara dentro del tramo fijo, el escenario quedaba vacío ~200 px antes de que
+         entrara nada. Hermano de las piezas, nunca su ancestro. */
       .h-velo {
         display: block;
         inset: 0;
@@ -5136,7 +5155,43 @@ html[data-movimiento="completo"] {
         background-color: var(--color-fondo);
         animation: h-velo linear both;
         animation-timeline: --historia;
-        animation-range: contain 92% contain 100%;
+        animation-range: contain 94% exit 25%;
+      }
+
+      /* Vigías: franjas invisibles de la historia que `DirectorEscena` observa (`data-fuera` cuando no tocan la pantalla
+         con 64 px de margen). La franja toca la pantalla justo cuando el progreso está entre `--a` y `--b` (recorrido =
+         `100% − 100vh + 72px`; mínimo ~0,27 de recorrido; el margen lo ensancha ~2 %). Lo que ya cumplió o aún no entra se deja de dibujar (`visibility`): una animación
+         ligada al scroll mantiene su capa viva también fuera de su tramo. Solo piezas decorativas (`aria-hidden`): los
+         pasos y el riel siguen en el árbol de accesibilidad. Sin JS no hay historia fija, y la marca llega tarde, nunca
+         antes: cada ventana deja un margen de su tramo. */
+      .h-vigia {
+        display: block;
+        position: absolute;
+        left: 0;
+        width: 1px;
+        top: calc(var(--a) * (100% - 100vh + 72px) + 100vh - 72px);
+        height: max(1px, (var(--b) - var(--a)) * (100% - 100vh + 72px) - 100vh);
+        pointer-events: none;
+      }
+      .h-vigia-inicio { --a: -0.3; --b: 0.025; }
+      .h-vigia-salida { --a: -0.3; --b: 0.075; }
+      .h-vigia-titulo { --a: -0.3; --b: 0.11; }
+      .h-vigia-cinta { --a: -0.3; --b: 0.145; }
+      .h-vigia-plano { --a: 0.075; --b: 0.51; }
+      .h-vigia-verificar { --a: 0.19; --b: 0.5; }
+      .h-vigia-tablero { --a: 0.43; --b: 1.6; }
+      .h-vigia-alba { --a: 0.71; --b: 1.6; }
+
+      .historia:has(> .h-vigia-inicio[data-fuera]) :is(.h-grano, .hero-desliza),
+      .historia:has(> .h-vigia-salida[data-fuera]) :is(.cinta-rotulo, .h1-caja-2),
+      .historia:has(> .h-vigia-titulo[data-fuera]) :is(.h1-caja-1, .h-reticula, .h-pulsos),
+      .historia:has(> .h-vigia-cinta[data-fuera]) .h-cinta,
+      .historia:has(> .h-vigia-plano[data-fuera]) .h-plano,
+      .historia:has(> .h-vigia-verificar[data-fuera]) :is(.plano-ficha, .plano-hilos, .plano-lente),
+      .historia:has(> .h-vigia-verificar[data-fuera]) .plano-segmento::after,
+      .historia:has(> .h-vigia-tablero[data-fuera]) .h-tablero,
+      .historia:has(> .h-vigia-alba[data-fuera]) :is(.h-alba, .h-velo) {
+        visibility: hidden;
       }
 
       /* Lo que recibe foco siempre se ve, aunque su paso no esté en pantalla. */
