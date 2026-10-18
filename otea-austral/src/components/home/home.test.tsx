@@ -3,6 +3,9 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { TEMAS, TEMA_ETIQUETA } from "@/lib/domain/temas";
+import { vistaSinPrimaria } from "@/data/ejemplo";
+import { frasesProhibidas } from "@/lib/domain/lenguaje";
+import { AlertExamples } from "./AlertExamples";
 import { AlertaViva } from "./AlertaViva";
 import { Blueprint } from "./Blueprint";
 import { Board } from "./Board";
@@ -177,5 +180,60 @@ describe("TopicPicker", () => {
   it("aclara que es una vista previa que no guarda preferencias", () => {
     render(<TopicPicker />);
     expect(screen.getByText(/aún no se guardan/)).toBeInTheDocument();
+  });
+});
+
+describe("AlertExamples · vitrina", () => {
+  it("es un grupo con un selector Ormuz · Chips · Cobre de radios nativos y la prueba como interruptor", () => {
+    render(<AlertExamples />);
+    const vitrina = screen.getByRole("group", { name: "Vitrina de alertas de ejemplo" });
+    const escenarios = within(vitrina).getByRole("group", { name: "Escenario" });
+    const radios = within(escenarios).getAllByRole("radio");
+    expect(radios.map((r) => r.closest("label")!.textContent)).toEqual(["Ormuz", "Chips", "Cobre"]);
+    expect(radios.every((r) => r.getAttribute("name") === "escenario")).toBe(true);
+    expect(radios[0]).toBeChecked();
+    expect(within(vitrina).getByRole("switch", { name: "Prueba: quita la fuente primaria" })).not.toBeChecked();
+  });
+
+  it("muestra la AlertCard real de cada escenario con sus fuentes y cuatro anotaciones de texto", () => {
+    const { container } = render(<AlertExamples />);
+    expect(container.querySelector("#alerta-ejemplo-ormuz details summary")).toHaveTextContent("Fuentes");
+    expect(container.querySelector("#alerta-ejemplo-chips")).not.toBeNull();
+    expect(container.querySelector("#alerta-ejemplo-cobre")).toHaveTextContent("Corregida el");
+    const notas = screen.getAllByRole("list", { name: "Cómo leer esta alerta" });
+    expect(notas).toHaveLength(3);
+    for (const lista of notas) {
+      expect([...lista.querySelectorAll(".nota-titulo")].map((t) => t.textContent?.replace(/^0\d/, ""))).toEqual([
+        "Condición",
+        "Confianza calculada",
+        "Fuentes",
+        "Correcciones",
+      ]);
+    }
+    expect(container.querySelector("[style]")).toBeNull();
+  });
+
+  it("la prueba «quita la fuente primaria» pinta en paralelo lo que cambia, calculado con las reglas reales", () => {
+    const { container } = render(<AlertExamples />);
+    const prueba = vistaSinPrimaria("ejemplo-ormuz");
+    expect(prueba.confianza).toBe("baja");
+    const ormuz = container.querySelector("#alerta-ejemplo-ormuz")!;
+    expect([...ormuz.querySelectorAll(".solo-a")].map((e) => e.textContent)).toContain("Confianza alta");
+    expect([...ormuz.querySelectorAll(".solo-b")].map((e) => e.textContent)).toContain("Confianza baja");
+    expect(ormuz.querySelector("p.solo-b")).toHaveTextContent("No podría publicarse como impacto alto");
+    // La fuente primaria queda en la lista, marcada como quitada en la prueba.
+    expect(ormuz.querySelectorAll("[data-quitada]")).toHaveLength(1);
+    // La nota de la confianza dice el paso de alta a baja; una frase en una región viva resume el cambio.
+    const notaOrmuz = container.querySelector(".vitrina-panel-ormuz .nota-2")!;
+    expect(notaOrmuz.querySelector(".solo-b")).toHaveTextContent("Alta → baja");
+    const vivo = container.querySelector("[aria-live='polite']")!;
+    expect(vivo.querySelector(".solo-b")).toHaveTextContent("baja de alta a baja");
+    // Chips y Cobre no cambian con la prueba.
+    expect(container.querySelectorAll(".vitrina-panel-chips .solo-b, .vitrina-panel-cobre .solo-b")).toHaveLength(0);
+  });
+
+  it("los textos de la vitrina no usan lenguaje de recomendación", () => {
+    const { container } = render(<AlertExamples />);
+    expect(frasesProhibidas(container.querySelector(".vitrina")!.textContent ?? "")).toEqual([]);
   });
 });

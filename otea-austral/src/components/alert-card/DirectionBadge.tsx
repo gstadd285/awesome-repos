@@ -2,20 +2,22 @@ import type { Direccion } from "@/lib/domain/schemas";
 import { DIRECCION_ETIQUETA } from "./labels";
 
 // Colores de estado como relleno, siempre con texto tinta (≥ 5,6:1).
-const ESTILO: Record<Direccion, string> = {
+export const ESTILO_DIRECCION: Record<Direccion, string> = {
   gana: "bg-gana",
   condicionado: "bg-condicionado",
   pierde: "bg-pierde",
 };
 
-/** Dirección con ícono y texto; el color refuerza, no informa por sí solo. */
+/**
+ * Chip de un sector con su dirección (color de estado, texto tinta): vista previa y resumen de la portada. El ícono lo
+ * dibuja el CSS (`.icono-dir::before`, según `data-direccion`): sin SVG, dos nodos menos por chip.
+ */
+export const CHIP_SECTOR = "icono-dir inline-flex items-center gap-1.5 rounded-badge px-2 py-1 text-xs font-semibold text-ink";
+
+/** Dirección con ícono (del CSS) y texto; el color refuerza, no informa por sí solo. */
 export function DirectionBadge({ direccion }: { direccion: Direccion }) {
   return (
-    <span
-      data-direccion={direccion}
-      className={`inline-flex items-center gap-1.5 rounded-badge px-2 py-1 text-xs font-semibold text-ink ${ESTILO[direccion]}`}
-    >
-      <DirectionIcon direccion={direccion} />
+    <span data-direccion={direccion} className={`${CHIP_SECTOR} ${ESTILO_DIRECCION[direccion]}`}>
       {DIRECCION_ETIQUETA[direccion]}
     </span>
   );

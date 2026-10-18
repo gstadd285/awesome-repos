@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { motivosInvariantesPublicada } from "@/lib/domain/rules";
 import { safeHref } from "@/lib/domain/url";
 import { TEMA_ETIQUETA } from "@/lib/domain/schemas";
 import type { AlertView } from "@/lib/domain/view";
@@ -13,14 +15,33 @@ type AlertCardProps = {
   /** Nivel del título según dónde se inserte la tarjeta. */
   nivelTitulo?: NivelTitulo;
   className?: string;
+  /**
+   * Vista alternativa de la misma alerta (la vitrina de la portada: «quita la fuente primaria»). Cada valor que cambia
+   * se pinta dos veces, en `span.solo-a` (el real) y `span.solo-b` (el alternativo); el CSS muestra uno u otro con
+   * `.demo:has(#prueba-…:checked)`, sin JavaScript. Sin esta prop la tarjeta no cambia.
+   */
+  alternativa?: AlertView;
 };
+
+/** El valor real y, si la vista alternativa lo cambia, también el alternativo (el CSS muestra uno de los dos). */
+function Alterna({ a, b, cambia }: { a: ReactNode; b: ReactNode; cambia: boolean }) {
+  if (!cambia) return <>{a}</>;
+  return (
+    <>
+      <span className="solo-a">{a}</span>
+      <span className="solo-b">{b}</span>
+    </>
+  );
+}
+
+const MOTIVO_IMPACTO = "Impacto alto exige dos fuentes de organismos distintos.";
 
 /**
  * Tarjeta de alerta: evento, quién gana y quién pierde, confianza calculada,
  * fuentes y estado (corregida o retractada). Componente de servidor sin JS:
  * el desplegable de fuentes es un `<details>` nativo, navegable con teclado.
  */
-export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCardProps) {
+export function AlertCard({ alerta, nivelTitulo = 3, className = "", alternativa }: AlertCardProps) {
   const Titulo = `h${nivelTitulo}` as const;
   const Subtitulo = `h${nivelTitulo + 1}` as "h3" | "h4" | "h5" | "h6";
   const base = `alerta-${alerta.id}`;
@@ -28,6 +49,15 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
   const retractacion = alerta.correcciones.findLast((c) => c.tipo === "retractacion");
   const ultimaCorreccion = alerta.correcciones.findLast((c) => c.tipo === "correccion");
   const nFuentes = alerta.fuentes.length;
+  const alt = alternativa ?? alerta;
+  const nFuentesAlt = alt.fuentes.length;
+  const urlsAlt = new Set(alt.fuentes.map((f) => f.url));
+  // Regla 3, la misma que se aplica al cambiar las fuentes de una alerta publicada: ¿la vista alternativa la sostiene?
+  const pierdeImpacto =
+    alternativa !== undefined &&
+    !motivosInvariantesPublicada(alerta, alerta.fuentes).includes(MOTIVO_IMPACTO) &&
+    motivosInvariantesPublicada(alerta, alt.fuentes).includes(MOTIVO_IMPACTO);
+  const fuentesTexto = (n: number) => `${n} ${n === 1 ? "fuente" : "fuentes"}`;
 
   return (
     <article
@@ -85,38 +115,56 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
         <p className="mt-3 text-sm leading-relaxed text-texto-suave">{alerta.resumen}</p>
 
         <ul aria-label="Quién gana y quién pierde" className="mt-4">
-          {alerta.filas.map((fila, i) => (
-            <li
-              key={`${fila.sector}-${i}`}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 border-t border-linea py-3"
-            >
-              <p className="text-sm font-medium text-texto">{fila.sector}</p>
-              <DirectionBadge direccion={fila.direccion} />
-              <p className="col-span-2 text-sm text-texto-suave">
-                {fila.condicion}
-                <span className="text-apoyo">
-                  {" · "}Confianza {CONFIANZA_ETIQUETA[fila.confianza_mostrada]}
-                </span>
-              </p>
-            </li>
-          ))}
+          {alerta.filas.map((fila, i) => {
+            const filaAlt = alt.filas[i] ?? fila;
+            return (
+              <li
+                key={`${fila.sector}-${i}`}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 border-t border-linea py-3"
+              >
+                <p className="text-sm font-medium text-texto">{fila.sector}</p>
+                <DirectionBadge direccion={fila.direccion} />
+                <p className="col-span-2 text-sm text-texto-suave">
+                  {fila.condicion}
+                  <span className="text-apoyo">
+                    {" · "}
+                    <Alterna
+                      cambia={filaAlt.confianza_mostrada !== fila.confianza_mostrada}
+                      a={`Confianza ${CONFIANZA_ETIQUETA[fila.confianza_mostrada]}`}
+                      b={`Confianza ${CONFIANZA_ETIQUETA[filaAlt.confianza_mostrada]}`}
+                    />
+                  </span>
+                </p>
+              </li>
+            );
+          })}
         </ul>
       </div>
 
       <footer className="border-t border-linea pt-4">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-texto-suave">
           <span className="sr-only">Respaldo: </span>
-          <ConfidenceBadge nivel={alerta.confianza} />
+          <Alterna
+            cambia={alt.confianza !== alerta.confianza}
+            a={<ConfidenceBadge nivel={alerta.confianza} />}
+            b={<ConfidenceBadge nivel={alt.confianza} />}
+          />
           <span aria-hidden="true" className="text-apoyo">
             ·
           </span>
           <span>
-            {nFuentes} {nFuentes === 1 ? "fuente" : "fuentes"}
+            <Alterna cambia={nFuentesAlt !== nFuentes} a={fuentesTexto(nFuentes)} b={fuentesTexto(nFuentesAlt)} />
           </span>
           <span aria-hidden="true" className="text-apoyo">
             ·
           </span>
-          <span>{VERIFICACION_ETIQUETA[alerta.nivel_verificacion]}</span>
+          <span>
+            <Alterna
+              cambia={alt.nivel_verificacion !== alerta.nivel_verificacion}
+              a={VERIFICACION_ETIQUETA[alerta.nivel_verificacion]}
+              b={VERIFICACION_ETIQUETA[alt.nivel_verificacion]}
+            />
+          </span>
         </p>
 
         <details className="group mt-3">
@@ -129,7 +177,14 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
             >
               <path d="M4 2 8 6 4 10" fill="none" stroke="currentColor" strokeWidth="1.5" />
             </svg>
-            Fuentes ({nFuentes})
+            {nFuentesAlt !== nFuentes ? (
+              // Un solo hijo del `flex`: si no, cada `span` alterno quedaría separado por el `gap`.
+              <span>
+                Fuentes (<Alterna cambia a={nFuentes} b={nFuentesAlt} />)
+              </span>
+            ) : (
+              <>Fuentes ({nFuentes})</>
+            )}
           </summary>
           {nFuentes === 0 ? (
             <p className="mt-2 text-sm text-apoyo">Esta alerta aún no tiene fuentes enlazadas.</p>
@@ -137,10 +192,12 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
             <ul className="mt-2 space-y-3 pb-1">
               {alerta.fuentes.map((fuente, i) => {
                 const href = safeHref(fuente.url);
+                const quitada = alternativa !== undefined && !urlsAlt.has(fuente.url);
                 return (
-                  <li key={`${fuente.url}-${i}`} className="text-sm">
+                  <li key={`${fuente.url}-${i}`} className="text-sm" data-quitada={quitada ? "" : undefined}>
                     <p className="text-xs text-apoyo">
                       {fuente.organismo} · {TIPO_FUENTE_ETIQUETA[fuente.tipo]}
+                      {quitada ? <span className="solo-b"> · Quitada en la prueba</span> : null}
                     </p>
                     {href ? (
                       <a
@@ -197,6 +254,13 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "" }: AlertCard
           Revisado por {alerta.revisor} ·{" "}
           <time dateTime={alerta.fecha}>{formatearFechaHora(alerta.fecha)}</time>
         </p>
+
+        {/* Al final del pie: al aparecer, nada de lo que está encima se desplaza. */}
+        {pierdeImpacto ? (
+          <p className="solo-b alerta-aviso-prueba mt-4 rounded-badge bg-fondo px-3 py-2.5 text-sm text-texto linea-fina">
+            No podría publicarse como impacto alto: la regla pide dos organismos distintos y queda uno.
+          </p>
+        ) : null}
       </footer>
     </article>
   );
