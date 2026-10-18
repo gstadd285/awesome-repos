@@ -301,6 +301,34 @@ test.describe("movimiento", () => {
     }
   });
 
+  test("en escritorio la salida del héroe no deja texto a medias más de ~30 px de scroll", async ({ page }, info) => {
+    test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
+    await page.goto("/");
+    await page.waitForTimeout(2500);
+    const piezas = [".hero-antetitulo", ".hero-texto", ".hero-acciones"];
+    const medias: Record<string, number> = Object.fromEntries(piezas.map((s) => [s, 0]));
+    const racha: Record<string, number> = { ...medias };
+    // Cada 5 px de 0 a 400 (la salida termina antes del 7 %): opacidad efectiva (con la de sus ancestros).
+    for (let y = 0; y <= 400; y += 5) {
+      const ops = await page.evaluate(async ([y, piezas]) => {
+        window.scrollTo({ top: y, behavior: "instant" });
+        await new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo)));
+        return piezas.map((s) => {
+          let o = 1;
+          for (let n: Element | null = document.querySelector(s); n && n !== document.documentElement; n = n.parentElement)
+            o *= Number(getComputedStyle(n).opacity);
+          return o;
+        });
+      }, [y, piezas] as const);
+      ops.forEach((o, i) => {
+        const s = piezas[i];
+        racha[s] = o > 0.1 && o < 0.9 ? racha[s] + 5 : 0;
+        medias[s] = Math.max(medias[s], racha[s]);
+      });
+    }
+    for (const s of piezas) expect(medias[s], `${s}: px seguidos a media opacidad`).toBeLessThanOrEqual(40);
+  });
+
   test("en escritorio el velo no vacía el escenario antes de que asome la sección siguiente", async ({ page }, info) => {
     test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
     await page.goto("/");

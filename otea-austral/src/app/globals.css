@@ -4728,7 +4728,7 @@ html[data-movimiento="completo"] {
           hz-asomar 520ms var(--ease-salida) 120ms backwards,
           h-salir var(--ease-entrada) forwards;
         animation-timeline: auto, --historia;
-        animation-range: normal, contain 3% contain 7%;
+        animation-range: normal, contain 3% contain 5.2%;
       }
 
       .hero-texto {
@@ -4736,7 +4736,7 @@ html[data-movimiento="completo"] {
           hz-asentar 600ms var(--ease-salida) 760ms backwards,
           h-salir var(--ease-entrada) forwards;
         animation-timeline: auto, --historia;
-        animation-range: normal, contain 4% contain 9%;
+        animation-range: normal, contain 3.6% contain 5.8%;
       }
 
       .hero-mando {
@@ -4744,7 +4744,7 @@ html[data-movimiento="completo"] {
           hz-asentar 600ms var(--ease-salida) 880ms backwards,
           h-salir var(--ease-entrada) forwards;
         animation-timeline: auto, --historia;
-        animation-range: normal, contain 4.5% contain 9.5%;
+        animation-range: normal, contain 4.2% contain 6.4%;
       }
 
       .hero-desliza {
