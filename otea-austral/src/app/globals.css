@@ -3379,26 +3379,32 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-/* Deriva de la meseta final (84–96 %): el sol sube despacio sobre la línea, el cielo se abre desde ella (origen abajo:
-   la línea no se mueve) y su luz cruza una vez el cristal de la tableta (`h-luz`). La tableta queda quieta y nítida. */
+/* Deriva de la meseta final (84–96 %): el sol sube despacio sobre la línea (que no se mueve) y su luz cruza una vez el
+   cristal de la tableta (`h-luz`). La tableta queda quieta y nítida. Sin escalar el cielo: su `::before` pasaba a ser
+   una capa de pantalla entera más en cada cuadro (medido: el tramo 80–100 % bajaba de 60 a ~48 fps). */
 @keyframes h-amanecer {
   to {
-    translate: -50% 4%;
+    translate: -50% -12%;
   }
 }
 
 @keyframes h-luz {
-  from {
-    translate: 240% 0;
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    animation-timing-function: linear;
   }
-  to {
-    translate: -100% 0;
+  8% {
+    opacity: 1;
+    animation-timing-function: linear;
   }
-}
-
-@keyframes h-abrir {
-  to {
-    scale: 1 1.12;
+  92% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  100% {
+    opacity: 0;
+    translate: 400% 0;
   }
 }
 
@@ -5083,11 +5089,12 @@ html[data-movimiento="completo"] {
         animation-range: contain 80% contain 84%;
       }
 
-      /* La luz del alba cruza el cristal una vez (84–96 %), desde el lado del sol: una franja tenue (≤ 14 %: el texto de
-         las tarjetas sigue en AA) que se mueve con `translate`, sin reescalar la tableta, que queda nítida. */
+      /* La luz del alba cruza el cristal una vez (84–96 %), hacia el sol: una franja tenue (≤ 12 %: la tinta
+         sobre el extremo oscuro de las tarjetas de «Condicionado» sigue en 4,6:1) que se mueve con `translate`, sin reescalar la tableta, que queda nítida. Recorre solo
+         el interior de la pantalla y se enciende y apaga en sus extremos: sin `overflow` (un recorte redondeado costaba
+         ~5 ms por cuadro con rasterizado por software). */
       .h-tablero .tablero-pantalla {
         position: relative;
-        overflow: clip;
       }
 
       .h-tablero .tablero-pantalla::after {
@@ -5096,11 +5103,11 @@ html[data-movimiento="completo"] {
         top: 0;
         bottom: 0;
         left: 0;
-        width: 42%;
+        width: 20%;
         background-image: linear-gradient(
           104deg,
           rgb(255 240 212 / 0) 0%,
-          rgb(255 240 212 / 0.14) 50%,
+          rgb(255 240 212 / 0.12) 50%,
           rgb(255 240 212 / 0) 100%
         );
         pointer-events: none;
@@ -5133,10 +5140,6 @@ html[data-movimiento="completo"] {
         background-image:
           radial-gradient(40% 70% at var(--alba-x) 100%, rgb(232 200 140 / 0.42), rgb(232 200 140 / 0) 70%),
           linear-gradient(180deg, rgb(236 231 221 / 0) 30%, rgb(241 232 216 / 0.85) 100%);
-        transform-origin: 50% 100%;
-        animation: h-abrir var(--ease-enfasis) both;
-        animation-timeline: --historia;
-        animation-range: contain 84% contain 96%;
       }
 
       .h-alba::after {
@@ -5172,7 +5175,7 @@ html[data-movimiento="completo"] {
         box-shadow:
           0 0 0 1px rgb(122 94 51 / 0.18),
           0 0 60px 10px rgb(232 200 140 / 0.42);
-        animation: h-amanecer var(--ease-enfasis) both;
+        animation: h-amanecer linear both;
         animation-timeline: --historia;
         animation-range: contain 84% contain 96%;
       }
