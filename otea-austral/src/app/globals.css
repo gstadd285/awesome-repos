@@ -2770,7 +2770,8 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   row-gap: clamp(36px, 6vw, 64px);
-  padding: 0 max(24px, (100% - 1392px) / 2) 96px;
+  /* Al pie, 48 px en el teléfono (con el aire de la sección siguiente sumaba ~210 px vacíos tras «Ver metodología»). */
+  padding: 0 max(24px, (100% - 1392px) / 2) clamp(48px, 10vw, 96px);
   perspective: 1600px;
 }
 
