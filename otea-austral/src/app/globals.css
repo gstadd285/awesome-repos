@@ -1662,6 +1662,38 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   }
 }
 
+/* En el teléfono el plano queda de frente, como un dibujo técnico plano: inclinado, su texto se rasterizaba proyectado y
+   salía dentado a DPR 3 (también quieto, con movimiento reducido o sin JS). Las fichas se tienden sobre él, los hilos
+   llegan a su borde superior y nada se levanta en Z (con la perspectiva de `.plano`, un `translateZ` también reescala).
+   Con movimiento completo la entrada (`m-plano-mundo`) sigue llegando desde inclinado y termina aquí, nítida. */
+@media (max-width: 767.98px) {
+  @container (max-width: 519.98px) {
+    .plano-mundo,
+    .plano-cotas,
+    .plano-hilos,
+    .plano-evento,
+    .plano-ficha {
+      transform: none;
+    }
+
+    .plano-ficha {
+      top: 46cqw;
+    }
+
+    /* La lente recorre las fichas de pie (`rotateX(-90deg)`): sobre el plano de frente se vería de canto. Aquí ya se
+       apagaba en reposo; tampoco pasa. */
+    .plano-lente {
+      display: none;
+    }
+
+    .plano-hilo {
+      top: 46cqw;
+      height: hypot(calc(var(--hdx) * 1cqw), 12cqw);
+      rotate: atan2(calc(var(--hdx) * 1cqw), 12cqw);
+    }
+  }
+}
+
 /* ── Historia (portada): disposición base, sin animación ──────────────────
  * Sin soporte de animaciones ligadas al scroll, en pantallas chicas o con
  * movimiento reducido, las piezas se apilan en orden de lectura.
@@ -2783,6 +2815,14 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   --plano-ancho: min(560px, 100vw - 48px);
   justify-self: center;
   margin-block: -6% -1%;
+}
+
+/* En el teléfono va de frente y mide todo su alto (inclinado, su proyección era más baja y el margen negativo lo
+   acercaba al texto). */
+@media (max-width: 767.98px) {
+  .h-plano {
+    margin-block: 0;
+  }
 }
 
 /* A 8 px de cada borde: más ancho que la pista (`100% − 48px`), así que devuelve 16 px por lado con margen negativo (un

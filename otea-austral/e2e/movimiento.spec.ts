@@ -115,6 +115,24 @@ test.describe("ventana estrecha", () => {
     await contexto.close();
   });
 
+  test("en teléfono el plano termina de frente, sin proyección 3D (su texto no sale dentado), con y sin movimiento", async ({ browser }) => {
+    for (const reducedMotion of ["no-preference", "reduce"] as const) {
+      const contexto = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion });
+      const page = await contexto.newPage();
+      await page.goto("/");
+      await colocar(page, ".h-plano", 0.15);
+      // El mundo y lo que antes se levantaba en Z o se ponía de pie (cuando terminan de armarse).
+      const posturas = () =>
+        page.evaluate(() =>
+          [".plano-mundo", ".plano-evento", ".plano-hilos", ".plano-ficha-1", ".plano-ficha-3"]
+            .map((s) => getComputedStyle(document.querySelector(s)!).transform)
+            .filter((t) => !/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/.test(t)),
+        );
+      await expect.poll(posturas, { message: reducedMotion, timeout: 8000 }).toEqual([]);
+      await contexto.close();
+    }
+  });
+
   test("en táctil el texto se revela una sola vez, por tiempo: al dejar de deslizar nunca queda a medias", async ({ browser }) => {
     for (const ancho of [390, 768]) {
       const contexto = await browser.newContext({ viewport: { width: ancho, height: 900 }, hasTouch: true, isMobile: ancho < 700 });
