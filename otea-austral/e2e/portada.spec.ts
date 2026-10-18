@@ -244,6 +244,40 @@ test.describe("movimiento", () => {
     }
   });
 
+  test("en escritorio el foco nunca cae fuera de la pantalla: tabular desde el héroe lleva a cada parte de la historia", async ({ page }, info) => {
+    test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
+    await page.goto("/");
+    await page.waitForTimeout(1500);
+    await page.locator(".hero-acciones").getByRole("link", { name: "Ver una alerta de ejemplo" }).focus();
+    const vistos: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press("Tab");
+      // Deja terminar el desplazamiento suave del navegador hacia el foco.
+      await page.waitForTimeout(600);
+      const r = await page.evaluate(() => {
+        const a = document.activeElement as HTMLElement;
+        const c = a.getBoundingClientRect();
+        const arriba = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
+        return { texto: (a.textContent ?? "").trim(), enHistoria: Boolean(a.closest(".historia")), enVista: c.top >= 0 && c.bottom <= innerHeight, encima: Boolean(arriba && (arriba === a || a.contains(arriba))) };
+      });
+      if (!r.enHistoria) break;
+      vistos.push(r.texto);
+      expect(r.enVista, `«${r.texto}» en pantalla`).toBe(true);
+      expect(r.encima, `«${r.texto}» sin nada encima`).toBe(true);
+    }
+    expect(vistos).toEqual(["Ver metodología", "01Verificación", "02Impacto", "03Tu panel"]);
+    // Y de vuelta al héroe: Mayús+Tab (desde lo primero que sigue a la historia) recorre el camino al revés, con teclas
+    // seguidas, hasta los botones del principio.
+    for (let i = 0; i < 5; i++) await page.keyboard.press("Shift+Tab");
+    await page.waitForTimeout(600);
+    const vuelta = await page.evaluate(() => {
+      const a = document.activeElement as HTMLElement;
+      const c = a.getBoundingClientRect();
+      return { texto: (a.textContent ?? "").trim(), enVista: c.top >= 0 && c.bottom <= innerHeight };
+    });
+    expect(vuelta).toEqual({ texto: "Ver una alerta de ejemplo", enVista: true });
+  });
+
   test("en escritorio, lo que no está en su tramo no se dibuja (vigías) y el aviso no tapa «Datos de ejemplo» en una pantalla baja", async ({ page }, info) => {
     test.skip(info.project.name !== "escritorio", "La historia fija es solo para escritorio.");
     await page.setViewportSize({ width: 1024, height: 768 });

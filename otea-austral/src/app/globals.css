@@ -4683,9 +4683,14 @@ html[data-movimiento="completo"] {
       }
 
       /* Ya fuera de cuadro, el héroe decorativo no se dibuja (`visibility` heredada de la misma clave): sus capas dejan de
-         pintar. Las acciones siguen visibles para el foco. */
+         pintar. Las acciones siguen visibles para el foco, y el H1 (su copia `sr-only`), el antetítulo y la entrada para
+         los lectores de pantalla: `visibility: hidden` los sacaría del árbol de accesibilidad (ya apagados y apartados,
+         no se ven). */
       .hero-mando,
-      .hero-aviso {
+      .hero-aviso,
+      .h1-horizonte .sr-only,
+      .hero-antetitulo,
+      .hero-texto {
         visibility: visible;
       }
 
@@ -5200,7 +5205,8 @@ html[data-movimiento="completo"] {
       .h-hero:focus-within .hero-mando,
       .h-riel:focus-within {
         opacity: 1 !important;
-        translate: none !important;
+        /* `0 0`, no `none`: con `none !important` Chrome mantiene el `translate` de la animación (medido). */
+        translate: 0 0 !important;
         transform: none !important;
       }
     }

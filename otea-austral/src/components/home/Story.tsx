@@ -36,7 +36,7 @@ export function Story() {
       <div className="historia-escenario">
         {/* Héroe «Horizonte vivo»: el H1 partido por el horizonte, la entrada y la acción principal debajo, y la
             cinta de pie sobre el suelo. Bajo 1024 px, además, una alerta de ejemplo en el primer pliegue. */}
-        <div className="h-hero">
+        <div className="h-hero" data-tramo="0 0.095 0">
           <Horizonte />
           <p className="hero-antetitulo">
             <span aria-hidden="true" className="hero-punto" />
@@ -88,7 +88,7 @@ export function Story() {
           </p>
         </div>
 
-        <section aria-labelledby="paso-2-titulo" className="h-paso h-paso-2">
+        <section aria-labelledby="paso-2-titulo" className="h-paso h-paso-2" data-tramo="0.21 0.47 0.3">
           <p className="contador h-paso-numero">01 — Verificación</p>
           <TextoEnMovimiento
             como="h2"
@@ -109,7 +109,7 @@ export function Story() {
 
         <Blueprint className="h-plano escena" />
 
-        <section aria-labelledby="paso-3-titulo" className="h-paso h-paso-3">
+        <section aria-labelledby="paso-3-titulo" className="h-paso h-paso-3" data-tramo="0.462 0.73 0.6">
           <p className="contador h-paso-numero">02 — Impacto</p>
           <TextoEnMovimiento
             como="h2"
@@ -130,7 +130,7 @@ export function Story() {
 
         <Board className="h-tablero escena" />
 
-        <section aria-labelledby="paso-4-titulo" className="h-paso h-paso-4">
+        <section aria-labelledby="paso-4-titulo" className="h-paso h-paso-4" data-tramo="0.722 1 0.86">
           <p className="contador h-paso-numero">03 — Tu panel</p>
           <TextoEnMovimiento
             como="h2"
@@ -154,12 +154,14 @@ export function Story() {
           </Link>
         </section>
 
+        {/* `data-tramo` (héroe, pasos y riel): en qué parte de la historia fija se ven y adónde lleva el foco que les llega
+            fuera de ella (progreso de 0 a 1; lo usa `DirectorEscena`). */}
         {/* El alba detrás del panel ya de frente (solo en la historia fija), el riel de los tres pasos y el velo del
             relevo (hermano de las piezas 3D, nunca su ancestro: una opacidad en un ancestro aplanaría el 3D). */}
         <div className="h-alba" aria-hidden="true">
           <span className="h-alba-sol" />
         </div>
-        <nav className="h-riel" aria-label="Pasos de la historia">
+        <nav className="h-riel" aria-label="Pasos de la historia" data-tramo="0.17 1 0.3">
           <ol>
             {RIEL.map((paso, i) => (
               <li key={paso.ancla}>

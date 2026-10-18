@@ -75,6 +75,8 @@ function cerrarMenu(menu: HTMLElement | null) {
  * - **Vigías:** el mismo observador marca `data-fuera` en las franjas `[data-vigia]` de la historia y en la copia
  *   decorativa de los textos ligados al scroll (`.kx-scroll > .kx-visual`). El CSS deja de dibujar lo que no está cerca
  *   de la pantalla: una animación ligada al scroll mantiene su capa viva también fuera de su tramo.
+ * - **Foco en la historia fija:** si el foco llega con el teclado a una parte de la historia (`data-tramo`: desde, hasta
+ *   y destino, en progreso de 0 a 1) fuera de su tramo, apartada de la pantalla, lleva la página a ese momento.
  * - **Menú del teléfono** (siempre, también con movimiento reducido: no es movimiento): un clic en un enlace del menú
  *   lo cierra (`hidePopover`), y si el enlace es un ancla de esta página el salto es instantáneo, detrás de la hoja que
  *   se funde, y el foco pasa al destino. Si el foco sale del menú con el teclado, también se cierra.
@@ -298,6 +300,21 @@ export function DirectorEscena() {
       for (const el of document.querySelectorAll(VIGILADOS)) bucles.observe(el);
     };
 
+    // El foco llega a una parte de la historia fija que no está en su tramo: la página salta a ese momento. Al instante y
+    // dentro del propio evento (en un fundido, el desplazamiento del navegador hacia el foco se colaba en medio y el
+    // salto aterrizaba hasta 100 px antes; medido).
+    const alEnfocar = (evento: FocusEvent) => {
+      const parte = evento.target instanceof Element ? evento.target.closest<HTMLElement>("[data-tramo]") : null;
+      const historia = parte?.closest<HTMLElement>(".historia");
+      // Solo en la historia fija (allí sus partes son absolutas); `data-tramo`: «desde hasta destino», en progreso.
+      if (!parte || !historia || getComputedStyle(parte).position !== "absolute") return;
+      const [desde, hasta, destino] = (parte.dataset.tramo ?? "").split(" ").map(Number);
+      const inicio = historia.getBoundingClientRect().top + window.scrollY - 72;
+      const recorrido = historia.offsetHeight - window.innerHeight + 72;
+      const progreso = (window.scrollY - inicio) / recorrido;
+      if (progreso < desde || progreso > hasta) window.scrollTo({ top: inicio + destino * recorrido, behavior: "instant" });
+    };
+
     const apagarBucles = () => {
       bucles?.disconnect();
       bucles = null;
@@ -347,6 +364,7 @@ export function DirectorEscena() {
     fino.addEventListener("change", sincronizar);
     document.addEventListener("click", alClic, true);
     document.addEventListener("focusout", alSalirDelMenu, true);
+    document.addEventListener("focusin", alEnfocar);
     sincronizar();
 
     return () => {
@@ -356,6 +374,7 @@ export function DirectorEscena() {
       fino.removeEventListener("change", sincronizar);
       document.removeEventListener("click", alClic, true);
       document.removeEventListener("focusout", alSalirDelMenu, true);
+      document.removeEventListener("focusin", alEnfocar);
       apagarPuntero();
       apagarBucles();
       apagarCinta();
