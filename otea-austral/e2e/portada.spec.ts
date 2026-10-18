@@ -213,11 +213,13 @@ test.describe("movimiento", () => {
     await expect.poll(async () => Number(await paso3.evaluate((e) => getComputedStyle(e).opacity))).toBeGreaterThan(0.9);
   });
 
-  /** Lleva la historia fija a un progreso exacto (0 a 1): `(scrollY − top + 72) / (alto − vh + 72)`. */
+  /** Lleva la historia fija a un progreso exacto (0 a 1): `(scrollY − top + 72) / (alto − vh + 72)`. Espera dos cuadros:
+      las animaciones ligadas al scroll se actualizan en el cuadro siguiente, no al mover la página. */
   const progreso = (page: import("@playwright/test").Page, p: number) =>
-    page.evaluate((f) => {
+    page.evaluate(async (f) => {
       const s = document.querySelector<HTMLElement>(".historia")!;
       window.scrollTo({ top: s.offsetTop - 72 + f * (s.offsetHeight - innerHeight + 72), behavior: "instant" });
+      await new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo)));
     }, p);
 
   test("en escritorio el horizonte sale entero: cielo, línea y suelo suben juntos, sin franja de fondo entre ellos", async ({ page }, info) => {
