@@ -129,7 +129,7 @@ de frente y nítido con el alba detrás. Todo es CSS 3D:
   Guion: héroe 0–10 %, cámara y plano 6–20 %, paso 01 (verificar) 21–47 %, paso 02 (impacto) 46–73 %, paso 03 (de frente,
   `transform: none` al 84 %) 72–100 %, velo del relevo del 94 % al 25 % de la salida (termina cuando ya asoma la sección siguiente). Los textos de los pasos están en la columna del marco
   (`--marco-x`, `--col-w`) y las piezas centradas en el resto (`--piezas-cx`, `--tab-w`). Riel `01 · 02 · 03` abajo a la
-  izquierda (una línea de avance) con tres anclas (`#paso-verificar`, `#paso-impacto`, `#paso-panel`: 30, 60 y 86 %).
+  izquierda (una línea de avance, el paso en curso en tinta y un filete de latón al pasar el cursor) con tres anclas (`#paso-verificar`, `#paso-impacto`, `#paso-panel`: 30, 60 y 86 %).
 - **Piezas que se arman al entrar** (< 1024 px, p. ej. un panel lateral o un teléfono): las mismas piezas se
   apilan en orden de lectura y cada una se arma al entrar en pantalla (claves `m-*`; las piezas llevan la
   clase `escena`): ligadas al scroll donde hay `animation-timeline` y, donde no (Firefox, Safari anterior al
@@ -704,6 +704,25 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   se salía 8 px por la derecha): margen negativo para devolver lo que sobra.
 - **Medir el costo por cuadro con la traza, no con fps**: los fps por tramo varían ±8 entre pasadas; la mediana de tres
   trazas (`dibujo/cuadro`, `verificacion/T4/r1/medir.sh` del rediseño) distingue cambios de 1–2 ms.
+- **Lo que debe quedar bajo un texto centrado se ancla a ese texto, no a un `%` del escenario**: la línea del alba al 74 %
+  cortaba «Ver metodología» en los portátiles comunes (1366×768, 1440×900, 1536×864). El paso 03 va centrado y mide como
+  mucho ~420 px, así que la línea va en `50% + 244px` (35–60 px bajo el botón y sobre el riel); una e2e lo vigila en cinco
+  tamaños.
+- **Una escala sobre una capa que ya pasó por claves 3D no se vuelve a rasterizar**: el acercamiento final (1 → 1,03)
+  dejaba blando el texto del tablero a DPR 1. La tableta queda en `transform: none` hasta el relevo; la meseta la mueven el
+  sol que sube y una franja de luz que cruza el cristal (`translate`, sin recorte).
+- **Un `overflow: clip` con `border-radius` sobre una capa animada cuesta caro**: la franja de luz recortada por la pantalla
+  redondeada sumaba ~5 ms por cuadro con rasterizado por software; recorriendo solo el interior y apagándose en los extremos,
+  ~1,4 ms. Escalar un `::before` de pantalla entera (el cielo del alba) era otra capa grande por cuadro: se quitó.
+- **Una franja translúcida sobre texto baja su contraste**: con 14 % de blanco cálido, la tinta sobre el extremo oscuro de
+  una tarjeta de «Condicionado» bajaba a 4,46:1; con 12 %, 4,64:1.
+- **Una copia decorativa del texto con `content: attr(data-texto) / ""`** (texto alternativo vacío) no duplica el nombre
+  accesible: así el riel marca el paso en curso en tinta con solo opacidad (sin animar `color`, que iría al hilo principal).
+- **En el teléfono el plano va de frente** (bajo 768 px y con el plano < 520 px): inclinado, su texto se rasterizaba
+  proyectado y salía dentado a DPR 3. Ojo con la `perspective` de `.plano`: un `translateZ` también reescala, así que ahí
+  nada se levanta en Z.
+- **Salidas de texto en ~30 px**: `h-salir` se apaga en el 70 % de su tramo; con un tramo de 2,2 % de recorrido la opacidad
+  pasa de 0,9 a 0,1 en 25–30 px a 1440×900 (pasos y héroe; `medias.mjs` del rediseño lo mide cada 5 px).
 
 ## Lo aprendido (cuentas de personas usuarias)
 
