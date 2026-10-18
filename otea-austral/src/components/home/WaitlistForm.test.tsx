@@ -164,7 +164,7 @@ describe("WaitlistForm · apartado de condiciones", () => {
     // Pista de la validación en línea (la muestra el CSS con `:user-invalid`): redactada en neutro, es la descripción del
     // campo desde el principio, así que los lectores de pantalla la oyen sin depender de enviar.
     expect(container.querySelector(".campo-pista")).toHaveTextContent("nombre@correo.cl");
-    expect(screen.getByLabelText("Tu correo")).toHaveAccessibleDescription("Escribe un correo como nombre@correo.cl");
+    expect(screen.getByLabelText("Tu correo")).toHaveAccessibleDescription("Formato: nombre@correo.cl");
     await user.click(screen.getByRole("button", { name: "Unirme a la lista" }));
     await waitFor(() => expect(container.querySelector("form")).toHaveAttribute("data-estado", "invalida"));
     expect(screen.getByLabelText("Tu correo")).toHaveAccessibleDescription("Escribe un correo válido.");

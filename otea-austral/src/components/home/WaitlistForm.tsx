@@ -133,7 +133,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
         // del campo (redactada para leerse bien antes y después de escribir): los lectores de pantalla la oyen sin enviar.
         <p id="correo-pista" className="campo-pista">
           <IconoAviso />
-          Escribe un correo como nombre@correo.cl
+          Formato: nombre@correo.cl
         </p>
       )}
 
