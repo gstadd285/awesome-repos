@@ -1,4 +1,6 @@
 @import "tailwindcss" source("../");
+/* Las pruebas citan clases y propiedades en sus textos (`backdrop-filter`, `transition`…): no generan utilidades. */
+@source not "../**/*.test.{ts,tsx}";
 
 /*
  * Sistema visual de Otea Austral: editorial claro, inspirado en la referencia
