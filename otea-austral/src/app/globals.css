@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss" source("../");
 
 /*
  * Sistema visual de Otea Austral: editorial claro, inspirado en la referencia
@@ -2965,6 +2965,25 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   .hoja {
     border-radius: 32px 32px 0 0;
   }
+}
+
+
+/* Vigía de cada capítulo del producto (vitrina, noche y lista): una franja invisible que se extiende media pantalla por
+   encima y por debajo de su sección. `DirectorEscena` le pone `data-fuera` cuando no toca la pantalla, y entonces las
+   piezas ligadas al scroll del capítulo sueltan su animación (y su capa): lejos de la pantalla ya están en su estado
+   final o aún no han entrado, y al volver la animación reaparece con media pantalla de margen, sin parpadeo. */
+.vigia-producto {
+  position: absolute;
+  top: -50vh;
+  bottom: -50vh;
+  left: 0;
+  width: 1px;
+  pointer-events: none;
+}
+
+/* La lista es la última sección: su franja no se alarga hacia abajo (alargaría la página bajo el pie). */
+#lista-de-espera > .vigia-producto {
+  bottom: 0;
 }
 
 /* Los `fieldset` no se ensanchan con su contenido (el resto del reinicio lo hace el preflight). */
@@ -6691,14 +6710,14 @@ html[data-movimiento="completo"] {
      `transform` del cambio de escenario) y las notas se encienden; todo termina antes de la zona de lectura. */
   &:not([data-texto="unico"]) {
     @supports (animation-timeline: view()) {
-      .vitrina-notas {
-        view-timeline: --notas block;
-      }
-
+      /* Cada nota es su propia línea de tiempo: se enciende cuando ella asoma (texto pleno en ~30 px de scroll) y su
+         filete se traza un poco antes y más largo. Ligadas a la caja de todas las notas, las de abajo terminaban fuera
+         de la pantalla y la de arriba quedaba translúcida ~110 px. */
       .vitrina-notas .nota {
+        view-timeline: --nota block;
         animation: vitrina-nota-entrada linear both;
-        animation-timeline: --notas;
-        animation-range: entry calc(4vh + var(--n, 0) * 3vh) entry calc(16vh + var(--n, 0) * 3vh);
+        animation-timeline: --nota;
+        animation-range: entry 28px entry 60px;
       }
 
       .vitrina-notas .nota::before {
@@ -6706,8 +6725,20 @@ html[data-movimiento="completo"] {
           vitrina-trazo var(--dur-4) var(--ease-salida) backwards,
           vitrina-trazo-entrada linear both;
         animation-delay: calc(var(--n, 0) * var(--escalon-anotacion)), 0s;
-        animation-timeline: auto, --notas;
-        animation-range: normal, entry calc(var(--n, 0) * 3vh) entry calc(18vh + var(--n, 0) * 3vh);
+        animation-timeline: auto, --nota;
+        animation-range: normal, entry 0px entry 140px;
+      }
+
+      /* Lejos de la pantalla (vigía), las notas sueltan su animación y su capa. */
+      #ejemplos:has(> .vigia-producto[data-fuera]) .vitrina-notas .nota,
+      #ejemplos:has(> .vigia-producto[data-fuera]) .vitrina-notas .nota::before {
+        animation: none;
+      }
+
+      /* La copia decorativa de los titulares y entradas del producto, lejos de la pantalla, ya no se dibuja (regla del
+         texto en movimiento); aquí además suelta sus animaciones. Vuelven en el mismo cuadro en que vuelve a verse. */
+      :is(#ejemplos, #temas, .noche, #lista-de-espera) .kx-scroll > .kx-visual[data-fuera] * {
+        animation: none;
       }
     }
   }
@@ -6720,17 +6751,6 @@ html[data-movimiento="completo"] {
         z-index: 2;
         margin-top: -30vh;
       }
-    }
-  }
-
-  @media print {
-    .vitrina-tarjeta,
-    .vitrina-notas .nota,
-    .vitrina-notas .nota > *,
-    .vitrina-notas .nota::before,
-    .solo-a,
-    .solo-b {
-      animation: none !important;
     }
   }
 }
@@ -6820,12 +6840,6 @@ html[data-movimiento="completo"] {
 
   .tm-cifra {
     animation: tm-cifra var(--dur-3) var(--ease-salida) backwards;
-  }
-
-  @media print {
-    .tm-cifra {
-      animation: none !important;
-    }
   }
 }
 
@@ -6942,13 +6956,10 @@ html[data-movimiento="completo"] {
     }
   }
 
-  @media print {
-    .noche-fondo,
-    .noche-alba,
-    .noche-fases-avance,
-    .terminal-linea,
-    .terminal-cursor {
-      animation: none !important;
+  /* Lejos de la pantalla (vigía), la banda, el alba y la terminal sueltan su animación y su capa. */
+  @supports (animation-timeline: view()) {
+    .noche:has(> .vigia-producto[data-fuera]) :is(.noche-fondo, .noche-alba, .noche-fases-avance, .terminal-linea, .terminal-cursor) {
+      animation: none;
     }
   }
 }
@@ -7038,12 +7049,10 @@ html[data-movimiento="completo"] {
       .notif-frente {
         animation-range: entry 30% entry 90%;
       }
-    }
-  }
 
-  @media print {
-    .notif {
-      animation: none !important;
+      #lista-de-espera:has(> .vigia-producto[data-fuera]) .notif {
+        animation: none;
+      }
     }
   }
 }
@@ -7058,6 +7067,14 @@ html[data-movimiento="completo"][data-motor] {
       animation: notif-llegar var(--dur-4) var(--ease-salida) backwards;
       animation-delay: calc(120ms + var(--d, 0ms));
     }
+  }
+}
+
+/* Al imprimir, ninguna pieza del producto se anima (vitrina, temas, noche y lista). */
+@media print {
+  html[data-movimiento="completo"] :is(#ejemplos, #temas, .noche, #lista-de-espera) *,
+  html[data-movimiento="completo"] .nota::before {
+    animation: none !important;
   }
 }
 

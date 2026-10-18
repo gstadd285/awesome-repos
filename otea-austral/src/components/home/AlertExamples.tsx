@@ -145,6 +145,8 @@ export function AlertExamples() {
   const prueba = vistaSinPrimaria("ejemplo-ormuz");
   return (
     <section id="ejemplos" aria-labelledby="ejemplos-titulo" className="hoja scroll-mt-24">
+      {/* Vigía del capítulo: lejos de la pantalla, sus piezas ligadas al scroll sueltan la animación (ver `.vigia-producto`). */}
+      <span className="vigia-producto" data-vigia aria-hidden="true" />
       <div className="mx-auto max-w-[1440px] px-6 py-20 lg:py-[120px]">
         <SectionEyebrow>Alertas</SectionEyebrow>
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-end">

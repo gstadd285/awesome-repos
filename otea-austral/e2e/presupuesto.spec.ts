@@ -13,9 +13,14 @@ import { expect, test, type Browser } from "@playwright/test";
  * valores de la prueba en paralelo, Chips 48, Cobre 57) porque el cambio de escenario lo hace `:has()` sin JavaScript, y
  * «Tu mañana» guarda los seis avisos de ejemplo (se pliegan, no se desmontan). Antes de subirlo se quitaron 122 nodos que
  * no aportaban (la cara duplicada de cada tema, envoltorios de los avisos, íconos SVG de las direcciones y de los
- * medidores, numerales de las notas): de 1503 a 1381.
+ * medidores, numerales de las notas): de 1503 a 1381. En la ronda 1 de T5 se midieron 1382 (tres vigías nuevas y una
+ * entrada más corta).
+ *
+ * Animaciones: con las vigías del producto (`.vigia-producto`), las piezas ligadas al scroll de la vitrina, la noche y
+ * la lista sueltan su animación lejos de la pantalla. Arriba de la portada pasaron de 195 a 122 (escritorio), así que el
+ * umbral baja de 200 a la meta del brief (< 160).
  */
-const UMBRAL = { transferidoKB: 420, nodos: 1400, animaciones: 200 };
+const UMBRAL = { transferidoKB: 420, nodos: 1400, animaciones: 160 };
 
 const VENTANAS = [
   { nombre: "escritorio 1440", opciones: { viewport: { width: 1440, height: 900 } } },

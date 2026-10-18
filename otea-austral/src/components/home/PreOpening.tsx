@@ -21,6 +21,8 @@ export function PreOpening() {
   const fecha = vistasPortada.map((v) => v.fecha).sort().at(-1)!;
   return (
     <section aria-labelledby="pre-apertura-titulo" className="noche en-tinta">
+      {/* Vigía del capítulo: lejos de la pantalla, sus piezas ligadas al scroll sueltan la animación (ver `.vigia-producto`). */}
+      <span className="vigia-producto" data-vigia aria-hidden="true" />
       <div className="noche-fondo" aria-hidden="true">
         <span className="noche-alba escena" />
         <span className="noche-horizonte" />
