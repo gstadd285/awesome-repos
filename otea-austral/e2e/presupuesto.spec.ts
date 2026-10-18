@@ -6,8 +6,16 @@ import { expect, test, type Browser } from "@playwright/test";
  * animaciones que existen a la vez. Línea base antes del rediseño: 331 KB, 992 nodos y 188 animaciones en
  * escritorio. Umbrales iniciales del rediseño «Horizonte»; T7 los ajusta a lo medido al final.
  * Abre sus propias ventanas (1440 y 390), así que corre solo en el proyecto de escritorio.
+ *
+ * Nodos: T5 (producto que se toca) subió el umbral de 1300 a 1400. Medido en el build de producción (1440 y 390, el
+ * mismo DOM): 1381 nodos, de ellos historia 381 (T4), vitrina 297, «Tu mañana» 226, lista de espera 107, pre-apertura
+ * 102, preguntas 75, pie 51 y `<head>` 47. La vitrina guarda las tres alertas reales en el DOM (Ormuz 83 nodos con sus
+ * valores de la prueba en paralelo, Chips 48, Cobre 57) porque el cambio de escenario lo hace `:has()` sin JavaScript, y
+ * «Tu mañana» guarda los seis avisos de ejemplo (se pliegan, no se desmontan). Antes de subirlo se quitaron 122 nodos que
+ * no aportaban (la cara duplicada de cada tema, envoltorios de los avisos, íconos SVG de las direcciones y de los
+ * medidores, numerales de las notas): de 1503 a 1381.
  */
-const UMBRAL = { transferidoKB: 420, nodos: 1300, animaciones: 200 };
+const UMBRAL = { transferidoKB: 420, nodos: 1400, animaciones: 200 };
 
 const VENTANAS = [
   { nombre: "escritorio 1440", opciones: { viewport: { width: 1440, height: 900 } } },
