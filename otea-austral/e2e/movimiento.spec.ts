@@ -133,6 +133,22 @@ test.describe("ventana estrecha", () => {
     }
   });
 
+  test("en la tableta vertical el paso 02 abre el tablero a todo el ancho y el aviso deja aire hasta el borde", async ({ browser }) => {
+    const contexto = await browser.newContext({ viewport: { width: 834, height: 1194 }, hasTouch: true });
+    const page = await contexto.newPage();
+    await page.goto("/");
+    await colocar(page, ".h-tablero", 0.3);
+    const m = await page.evaluate(() => {
+      const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+      return { paso: r(".h-paso-3"), tablero: r(".h-tablero"), aviso: r(".tablero-aviso"), vw: innerWidth };
+    });
+    // Sin vacío a su lado: el paso 02 va sobre el tablero, ocupando su ancho (su texto a 60ch).
+    expect(m.paso.bottom).toBeLessThanOrEqual(m.tablero.top);
+    expect(m.paso.width).toBeGreaterThan(m.vw * 0.8);
+    expect(m.vw - m.aviso.right).toBeGreaterThanOrEqual(16);
+    await contexto.close();
+  });
+
   test("en táctil el texto se revela una sola vez, por tiempo: al dejar de deslizar nunca queda a medias", async ({ browser }) => {
     for (const ancho of [390, 768]) {
       const contexto = await browser.newContext({ viewport: { width: ancho, height: 900 }, hasTouch: true, isMobile: ancho < 700 });

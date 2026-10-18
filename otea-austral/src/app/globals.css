@@ -2910,14 +2910,15 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-/* Tableta vertical: en zigzag. El paso 01 junto al plano; el tablero, ancho (con sus tres columnas y el menú), entre el
-   paso 02 a la izquierda y el 03 a la derecha. Párrafos a 60ch. */
+/* Tableta vertical: en zigzag. El paso 01 junto al plano; el 02 abre el tablero a todo el ancho (su texto a 60ch: en
+   la mitad izquierda dejaba un vacío de ~420 × 340 px a su lado), el tablero ancho (con sus tres columnas y el menú) y
+   el 03 a la derecha. El aviso no sobresale del bisel: a sangre del tablero quedaba a 6 px del borde de la pantalla. */
 @media (min-width: 768px) and (max-width: 1023.98px) {
   .historia-escenario {
     grid-template-areas:
       "heroe heroe"
       "p2 plano"
-      "p3 ."
+      "p3 p3"
       "tablero tablero"
       ". p4";
   }
@@ -2927,8 +2928,16 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     align-self: start;
   }
 
+  .h-paso-3 .h-paso-titulo {
+    max-width: 24ch;
+  }
+
   .h-paso-texto {
     max-width: 60ch;
+  }
+
+  .tablero-aviso {
+    right: 0;
   }
 }
 
