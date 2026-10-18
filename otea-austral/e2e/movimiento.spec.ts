@@ -95,8 +95,13 @@ test.describe("ventana estrecha", () => {
     expect(await opacidad(page, ".h-tablero")).toBeLessThan(0.3);
     await colocar(page, ".h-tablero", 0.25);
     expect(await opacidad(page, ".h-tablero")).toBeCloseTo(1, 2);
-    // El tablero casi a sangre (≥ 340 px) y su texto de 12 px o más.
-    expect(await page.locator(".h-tablero").evaluate((e) => e.getBoundingClientRect().width)).toBeGreaterThanOrEqual(340);
+    // El tablero casi a sangre (≥ 340 px), entero dentro de la pantalla (8 px por lado: se ve el bisel de los dos
+    // lados) y su texto de 12 px o más.
+    const caja = await page.locator(".h-tablero").evaluate((e) => ({ ...e.getBoundingClientRect().toJSON(), vw: innerWidth }));
+    expect(caja.width).toBeGreaterThanOrEqual(340);
+    expect(caja.left).toBeGreaterThanOrEqual(0);
+    expect(caja.right).toBeLessThanOrEqual(caja.vw);
+    expect(Math.abs(caja.left - (caja.vw - caja.right))).toBeLessThan(1);
     const tamanos = await page
       .locator(".h-tablero")
       .evaluate((t) => [...t.querySelectorAll(".tablero-tarjeta p, .tablero-tarjeta span")].map((e) => parseFloat(getComputedStyle(e).fontSize)));
@@ -231,6 +236,19 @@ test.describe("navegador sin animation-timeline", () => {
     expect(await titular.evaluate((e) => [...e.querySelectorAll(".kx-p")].every((p) => new DOMMatrix(getComputedStyle(p).transform).f === 0))).toBe(true);
     expect(await titular.evaluate((e) => e.getAnimations({ subtree: true }).length)).toBe(0);
     await contexto.close();
+  });
+
+  test("con «reducir movimiento» en escritorio, el plano y sus rótulos caben en la pantalla", async ({ browser }) => {
+    for (const ancho of [1024, 1280, 1440]) {
+      const contexto = await browser.newContext({ viewport: { width: ancho, height: 800 }, reducedMotion: "reduce" });
+      const page = await contexto.newPage();
+      await page.goto("/");
+      await colocar(page, ".h-plano", 0.2);
+      const caja = await page.locator(".plano-mundo").evaluate((e) => e.getBoundingClientRect().toJSON());
+      expect(caja.left, `${ancho}: izquierda`).toBeGreaterThanOrEqual(0);
+      expect(caja.right, `${ancho}: derecha`).toBeLessThanOrEqual(ancho - 8);
+      await contexto.close();
+    }
   });
 
   test("con «reducir movimiento» no se oculta ni se anima nada", async ({ browser }) => {
