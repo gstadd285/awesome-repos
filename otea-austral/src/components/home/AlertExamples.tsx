@@ -119,7 +119,9 @@ function Notas({ v, prueba }: { v: AlertView; prueba?: AlertView }) {
     },
   ];
   return (
-    <ol className="vitrina-notas escena grid gap-4" aria-label="Cómo leer esta alerta">
+    // Enfocable: en el teléfono es un riel desplazable sin nada enfocable dentro (WCAG 2.1.1; en WebKit no se alcanzaría
+    // con el teclado).
+    <ol className="vitrina-notas escena grid gap-4" aria-label="Cómo leer esta alerta" tabIndex={0}>
       {notas.map((n, i) => (
         <li key={n.titulo} className={`nota nota-${i + 1} relative pt-3.5`}>
           {/* El número (01–04) lo pone un contador del CSS. */}

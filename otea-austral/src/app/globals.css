@@ -3228,9 +3228,13 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-/* Escena: la tarjeta y sus anotaciones. En el teléfono, las notas son una lista numerada bajo la tarjeta. */
+/* Escena: la tarjeta y sus anotaciones. En el teléfono, las notas son una lista numerada bajo la tarjeta. La lista
+   recibe el foco (`tabindex="0"`): en el teléfono es un riel desplazable sin nada enfocable dentro, y en WebKit no se
+   alcanzaría con el teclado. Su anillo es el del sitio (tinta y halo de latón). */
 .vitrina-notas {
   counter-reset: nota;
+  border-radius: 14px;
+  box-shadow: var(--anillo, 0 0 #0000);
 }
 
 /* Filete de la nota: una línea de 1 px con su punto de latón oscuro. */
@@ -3291,8 +3295,9 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     grid-auto-flow: column;
     grid-auto-columns: min(80%, 300px);
     gap: 20px;
-    margin-inline: -24px;
-    padding: 2px 24px 4px;
+    /* El aire de arriba y abajo (devuelto con margen: el alto no cambia) separa el anillo de foco de los filetes y del texto. */
+    margin: -8px -24px;
+    padding: 10px 24px 12px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
@@ -3323,8 +3328,20 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     padding-top: 12px;
   }
 
+  /* Junto a la tarjeta, la lista es una columna de texto: el anillo tinta con aire y sin halo, que tocaría las letras. */
+  .vitrina-notas:focus-visible {
+    outline-offset: 12px;
+    box-shadow: none;
+  }
+
   .demo:has(.vitrina-radio) .vitrina-mando {
     justify-content: flex-start;
+  }
+
+  /* El riel va a sangre: el anillo se pinta por dentro (un anillo de fuera quedaría cortado por los bordes). */
+  .vitrina-notas:focus-visible {
+    outline-offset: -2px;
+    --anillo: inset 0 0 0 5px rgb(176 141 87 / 0.4);
   }
 }
 
@@ -3364,6 +3381,18 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     align-self: stretch;
     padding: 0;
     pointer-events: none;
+  }
+
+  /* Aquí la lista cubre toda la escena (tarjeta incluida): con el foco, el anillo rodea cada nota y no la escena. */
+  .vitrina-notas:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .vitrina-notas:focus-visible .nota {
+    border-radius: 10px;
+    outline: 2px solid var(--color-ink);
+    outline-offset: 12px;
   }
 
   .nota {
@@ -7237,6 +7266,13 @@ html[data-movimiento="completo"] {
 
   .menu-enlace:focus-visible {
     animation-name: menu-foco;
+  }
+
+  /* El riel de notas del teléfono también lleva el anillo por dentro. */
+  @media (max-width: 767.98px) {
+    .vitrina-notas:focus-visible {
+      animation-name: menu-foco;
+    }
   }
 
   /* El logo se aparta en 120 ms y vuelve con la misma curva cuando el foco sigue. */
