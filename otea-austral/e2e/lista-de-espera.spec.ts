@@ -43,6 +43,9 @@ test.describe("lista de espera", () => {
     const pasos = page.getByRole("list", { name: "La inscripción se verifica en dos pasos" });
     await expect(pasos.getByRole("listitem").nth(1)).toHaveAttribute("aria-current", "step");
     await expect(pasos.getByRole("listitem").nth(0)).not.toHaveAttribute("aria-current", "step");
+    // Recogido en el check, el botón ya no reenvía, y el foco (que soltó al desactivarse mientras esperaba) está en el aviso.
+    await expect(page.getByRole("button", { name: "Unirme a la lista" })).toHaveAttribute("aria-disabled", "true");
+    await expect(estadoDeLaLista(page)).toBeFocused();
   });
 
   test("explica la verificación en dos pasos y resume las condiciones de uso antes de enviar", async ({ page }) => {

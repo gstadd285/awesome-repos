@@ -51,6 +51,23 @@ test.describe("producto: vitrina, «Tu mañana», noche → alba y lista de espe
     expect(errores).toEqual([]);
   });
 
+  test("en el teléfono el riel de notas se alcanza con el teclado, lleva el anillo del sitio y las flechas lo recorren", async ({ page }) => {
+    test.skip(page.viewportSize()!.width >= 768, "Desde 768 px las notas no se desplazan");
+    await page.goto("/");
+    const riel = page.locator(".vitrina-panel-ormuz .vitrina-notas");
+    await riel.scrollIntoViewIfNeeded();
+    // Es una región desplazable sin nada enfocable dentro: sin su propio foco, en WebKit no se alcanzaría (WCAG 2.1.1).
+    expect(await riel.evaluate((e) => e.scrollWidth > e.clientWidth + 100)).toBe(true);
+    await page.getByRole("switch", { name: "Prueba: quita la fuente primaria" }).focus();
+    for (let i = 0; i < 8 && !(await riel.evaluate((e) => e === document.activeElement)); i++) await page.keyboard.press("Tab");
+    await expect(riel).toBeFocused();
+    // El anillo va por dentro (el riel va a sangre): tinta de 2 px y halo de latón.
+    await expect.poll(() => riel.evaluate((e) => getComputedStyle(e).outlineOffset)).toBe("-2px");
+    expect(await riel.evaluate((e) => getComputedStyle(e).boxShadow)).toContain("inset");
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => riel.evaluate((e) => e.scrollLeft)).toBeGreaterThan(0);
+  });
+
   test("«Tu mañana»: marcar Energía suma un aviso de ejemplo y el contador lo sigue", async ({ page }) => {
     const errores = vigilarErrores(page);
     await page.goto("/");
@@ -65,6 +82,16 @@ test.describe("producto: vitrina, «Tu mañana», noche → alba y lista de espe
     }
     await energia.click();
     await expect(energia).toHaveAttribute("aria-pressed", "true");
+    // El nombre en marfil (la capa tinta) cae exactamente sobre el nombre en tinta: durante el cambio la palabra no se
+    // parte en dos alturas, y al terminar la etiqueta no salta.
+    const desfases = await page.locator("#temas .tm-tema").evaluateAll((temas) =>
+      temas.map((t) => {
+        const base = t.querySelector(":scope > .tm-nombre")!.getBoundingClientRect();
+        const tinta = t.querySelector(".tm-tinta .tm-nombre")!.getBoundingClientRect();
+        return Math.abs(tinta.top - base.top) + Math.abs(tinta.left - base.left);
+      }),
+    );
+    expect(Math.max(...desfases)).toBeLessThan(0.5);
     await expect(avisosVisibles(page)).toHaveCount(3);
     await expect(page.locator(".tm-cifra")).toHaveText("3");
     await expect(page.getByRole("complementary", { name: "Tu mañana, vista previa" })).toContainText(
@@ -96,6 +123,36 @@ test.describe("producto: vitrina, «Tu mañana», noche → alba y lista de espe
       // La de atrás de la bandeja queda a escala 0,96 a propósito (con `scale`, no con `transform`).
       expect(pendientes, selector).toEqual([]);
     }
+  });
+
+  test("en escritorio la terminal se escribe renglón a renglón al bajar y el cursor final se apaga", async ({ page }) => {
+    test.skip(page.viewportSize()!.width < 1024, "En táctil y estrecho se escribe una vez, por tiempo");
+    await page.goto("/");
+    const final = page.locator(".terminal-final");
+    const cursor = final.locator(".terminal-cursor");
+    const ubicar = (fraccion: number) =>
+      final.evaluate((l, f) => {
+        scrollTo({ top: l.getBoundingClientRect().top + scrollY - innerHeight * f, behavior: "instant" });
+      }, fraccion);
+    const opacidad = (l: typeof final) => l.evaluate((e) => Number(getComputedStyle(e).opacity));
+    // Recién asomado bajo el pliegue: aún sin escribir.
+    await ubicar(0.99);
+    await expect.poll(() => opacidad(final)).toBeLessThan(0.5);
+    // La línea de tiempo del renglón es la página (con `overflow: hidden` la terminal la congelaba: todo salía escrito).
+    expect(
+      await final.evaluate((l) => {
+        const tl = l.getAnimations()[0]?.timeline as unknown as { source?: Element } | undefined;
+        return tl?.source === document.scrollingElement;
+      }),
+    ).toBe(true);
+    // Entrando (~85 % de la pantalla): escrito, con el cursor encendido.
+    await ubicar(0.8);
+    await expect.poll(() => opacidad(final)).toBe(1);
+    await expect.poll(() => opacidad(cursor)).toBe(1);
+    // Ya en la zona de lectura: el cursor se apagó (terminó de escribir).
+    await ubicar(0.45);
+    await expect.poll(() => opacidad(cursor)).toBe(0);
+    await expect.poll(() => opacidad(final)).toBe(1);
   });
 
   test("la noche se abre a sangre y amanece; el texto queda dentro de la banda", async ({ page }) => {
