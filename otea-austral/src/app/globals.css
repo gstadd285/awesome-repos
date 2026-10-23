@@ -4131,7 +4131,8 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   background-color: rgb(122 94 51 / 0.42);
 }
 
-/* El sol asoma sobre la línea (su mitad inferior queda recortada), con un halo corto. */
+/* El sol asoma 20 px sobre la línea (el resto queda recortado), con un halo corto y 20 px de aire bajo el titular: más
+   alto y más cerca, se leía como una mota pegada a las letras. */
 .lista-sol {
   position: absolute;
   bottom: 0;
@@ -4147,7 +4148,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   content: "";
   position: absolute;
   left: 64px;
-  top: 48px;
+  top: 52px;
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -6838,11 +6839,13 @@ html[data-movimiento="completo"] {
     animation: vitrina-fundido var(--dur-2) var(--ease-salida) backwards;
   }
 
-  /* Al mostrarse un panel, sus notas vuelven a trazarse (escalonadas cada 90 ms). El texto se enciende en sus hijos:
-     la entrada al bajar va en la propia nota (dos animaciones de opacidad en el mismo elemento se pisarían). */
+  /* Al mostrarse un panel, sus notas vuelven a trazarse (escalonadas cada 90 ms). El texto se enciende en sus hijos
+     desde el primer cuadro, a medio escalón (0, 45, 90 y 135 ms): con 120 ms de espera, los lados de la tarjeta quedaban
+     en blanco ~300 ms. La entrada al bajar va en la propia nota (dos animaciones de opacidad en el mismo elemento se
+     pisarían). */
   .vitrina-notas .nota > * {
     animation: vitrina-nota var(--dur-3) var(--ease-salida) backwards;
-    animation-delay: calc(var(--n, 0) * var(--escalon-anotacion) + 120ms);
+    animation-delay: calc(var(--n, 0) * var(--escalon-anotacion) / 2);
   }
 
   .vitrina-notas .nota::before {

@@ -16,7 +16,7 @@ export function Waitlist() {
       <div className="mx-auto grid max-w-[1440px] gap-10 px-6 py-16 sm:py-20 lg:grid-cols-2 lg:items-start lg:gap-12 lg:py-[120px]">
         <div>
           <SectionEyebrow>Lista de espera</SectionEyebrow>
-          <div className="relative mt-8 mb-7 pb-8">
+          <div className="relative mt-8 mb-7 pb-10">
             <TextoEnMovimiento
               como="h2"
               id="lista-titulo"
