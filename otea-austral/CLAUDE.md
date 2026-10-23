@@ -79,7 +79,7 @@ Tokens en `src/app/globals.css` (`@theme`, con la paleta de Tailwind reiniciada)
 Utilidades propias: `superficie` (porcelana con borde fino y sombra suave),
 `superficie-interactiva` (solo en lo clicable), `vidrio` (porcelana al 98,5 %, **sin `backdrop-filter`**; la cabecera usa el mismo material en `header::before`),
 `boton-laton` (latón como material), `campo` (campos con el foco del sitio), `salto-contenido` (píldora en la cabecera que ocupa el lugar del logo), `cifras`,
-`linea-fina`, `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
+`linea-fina`, `filete-fuerte` y `filete-tinta` (borde del botón «outline» y su hover), `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
 pantalla de error), `fondo-luz`,
 `reticula-puntos`, y el tamaño `text-lede` (18 a 22 px) para el texto
 que explica el producto.
@@ -228,8 +228,8 @@ una `sr-only` para lectores de pantalla y otra `aria-hidden` partida, así que e
 | `data-texto="unico"` | Táctil o < 1024 px | Cada bloque se revela **una sola vez, por tiempo**, al entrar (`kx-visto`): nunca queda a medias al dejar de deslizar |
 
 - Letras **solo en los H1**: partir en letras pierde el kerning (medido +0,74 % de ancho en el titular).
-- La CSP prohíbe `style`: el índice de cada unidad va en una clase `kx-i-N` (0 a 79, `MAX_INDICE`); pasado el
-  tope se satura. Nunca uses `style` ni `animation-delay` en línea.
+- La CSP prohíbe `style`: el índice de cada unidad va en una clase `kx-i-N` (0 a 39, `MAX_INDICE`; el texto más
+  largo del sitio llega a 25); pasado el tope se satura. Nunca uses `style` ni `animation-delay` en línea.
 - Cada bloque de scroll define **una** línea de tiempo (`view-timeline: --kx`) que comparten sus unidades:
   una por unidad costaba mucho más. Rangos en `vh`; terminan antes de la zona de lectura (≈ 60 % de la pantalla):
   `e2e/portada.spec.ts` lo comprueba. No lo uses en alertas, tablas, formularios ni textos legales.
@@ -763,6 +763,18 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **Un `clip-path` que recoge un botón también recorta su anillo de foco** (y sus sombras de fuera): recogido en círculo,
   el botón de la lista apaga sus sombras exteriores (mismo número de sombras, para que se interpolen) y con teclado pinta
   el anillo dentro del círculo (`::before`, tinta sobre latón).
+- **`overflow: hidden` vuelve contenedor de scroll a un elemento** y las `view-timeline` de sus hijos leen ese contenedor,
+  que no se mueve: la terminal salía ya escrita y con el cursor encendido para siempre. Para recortar sin eso, `overflow:
+  clip`. La e2e comprueba que la línea de tiempo del renglón es la página (`timeline.source`).
+- **Una región desplazable sin nada enfocable dentro necesita `tabindex="0"`** (en WebKit no se alcanza con el teclado; axe:
+  `scrollable-region-focusable`): el riel de notas del teléfono lo lleva, con el anillo por dentro porque va a sangre.
+- **Una capa encima de una cuadrícula necesita las mismas filas**: si el botón tiene una pieza que abarca dos filas (marca,
+  ícono) y la capa no, el reparto del alto cambia y el texto de la capa se descuadra (3 px en el teléfono). Huecos con
+  `::before`/`::after` en las mismas áreas.
+- **Una sombra arbitraria de Tailwind (`shadow-[…]`) arrastra 14 `@property` y sus valores de respaldo** (~0,3 KB): un
+  borde hecho con sombra va en una utilidad propia (`filete-fuerte`). Lo mismo con `-translate-y-1/2` (tres `@property`).
+- **jsdom no quita el foco a un botón que se desactiva** (Chromium sí, y lo manda al `<body>`): para probar a dónde va el
+  foco tras un envío, se envía sin foco (`requestSubmit`).
 
 ## Lo aprendido (cuentas de personas usuarias)
 
