@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -155,6 +155,27 @@ describe("WaitlistForm · apartado de condiciones", () => {
     await user.click(boton);
     await waitFor(() => expect(formulario).toHaveAttribute("data-estado", "ok"));
     expect(screen.getByRole("button", { name: "Unirme a la lista" })).toBeInTheDocument();
+  });
+
+  it("recogido tras el éxito, el botón queda inactivo: un segundo toque no reenvía y el foco perdido va al aviso", async () => {
+    unirse.mockResolvedValue({ estado: "ok", prueba: false });
+    const user = userEvent.setup();
+    const { container } = render(<WaitlistForm marca="1.abc" />);
+    await user.type(screen.getByLabelText("Tu correo"), "persona@correo.cl");
+    await user.click(screen.getByLabelText(/Acepto las condiciones de uso/));
+    await user.click(screen.getByLabelText(/Acepto que Otea guarde mi correo/));
+    const boton = screen.getByRole("button", { name: "Unirme a la lista" });
+    expect(boton).not.toHaveAttribute("aria-disabled");
+    // En Chromium el botón, desactivado mientras espera, suelta el foco al `<body>` (jsdom no lo hace): se envía sin foco.
+    (document.activeElement as HTMLElement).blur();
+    act(() => container.querySelector("form")!.requestSubmit(boton));
+    await waitFor(() => expect(boton).toHaveAttribute("aria-disabled", "true"));
+    // El foco perdido va al aviso que dice qué falta.
+    expect(screen.getByRole("status")).toHaveFocus();
+
+    await user.click(boton);
+    expect(unirse).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("status")).toHaveTextContent("Paso 2 de 2");
   });
 
   it("si el servidor rechaza el envío, data-estado lo dice y la pista en línea deja paso al error del servidor", async () => {

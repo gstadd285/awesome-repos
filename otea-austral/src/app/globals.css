@@ -4255,6 +4255,11 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   opacity: 0;
 }
 
+/* Recogido, ya no envía (`aria-disabled`): el cursor deja de ofrecer el clic. */
+[data-estado="ok"] .lista-enviar button {
+  cursor: default;
+}
+
 [data-estado="ok"] .boton-check {
   stroke-dashoffset: 0;
 }

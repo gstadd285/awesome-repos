@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { unirseAListaDeEspera, type EstadoLista } from "@/app/acciones/lista-de-espera";
 import { buttonClasses } from "@/components/ui/button";
 
@@ -93,12 +93,22 @@ export function WaitlistForm({ marca }: { marca: string }) {
   const errores = estado.estado === "invalida" ? estado.errores : {};
   const aviso = mensaje(estado);
   const enviado = estado.estado === "ok";
+  const avisoRef = useRef<HTMLParagraphElement>(null);
+  // Mientras espera, el botón se desactiva y el navegador manda el foco al `<body>`. Si el foco se perdió así, al
+  // terminar va al aviso (que dice qué pasó y qué falta) en vez de quedarse fuera del formulario.
+  useEffect(() => {
+    if (enviado && document.activeElement === document.body) avisoRef.current?.focus();
+  }, [enviado]);
   // Si el envío no prosperó, el servidor devuelve lo escrito: React vacía el formulario al terminar la acción.
   const valores = "valores" in estado ? estado.valores : undefined;
 
   return (
     <form
       action={accion}
+      // Recogido en el círculo con el check, el botón ya no reenvía: un segundo toque mandaría el formulario vacío.
+      onSubmit={(e) => {
+        if (enviado) e.preventDefault();
+      }}
       noValidate
       data-estado={pendiente ? "enviando" : estado.estado}
       className="lista-formulario superficie relative rounded-card p-6 sm:p-8"
@@ -221,6 +231,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
         <button
           type="submit"
           disabled={pendiente}
+          aria-disabled={enviado || undefined}
           data-magnetico
           className={buttonClasses("primary", "w-full disabled:opacity-70")}
         >
@@ -231,7 +242,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
         </button>
       </div>
 
-      <p role="status" aria-live="polite" className="mt-4 min-h-[1.5rem] text-sm text-texto">
+      <p ref={avisoRef} tabIndex={-1} role="status" aria-live="polite" className="mt-4 min-h-[1.5rem] text-sm text-texto">
         {aviso ? aviso.texto : null}
       </p>
       <p className="mt-2 text-xs leading-relaxed text-apoyo">
