@@ -32,7 +32,7 @@ export function NavegacionCuenta({ actual, csrf }: { actual: SeccionCuenta; csrf
         <input type="hidden" name="csrf" value={csrf} />
         <button
           type="submit"
-          className="rounded-pill px-4 py-2 text-sm font-medium text-texto shadow-[var(--anillo,0_0_#0000),inset_0_0_0_1px_var(--color-linea-fuerte)] hover:bg-papel-alto"
+          className="rounded-pill px-4 py-2 text-sm font-medium text-texto filete-fuerte hover:bg-papel-alto"
         >
           Salir
         </button>

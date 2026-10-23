@@ -176,7 +176,7 @@ export function CampoClave({
             type="button"
             onClick={() => setVisible((v) => !v)}
             aria-pressed={visible}
-            className="absolute top-1/2 right-2 -translate-y-1/2 rounded-pill px-3 py-2 text-sm font-medium text-texto-suave hover:text-texto"
+            className="absolute top-1/2 right-2 [translate:0_-50%] rounded-pill px-3 py-2 text-sm font-medium text-texto-suave hover:text-texto"
           >
             {visible ? "Ocultar" : "Mostrar"}
             <span className="sr-only"> la contraseña</span>

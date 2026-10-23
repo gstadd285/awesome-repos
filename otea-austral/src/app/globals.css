@@ -1,6 +1,9 @@
 @import "tailwindcss" source("../");
 /* Las pruebas citan clases y propiedades en sus textos (`backdrop-filter`, `transition`…): no generan utilidades. */
 @source not "../**/*.test.{ts,tsx}";
+/* Palabras sueltas de comentarios y textos (`filter`, `shadow`, `ring`, «inline»…) que Tailwind tomaba por clases: ningún
+   `className` las usa, y cada una traía su utilidad y sus `@property` (`filter`, 13). Las variantes (`sm:inline`) no cambian. */
+@source not inline("visible static contents inline flex-grow shadow ring outline filter");
 
 /*
  * Sistema visual de Otea Austral: editorial claro, inspirado en la referencia
@@ -245,6 +248,20 @@
   box-shadow:
     var(--anillo, 0 0 #0000),
     inset 0 0 0 1px var(--color-linea);
+}
+
+/* El borde del botón «outline» (y su versión al pasar el puntero). Como utilidades propias y no `shadow-[…]`: la sombra
+   arbitraria de Tailwind arrastraba 14 `@property` (`--tw-shadow`, `--tw-ring-*`…) y sus valores de respaldo (~0,3 KB). */
+@utility filete-fuerte {
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px var(--color-linea-fuerte);
+}
+
+@utility filete-tinta {
+  box-shadow:
+    var(--anillo, 0 0 #0000),
+    inset 0 0 0 1px rgb(15 27 45 / 0.5);
 }
 
 /* ── Tipografía ────────────────────────────────────────────────────────────── */
@@ -4292,7 +4309,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
 /* ── Texto en movimiento: estructura ──────────────────────────────────────
  * `TextoEnMovimiento` parte el texto en unidades (letras o palabras). La CSP no admite `style`
- * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 79; `MAX_INDICE`).
+ * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 39; `MAX_INDICE`).
  * La máscara `.kx-m` recorta lo que sube desde debajo de la línea; su relleno negativo deja
  * espacio a las tildes de las mayúsculas sin alterar el interlineado.
  */
@@ -4318,11 +4335,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 .kx-i-16 { --i: 16; } .kx-i-17 { --i: 17; } .kx-i-18 { --i: 18; } .kx-i-19 { --i: 19; } .kx-i-20 { --i: 20; } .kx-i-21 { --i: 21; } .kx-i-22 { --i: 22; } .kx-i-23 { --i: 23; }
 .kx-i-24 { --i: 24; } .kx-i-25 { --i: 25; } .kx-i-26 { --i: 26; } .kx-i-27 { --i: 27; } .kx-i-28 { --i: 28; } .kx-i-29 { --i: 29; } .kx-i-30 { --i: 30; } .kx-i-31 { --i: 31; }
 .kx-i-32 { --i: 32; } .kx-i-33 { --i: 33; } .kx-i-34 { --i: 34; } .kx-i-35 { --i: 35; } .kx-i-36 { --i: 36; } .kx-i-37 { --i: 37; } .kx-i-38 { --i: 38; } .kx-i-39 { --i: 39; }
-.kx-i-40 { --i: 40; } .kx-i-41 { --i: 41; } .kx-i-42 { --i: 42; } .kx-i-43 { --i: 43; } .kx-i-44 { --i: 44; } .kx-i-45 { --i: 45; } .kx-i-46 { --i: 46; } .kx-i-47 { --i: 47; }
-.kx-i-48 { --i: 48; } .kx-i-49 { --i: 49; } .kx-i-50 { --i: 50; } .kx-i-51 { --i: 51; } .kx-i-52 { --i: 52; } .kx-i-53 { --i: 53; } .kx-i-54 { --i: 54; } .kx-i-55 { --i: 55; }
-.kx-i-56 { --i: 56; } .kx-i-57 { --i: 57; } .kx-i-58 { --i: 58; } .kx-i-59 { --i: 59; } .kx-i-60 { --i: 60; } .kx-i-61 { --i: 61; } .kx-i-62 { --i: 62; } .kx-i-63 { --i: 63; }
-.kx-i-64 { --i: 64; } .kx-i-65 { --i: 65; } .kx-i-66 { --i: 66; } .kx-i-67 { --i: 67; } .kx-i-68 { --i: 68; } .kx-i-69 { --i: 69; } .kx-i-70 { --i: 70; } .kx-i-71 { --i: 71; }
-.kx-i-72 { --i: 72; } .kx-i-73 { --i: 73; } .kx-i-74 { --i: 74; } .kx-i-75 { --i: 75; } .kx-i-76 { --i: 76; } .kx-i-77 { --i: 77; } .kx-i-78 { --i: 78; } .kx-i-79 { --i: 79; }
 
 /* ── Movimiento ────────────────────────────────────────────────────────────
  * Las animaciones son CSS; las enciende la puerta `html[data-movimiento="completo"]`, que escribe el motor
@@ -4956,20 +4968,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
     animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
   }
   14% {
-    opacity: 1;
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-}
-
-/* En pantallas estrechas con línea de tiempo, la lámina se pone de pie ligada al scroll (al entrar la cinta): sin
-   resorte, que ligado al dedo se leería como un temblor. */
-@keyframes m-erguir {
-  0% {
-    opacity: 0;
-    transform: translateZ(var(--z)) rotateY(var(--giro)) rotateX(-88deg);
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  30% {
     opacity: 1;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }

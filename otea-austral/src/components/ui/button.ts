@@ -17,9 +17,8 @@ const TAMANOS: Record<Tamano, string> = {
 const VARIANTES: Record<Variante, string> = {
   // Único acento: latón como material, con texto tinta (≥ 4,9:1 en todo el degradado). Ver `boton-laton`.
   primary: "boton-laton",
-  // Píldora con borde fino; el halo del foco va en la misma sombra.
-  outline:
-    "text-texto shadow-[var(--anillo,0_0_#0000),inset_0_0_0_1px_var(--color-linea-fuerte)] hover:bg-papel-alto hover:shadow-[var(--anillo,0_0_#0000),inset_0_0_0_1px_rgb(15_27_45/0.5)]",
+  // Píldora con borde fino; el halo del foco va en la misma sombra (utilidades `filete-*` de globals.css).
+  outline: "text-texto filete-fuerte hover:bg-papel-alto hover:filete-tinta",
   ghost: "bg-papel-alto text-texto linea-fina hover:bg-papel",
 };
 
