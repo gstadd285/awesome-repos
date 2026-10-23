@@ -3312,6 +3312,12 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   .nota:not(:last-child)::before {
     right: -20px;
   }
+
+  /* El riel va a sangre: el anillo se pinta por dentro (un anillo de fuera quedaría cortado por los bordes). */
+  .vitrina-notas:focus-visible {
+    outline-offset: -2px;
+    --anillo: inset 0 0 0 5px rgb(176 141 87 / 0.4);
+  }
 }
 
 /* Tableta y portátil estrecho: la tarjeta a la izquierda y las notas en columna a su lado. */
@@ -3336,12 +3342,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
   .demo:has(.vitrina-radio) .vitrina-mando {
     justify-content: flex-start;
-  }
-
-  /* El riel va a sangre: el anillo se pinta por dentro (un anillo de fuera quedaría cortado por los bordes). */
-  .vitrina-notas:focus-visible {
-    outline-offset: -2px;
-    --anillo: inset 0 0 0 5px rgb(176 141 87 / 0.4);
   }
 }
 
