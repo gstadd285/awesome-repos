@@ -3967,10 +3967,12 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   box-shadow: 0 0 0 4px rgb(176 141 87 / 0.2);
 }
 
-/* La terminal del resumen. */
+/* La terminal del resumen. `overflow: clip` y no `hidden`: `hidden` la volvería contenedor de scroll y las líneas de
+   tiempo de sus renglones (`view-timeline: --renglon`) leerían ese contenedor, que no se desplaza, en vez de la página:
+   saldrían ya escritos y con el cursor encendido para siempre. */
 .terminal {
   position: relative;
-  overflow: hidden;
+  overflow: clip;
   border-radius: 18px;
   background-color: #0a1322;
   box-shadow:
@@ -3984,6 +3986,27 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   background-color: rgb(243 238 227 / 0.03);
 }
 
+/* En el teléfono, «Datos de ejemplo» sube al renglón de «Pre-apertura» (como en «Tu mañana») y el título va entero
+   debajo: junto al rótulo, «Resumen del 8 oct 2026» se partía en dos renglones (28 px más de alto). */
+@media (max-width: 639.98px) {
+  .terminal-cabeza {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    & > div {
+      display: contents;
+    }
+
+    & > span {
+      grid-area: 1 / 2;
+    }
+
+    & h3 {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
 .terminal-linea {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -3994,6 +4017,16 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
 .terminal-final {
   border-bottom: 0;
+}
+
+/* La última línea no tiene hora: en su columna, un filete de latón a la altura del primer renglón (una flecha mono, aun
+   a 15 px, se leía como un residuo lejos del texto). */
+.terminal-marca {
+  align-self: start;
+  width: 24px;
+  height: 1px;
+  margin-top: 11px;
+  background-color: var(--color-brass);
 }
 
 /* En el teléfono, solo el evento y «Qué mirar». */
@@ -6903,7 +6936,7 @@ html[data-movimiento="completo"] {
 /* Noche → alba: el marco se abre a sangre (0–25 % de su vista), el alba sube (solo `translate` y `opacity`) y el punto
    llega a «Alba». Las líneas de la terminal se escriben por renglón con una máscara que sube: en escritorio, cada una
    al entrar en pantalla (ligada al scroll, ~30 px); en táctil y sin líneas de tiempo, una vez por tiempo (480 ms,
-   180 ms entre renglones). El cursor acompaña cada renglón y, en el último, late tres veces y se apaga. */
+   180 ms entre renglones). El cursor acompaña cada renglón y, en el último, se queda un poco más y se apaga. */
 @keyframes noche-marco {
   from {
     clip-path: inset(0 3vw round 32px);
@@ -7006,9 +7039,10 @@ html[data-movimiento="completo"] {
         animation-range: entry 55% entry 150%;
       }
 
-      /* En el último renglón el cursor se queda un poco más y se apaga. */
+      /* En el último renglón el cursor se queda un poco más y se apaga cuando el renglón llega a ~60 % de la pantalla
+         (con `cover 60%` seguía encendido con el renglón ya pasada la mitad). */
       .terminal-final .terminal-cursor {
-        animation-range: entry 55% cover 60%;
+        animation-range: entry 55% cover 36%;
       }
     }
   }

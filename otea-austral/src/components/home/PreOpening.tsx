@@ -97,9 +97,7 @@ export function PreOpening() {
               </li>
             ))}
             <li className="terminal-linea terminal-linea-4 terminal-final">
-              <span className="hidden pt-0.5 font-mono text-xs leading-snug text-brass sm:block" aria-hidden="true">
-                →
-              </span>
+              <span className="terminal-marca hidden sm:block" aria-hidden="true" />
               <p className="text-[15px] font-medium text-brass">
                 Antes de la apertura del mercado local (objetivo)
                 <span className="terminal-cursor" aria-hidden="true" />
