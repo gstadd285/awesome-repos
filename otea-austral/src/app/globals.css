@@ -3490,12 +3490,14 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
  * círculo que crece desde la marca. Así el texto siempre se lee sobre su propio fondo, en cada cuadro del cambio. */
 /* El interruptor es una cuadrícula (ícono · nombre y qué cubre · marca). Encima, `.tm-tinta` repite el texto sobre el
    relleno tinta con la misma cuadrícula (hereda columnas, áreas y relleno), recortado por un círculo nulo en la marca;
-   marcado, el círculo la descubre entera. El ícono y la marca van por encima de las dos capas. */
+   marcado, el círculo la descubre entera. El ícono y la marca van por encima de las dos capas. En el teléfono no hay
+   «qué cubre»: una sola fila (con una fila vacía, la marca la abría en el botón y no en la capa, y el nombre en marfil
+   quedaba 3 px más abajo que el de tinta). */
 .tm-tema,
 .tm-tinta {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 24px;
-  grid-template-areas: "n m" "b m";
+  grid-template-areas: "n m";
   align-content: center;
   align-items: center;
   column-gap: 10px;
@@ -3528,6 +3530,19 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
       0 4px 10px -4px rgb(15 27 45 / 0.12),
       0 26px 48px -26px rgb(15 27 45 / 0.38);
   }
+}
+
+/* Los huecos de la marca y del ícono (`::before`, `::after`) dan a la capa las mismas filas que al botón: sin ellos, el
+   alto del ícono (40 px) y de la marca repartía otro aire entre las filas y el nombre se descuadraba medio píxel. */
+.tm-tinta::before,
+.tm-tinta::after {
+  content: "";
+  grid-area: m;
+  height: 24px;
+}
+
+.tm-tinta::after {
+  display: none;
 }
 
 .tm-tinta {
@@ -3807,6 +3822,16 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
   .tm-tinta {
     --marca-x: calc(100% - 30px);
+  }
+
+  .tm-tinta::before {
+    height: 28px;
+  }
+
+  .tm-tinta::after {
+    display: block;
+    grid-area: i;
+    height: 40px;
   }
 
   .tm-icono {
