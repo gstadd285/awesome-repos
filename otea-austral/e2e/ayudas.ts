@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { inflateSync } from "node:zlib";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 /** Junta errores de consola y de página (incluidas violaciones de la CSP). */
 export function vigilarErrores(page: Page): string[] {
@@ -14,6 +14,21 @@ export function vigilarErrores(page: Page): string[] {
 
 export async function sinScrollHorizontal(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+}
+
+/**
+ * Lleva el borde superior del elemento a `fraccion` de la pantalla y vuelve a medir hasta que queda quieto. Las secciones
+ * bajo la historia de la portada se maquetan al acercarse (con altos estimados hasta entonces): tras un salto directo, las
+ * que quedan cerca toman su alto real y el elemento ya no está donde se apuntó.
+ */
+export async function colocarEn(elemento: Locator, fraccion: number): Promise<void> {
+  await elemento.evaluate(async (e, f) => {
+    for (let i = 0; i < 5; i++) {
+      scrollTo({ top: e.getBoundingClientRect().top + scrollY - innerHeight * f, behavior: "instant" });
+      await new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo)));
+      if (Math.abs(e.getBoundingClientRect().top - innerHeight * f) < 2) break;
+    }
+  }, fraccion);
 }
 
 /** Sesión del panel guardada por `admin.setup.ts` para las pruebas con sesión. */

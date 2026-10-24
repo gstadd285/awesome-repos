@@ -330,12 +330,23 @@ test.describe("héroe Horizonte vivo", () => {
     await contexto.close();
   });
 
-  test("la maquetación diferida dura solo la carga y los saltos de ancla aterrizan en su sitio", async ({ browser }, info) => {
+  test("la maquetación diferida se suelta al acercarse (no tras la carga) y los saltos de ancla aterrizan en su sitio", async ({ browser }, info) => {
     soloEscritorio(info.project.name);
     const { contexto, page } = await abrir(browser, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-    await expect(page.locator("html")).toHaveAttribute("data-maquetado", "");
-    expect(await page.locator("#temas").evaluate((e) => getComputedStyle(e).contentVisibility)).toBe("visible");
+    await page.waitForLoadState("load");
+    const visibilidad = (s: string) => page.locator(s).evaluate((e) => getComputedStyle(e).contentVisibility);
+    // Lejos de la pantalla, pasada la carga, sigue sin maquetar: ese trabajo no cae en la carga (TBT del teléfono).
+    await page.waitForTimeout(1000);
+    expect(await visibilidad("#lista-de-espera")).toBe("auto");
+    expect(await page.locator("html").getAttribute("data-maquetado")).toBeNull();
+    // A una pantalla de distancia (dentro de las 1,5 del observador) se suelta, y queda suelta.
+    await page.locator("#temas").evaluate((e) => window.scrollTo({ top: e.getBoundingClientRect().top + scrollY - 2 * innerHeight, behavior: "instant" }));
+    await expect(page.locator("#temas")).toHaveAttribute("data-maquetada", "");
+    expect(await visibilidad("#temas")).toBe("visible");
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    // El clic en un ancla lo maqueta todo antes de saltar.
     await page.locator(".hero-acciones").getByRole("link", { name: "Recibir alertas" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-maquetado", "");
     await expect(page).toHaveURL(/#lista-de-espera$/);
     // Aterriza bajo la barra: `scroll-padding-top` (76 px) más el `scroll-margin-top` de la sección (96 px).
     const llegada = () => page.locator("#lista-de-espera").evaluate((e) => Math.round(e.getBoundingClientRect().top));

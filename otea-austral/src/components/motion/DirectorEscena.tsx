@@ -68,10 +68,12 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   dentro de `document.startViewTransition` (con `data-salto` en `<html>` mientras dura): un fundido en vez de cruzar
  *   la historia en avance rápido. Antes de mover guarda la entrada en el historial (`pushState`), así «Atrás» vuelve a
  *   donde estaba; después mueve el foco al destino (`tabindex="-1"` si no lo tenía).
- * - **Maquetación diferida** (siempre): mientras la página carga, el CSS deja sin maquetar lo que queda bajo la historia
- *   (`content-visibility`, para que el primer pintado llegue antes). Tras el evento `load` suelta una sección por cuadro
- *   (`data-maquetada`: soltarlas todas a la vez era una tarea de ~300 ms a CPU ×4) y al final marca `data-maquetado` en
- *   `<html>`; un clic en un ancla de esta página lo marca al instante. Así los saltos de ancla aterrizan donde deben.
+ * - **Maquetación diferida** (siempre): el CSS deja sin maquetar lo que queda bajo la historia (`content-visibility`,
+ *   para que el primer pintado llegue antes). Tras el evento `load` cada sección se suelta (`data-maquetada`) cuando se
+ *   acerca a 1,5 pantallas, así el trabajo sale de la carga y se reparte con el scroll (soltarlas todas a la vez era una
+ *   tarea de ~300 ms a CPU ×4; una por cuadro tras `load`, cuatro tareas largas que subían el TBT del teléfono de ~130 a
+ *   ~420 ms). Con todas sueltas, o al instante con un clic en un ancla de esta página o al imprimir, marca
+ *   `data-maquetado` en `<html>`. Así los saltos de ancla aterrizan donde deben.
  * - **Vigías:** el mismo observador marca `data-fuera` en las franjas `[data-vigia]` de la historia y en la copia
  *   decorativa de los textos ligados al scroll (`.kx-scroll > .kx-visual`). El CSS deja de dibujar lo que no está cerca
  *   de la pantalla: una animación ligada al scroll mantiene su capa viva también fuera de su tramo.
@@ -244,18 +246,33 @@ export function DirectorEscena() {
         .finally(() => raiz.removeAttribute("data-salto"));
     };
 
-    /** Termina la maquetación diferida de la carga (ver el CSS de `data-maquetado`). */
-    const maquetar = () => raiz.toggleAttribute("data-maquetado", true);
-    let esperaCarga = 0;
+    /** Termina la maquetación diferida (ver el CSS de `data-maquetado`): todo, de una vez. */
+    let cercania: IntersectionObserver | null = null;
+    const maquetar = () => {
+      cercania?.disconnect();
+      cercania = null;
+      raiz.toggleAttribute("data-maquetado", true);
+    };
+    // Tras `load`, cada sección se suelta al acercarse (a 1,5 pantallas), no todas seguidas: cada una es una tarea de
+    // 50–150 ms a CPU ×4 y, soltadas por cuadros justo después de cargar, cuadruplicaban el TBT del teléfono (medido).
     const alCargar = () => {
-      const pendientes = [...document.querySelectorAll<HTMLElement>("#contenido > .historia ~ section")];
-      const soltar = () => {
-        const seccion = pendientes.shift();
-        if (!seccion || raiz.hasAttribute("data-maquetado")) return maquetar();
-        seccion.toggleAttribute("data-maquetada", true);
-        esperaCarga = requestAnimationFrame(soltar);
-      };
-      esperaCarga = requestAnimationFrame(soltar);
+      if (raiz.hasAttribute("data-maquetado")) return;
+      const pendientes = new Set(document.querySelectorAll<HTMLElement>("#contenido > .historia ~ section"));
+      if (!pendientes.size) return;
+      if (typeof IntersectionObserver === "undefined") return maquetar();
+      cercania = new IntersectionObserver(
+        (entradas) => {
+          for (const { target, isIntersecting } of entradas) {
+            if (!isIntersecting) continue;
+            target.toggleAttribute("data-maquetada", true);
+            cercania?.unobserve(target);
+            pendientes.delete(target as HTMLElement);
+          }
+          if (!pendientes.size) maquetar();
+        },
+        { rootMargin: "150% 0px" },
+      );
+      for (const seccion of pendientes) cercania.observe(seccion);
     };
     if (!raiz.hasAttribute("data-maquetado")) {
       if (document.readyState === "complete") alCargar();
@@ -375,6 +392,7 @@ export function DirectorEscena() {
     // Al imprimir no hay pantalla a la que entrar: se suelta lo que espera a verse y vuelve al terminar.
     let motor: string | null = null;
     const alImprimir = () => {
+      maquetar();
       motor = raiz.getAttribute("data-motor");
       raiz.removeAttribute("data-motor");
     };
@@ -397,7 +415,7 @@ export function DirectorEscena() {
       window.removeEventListener("load", alCargar);
       window.removeEventListener("beforeprint", alImprimir);
       window.removeEventListener("afterprint", trasImprimir);
-      cancelAnimationFrame(esperaCarga);
+      cercania?.disconnect();
       vigilante.disconnect();
       fino.removeEventListener("change", sincronizar);
       document.removeEventListener("click", alClic, true);

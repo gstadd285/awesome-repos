@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { sinScrollHorizontal, vigilarErrores } from "./ayudas";
+import { colocarEn, sinScrollHorizontal, vigilarErrores } from "./ayudas";
 
 /** Lleva un elemento al centro de la pantalla sin animar el desplazamiento. */
 async function centrar(page: Page, selector: string) {
@@ -130,10 +130,7 @@ test.describe("producto: vitrina, «Tu mañana», noche → alba y lista de espe
     await page.goto("/");
     const final = page.locator(".terminal-final");
     const cursor = final.locator(".terminal-cursor");
-    const ubicar = (fraccion: number) =>
-      final.evaluate((l, f) => {
-        scrollTo({ top: l.getBoundingClientRect().top + scrollY - innerHeight * f, behavior: "instant" });
-      }, fraccion);
+    const ubicar = (fraccion: number) => colocarEn(final, fraccion);
     const opacidad = (l: typeof final) => l.evaluate((e) => Number(getComputedStyle(e).opacity));
     // Recién asomado bajo el pliegue: aún sin escribir.
     await ubicar(0.99);
@@ -183,7 +180,8 @@ test.describe("producto: vitrina, «Tu mañana», noche → alba y lista de espe
     const errores = vigilarErrores(page);
     await page.goto("/");
     const lista = page.locator("#lista-de-espera");
-    await lista.scrollIntoViewIfNeeded();
+    // El botón quieto en pantalla (las secciones cercanas toman su alto real al acercarse) antes de medir dónde está.
+    await colocarEn(page.getByRole("button", { name: "Unirme a la lista" }), 0.5);
     await expect(lista.locator(".bandeja")).toContainText("Datos de ejemplo");
     await expect(lista.locator(".notif")).toHaveCount(2);
     // En el teléfono «Así llega» no se muestra (la pantalla ya es el teléfono, y acorta la portada).

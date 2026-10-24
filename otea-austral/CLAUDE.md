@@ -202,10 +202,11 @@ de frente y nítido con el alba detrás. Todo es CSS 3D:
   el 21 % la clave discreta de `.h-hero` pone `visibility: hidden` (heredada): las capas del héroe dejan de pintar; las
   acciones (`.hero-mando`) declaran `visibility: visible` y siguen enfocables. Ya no hay `hz-retirar` (`display`
   animado = hilo principal).
-- **Maquetación diferida de la carga:** con JS, hasta el evento `load` las secciones bajo la historia llevan
-  `content-visibility: auto` (primer pintado más liviano); tras `load` `DirectorEscena` las suelta una por cuadro
-  (`data-maquetada`) y al final marca `data-maquetado` en `<html>` (al instante con el primer clic en un ancla). No se
-  aplica sin JS ni si la dirección trae ancla (`:target`). Durante una transición entre páginas (`:active-view-transition`,
+- **Maquetación diferida:** con JS, las secciones bajo la historia llevan `content-visibility: auto` (primer pintado más
+  liviano) hasta acercarse: tras `load` `DirectorEscena` suelta cada una a 1,5 pantallas (`data-maquetada`, un
+  `IntersectionObserver`) y, con todas sueltas, marca `data-maquetado` en `<html>` (al instante con el primer clic en un
+  ancla o al imprimir). Soltarlas una por cuadro justo tras `load` eran cuatro tareas largas que cuadruplicaban el TBT del
+  teléfono. No se aplica sin JS ni si la dirección trae ancla (`:target`). Durante una transición entre páginas (`:active-view-transition`,
   salvo los saltos `data-salto`) las secciones fuera de pantalla vuelven a `content-visibility: auto` con su alto
   recordado: la captura de la página vieja no las pinta.
 - Los bloques de la historia son absolutos y se apilan: **lo que se desvanece debe dejar de interceptar clics**. Solo
@@ -230,7 +231,7 @@ movimiento»):
 | `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
 | `hz-*` | Entrada en tres tiempos del héroe: la línea se traza, el titular sale del horizonte (< 1,3 s), amanece y los pulsos ponen de pie la cinta; bucle de pulsos con `data-bucle` |
 | `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
-| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista (el mismo observador marca `data-fuera` en las vigías de la historia y en la copia decorativa del texto ligado al scroll, que así no se dibujan lejos de la pantalla); lleva el foco que llega a una parte de la historia fija fuera de su tramo a ese momento (`data-tramo`); escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.h-hero` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); suelta la maquetación diferida tras `load` (una sección por cuadro y después `data-maquetado` en `<html>`); quita `data-motor` en `beforeprint` y lo devuelve en `afterprint`; hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
+| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista (el mismo observador marca `data-fuera` en las vigías de la historia y en la copia decorativa del texto ligado al scroll, que así no se dibujan lejos de la pantalla); lleva el foco que llega a una parte de la historia fija fuera de su tramo a ese momento (`data-tramo`); escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.h-hero` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); suelta la maquetación diferida tras `load` (cada sección al acercarse a 1,5 pantallas y después `data-maquetado` en `<html>`); quita `data-motor` en `beforeprint` y lo devuelve en `afterprint`; hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
 | `<PageTransition>` | Transición entre páginas (React `ViewTransition`), **solo en `src/app/template.tsx`**: dentro de un `page.tsx` React nunca la iniciaba. La cabecera no se mueve; el subrayado, el logo y las acciones viajan con nombre propio. **Con la puerta cerrada no monta el límite** al navegar (la plantilla hidratada lo conserva con salida `none`): ninguna view transition |
 | `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
 | `mensaje`, `frase` | Asistente: cada mensaje entra con 8 px y un fundido (`--dur-3`); la respuesta, por frases (`frases()` parte el texto sin perder un carácter; `kx-i-N`, 120 ms, tope en la quinta). El contenedor del chat lleva `data-bucle`: fuera de vista se pausan los puntos de «Buscando…». En el teléfono la conversación crece con la página (sin scroll interno) |
@@ -682,7 +683,9 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   dos `mask-image`; el compositor redibujaba una superficie del tamaño del héroe en cada cuadro (rasterizado por software:
   la historia caía de ~37 a ~24 fps). Medir quitando piezas con CSS inyectado (`fluidez2.mjs` del rediseño) lo encontró.
 - **`content-visibility: auto` en secciones enteras rompe los saltos de ancla** (con altos estimados el destino aterriza
-  fuera de pantalla: tres e2e de anclas fallaron). Por eso solo dura la carga y se libera antes de cualquier salto.
+  fuera de pantalla: tres e2e de anclas fallaron). Por eso cada sección se suelta al acercarse y todas antes de cualquier
+  salto de ancla. Una e2e que salta por script a algo lejano lo coloca con `colocarEn` (`e2e/ayudas.ts`: vuelve a medir
+  hasta que queda quieto).
 - **Medir el LCP en esta máquina exige muchas repeticiones alternadas** (±150 ms entre corridas): `ab.mjs` y `lento.mjs`
   del rediseño alternan servidores. Inyectar CSS con `route` cambia los tiempos de red: compara siempre contra una ruta
   de control con un comentario vacío.

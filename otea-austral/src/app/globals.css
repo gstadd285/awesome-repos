@@ -1896,12 +1896,12 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   overflow-x: clip;
 }
 
-/* Primer pintado ligero: hasta que la página termina de cargar, lo que queda bajo la historia no se maqueta ni se pinta
-   (salvo cerca de la pantalla). Medido en el perfil móvil lento (CPU ×4 y 4G lento), el primer pase de estilo y
-   maquetación de la portada entera retrasaba el LCP ~270 ms. Solo dura la carga: tras el evento `load`
-   `DirectorEscena` suelta una sección por cuadro (`data-maquetada`) y al final marca `data-maquetado` en `<html>` (al
-   instante con el primer clic en un ancla), porque con altos estimados los saltos de ancla aterrizaban mal. Sin
-   JavaScript (no hay `data-movimiento`) o si la dirección trae un ancla (`:target`), no se aplica. */
+/* Primer pintado ligero: lo que queda bajo la historia no se maqueta ni se pinta hasta acercarse a la pantalla. Medido
+   en el perfil móvil lento (CPU ×4 y 4G lento), el primer pase de estilo y maquetación de la portada entera retrasaba el
+   LCP ~270 ms. Tras el evento `load` `DirectorEscena` suelta cada sección a 1,5 pantallas (`data-maquetada`) y, con
+   todas sueltas, marca `data-maquetado` en `<html>` (al instante con el primer clic en un ancla), porque con altos
+   estimados los saltos de ancla aterrizaban mal. Sin JavaScript (no hay `data-movimiento`) o si la dirección trae un
+   ancla (`:target`), no se aplica. */
 html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .historia ~ section:not([data-maquetada]) {
   content-visibility: auto;
 }

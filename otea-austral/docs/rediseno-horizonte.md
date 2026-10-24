@@ -106,8 +106,9 @@ transitions.
   `DOMContentLoaded` para dar por vistos los que ya se ven. Eso forzaba la maquetación entera de la portada antes del
   primer pintado (518 ms a CPU ×4). Ahora lo decide la primera entrega del `IntersectionObserver`, que llega tras pintar.
   LCP del perfil lento: de 1.584–1.600 ms (T6) a 1.368 ms.
-- La maquetación diferida de la carga se suelta por secciones, una por cuadro: de una tarea de ~335 ms a tareas de
-  ≤ 140 ms.
+- La maquetación diferida se suelta por secciones: primero una por cuadro tras `load` (de una tarea de ~335 ms a tareas
+  de ≤ 140 ms) y, tras la revisión final, cada una al acercarse a 1,5 pantallas (`IntersectionObserver`): esas cuatro
+  tareas largas justo después de cargar salen de la carga. TBT del teléfono lento: de ~420 a ~250 ms (misma medición).
 - Vigías (`data-vigia`, `.vigia-producto`) en vez de animar `visibility`: lejos de la pantalla las piezas dejan de pintar
   o sueltan su animación.
 - Índice vivo de las interiores con marcadores de desplazamiento (`scroll-target-group` + `:target-current`), no con
@@ -135,7 +136,7 @@ Build de producción, mismas condiciones, mediana de 3 a 9 pasadas según la med
 | Historia, fps (sin límite de CPU) | 38,2 | 53,7–54,5 | ≥ 55 ≈ (−1) |
 | Historia, fps con CPU ×4 | 34,4 | 32,6 (25 % de cuadros > 20 ms frente a 59 %) | — |
 | LCP 390 lento (CPU ×4, 4G lento) | 1.292–1.332 ms | 1.368 ms | ≤ 1.290 ≈ (+40 ms, dentro del ruido de ±50) |
-| TBT 390 lento | 244 ms | ~460 ms | ≤ 236 ✗ |
+| TBT 390 lento | 244 ms (129 en la revisión final) | ~460 ms; ~250 tras la revisión final (238 y 271 en dos series) | ≤ 236 ✗ (cerca) |
 | CLS (carga y recorrido completo, 1440 y 390) | 0 | 0 | 0 ✓ |
 | Reposo (recálculos de estilo/s) | 60 en todas partes | 0 lejos del héroe; 60 con los pulsos del héroe a la vista | 0 ✓ fuera del héroe |
 | Alto de la portada en el teléfono | 12.595 px | 11.393 px | ~10.900 (decisión pendiente) |
@@ -149,9 +150,9 @@ Scripts y datos: `verificacion/T7/medicion/` de la carpeta de trabajo del redise
    decisión de contenido (T5 dejó las opciones medidas).
 2. **Nodos: 1.389** para una meta de < 1.250. La vitrina guarda sus tres alertas en el DOM para funcionar sin JavaScript;
    bajar exige quitar contenido o renunciar a eso.
-3. **TBT ~2 veces la base en el teléfono lento.** Viene de la evaluación del JS de la aplicación (~200 ms), la
-   maquetación de las secciones diferidas al cargar y los recálculos de estilo de la puerta. Ninguna tarea pasa de
-   ~300 ms.
+3. **TBT por encima de la base en el teléfono lento** (~250 frente a 129 ms en las mismas corridas, tras sacar de la carga
+   la maquetación diferida). Lo que queda es la maquetación inicial, la evaluación del JS y la hidratación (la puerta,
+   los vigías y la cinta), tareas de 60–100 ms. Ninguna tarea pasa de ~250 ms.
 4. **Historia a ~54 fps** (meta 55). El tramo más caro es el 10–20 % (sale el héroe y se tiende la cinta: capas grandes y
    24 láminas 3D). Conviene medir en un dispositivo real antes de recortar.
 5. **`data-foco`** (luz cálida bajo el cursor en las tarjetas clicables) no se aplicó: la isla ya escribe `--mx --my`,

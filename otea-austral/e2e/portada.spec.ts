@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { sinScrollHorizontal, vigilarErrores } from "./ayudas";
+import { colocarEn, sinScrollHorizontal, vigilarErrores } from "./ayudas";
 
 test.describe("portada", () => {
   test("carga sin errores ni violaciones de la CSP", async ({ page }) => {
@@ -127,10 +127,7 @@ test.describe("movimiento", () => {
       ["Recibe las alertas primero.", /Estamos preparando el lanzamiento/],
     ] as const) {
       const h = page.getByRole("heading", { name: titulo });
-      await h.evaluate((e) => {
-        const y = e.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.6;
-        window.scrollTo({ top: y, behavior: "instant" });
-      });
+      await colocarEn(h, 0.6);
       await page.waitForTimeout(400);
       const leerDesplazos = () =>
         h.evaluate((e) => [...e.querySelectorAll(".kx-p")].map((p) => Math.abs(new DOMMatrix(getComputedStyle(p).transform).f)));
