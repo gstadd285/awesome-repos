@@ -1,17 +1,9 @@
 import type { TipoFuente } from "@/lib/domain/respaldo";
 
-/**
- * Lugares de las estrellas respecto del pie de cada constelación en el horizonte: una figura distinta por ámbito (se
- * usan las primeras n, en este orden, que es también el del trazo). Si un ámbito tuviera más, siguen en `EXTRA`.
- */
-const FIGURAS: readonly (readonly (readonly [number, number])[])[] = [
-  [[-50, -38], [-24, -94], [4, -62], [28, -120], [52, -76]],
-  [[-52, -82], [-30, -128], [-2, -96], [24, -112], [48, -48]],
-  [[-56, -50], [-36, -94], [-8, -76], [12, -132], [40, -114], [58, -64], [26, -34]],
-];
-const EXTRA: readonly (readonly [number, number])[] = [[-20, -150], [0, -24], [54, -140], [-58, -128]];
-const HORIZONTE = 184;
 const ANCHO = 400;
+/** Centro de cada ámbito y radio al que quedan sus fuentes: todas a la misma distancia, repartidas por igual. */
+const CENTRO_Y = 98;
+const RADIO = 50;
 
 export type GrupoConstelacion = { titulo: string; fuentes: { id: string; tipo: TipoFuente }[] };
 
@@ -24,9 +16,11 @@ const TIPOS: { tipo: TipoFuente; nombre: string; fill: string; stroke?: string }
 const ESTILO = Object.fromEntries(TIPOS.map((t) => [t.tipo, t])) as Record<TipoFuente, (typeof TIPOS)[number]>;
 
 /**
- * Constelación de /fuentes: un punto por fuente activa del registro, agrupado por ámbito sobre el horizonte, con el tipo
- * en el relleno. Datos reales de `fuentesPorAmbito()`; la leyenda cuenta cada tipo. Decorativa: las mismas fuentes están
- * en las tablas.
+ * Constelación de /fuentes: el registro como red. Cada ámbito es un nudo (rombo de latón) y cada fuente activa, un punto
+ * unido a su ámbito por un vínculo; el tipo va en el relleno. Las fuentes de un ámbito quedan a la misma distancia y
+ * repartidas por igual en un círculo: ni la altura ni el orden significan nada, así que no hay eje ni serie que se lea
+ * como una cotización. Datos reales de `fuentesPorAmbito()`; la leyenda cuenta cada tipo. Decorativa: las mismas fuentes
+ * están en las tablas.
  */
 export function Constelacion({ grupos }: { grupos: GrupoConstelacion[] }) {
   const paso = ANCHO / grupos.length;
@@ -37,16 +31,28 @@ export function Constelacion({ grupos }: { grupos: GrupoConstelacion[] }) {
       <g className="font-mono" fontSize="12" letterSpacing="0.6" fill="#4C5665" textAnchor="middle">
         {grupos.map((g, k) => {
           const cx = paso * (k + 0.5);
-          const lugares = [...FIGURAS[k % FIGURAS.length], ...EXTRA];
-          const puntos = g.fuentes.slice(0, lugares.length).map((f, i) => ({ f, x: cx + lugares[i][0], y: HORIZONTE + lugares[i][1] }));
+          const puntos = g.fuentes.map((f, i) => {
+            const a = ((i / g.fuentes.length) * 2 - 0.5) * Math.PI;
+            return { f, x: +(cx + Math.cos(a) * RADIO).toFixed(2), y: +(CENTRO_Y + Math.sin(a) * RADIO).toFixed(2) };
+          });
           return (
             <g key={g.titulo}>
+              {puntos.map((p) => (
+                <path
+                  key={p.f.id}
+                  d={`M${cx},${CENTRO_Y}L${p.x},${p.y}`}
+                  pathLength="1"
+                  className="pz-trazo vinculo"
+                  fill="none"
+                  stroke="#B08D57"
+                />
+              ))}
               <path
-                d={puntos.map((p, i) => `${i ? "L" : "M"}${p.x},${p.y}`).join("")}
-                pathLength="1"
-                className="pz-trazo"
-                fill="none"
+                d={`M${cx},${CENTRO_Y - 7}l7,7-7,7-7-7z`}
+                className="ambito"
+                fill="#FCFAF6"
                 stroke="#B08D57"
+                strokeWidth="1.5"
               />
               {puntos.map((p) => (
                 <circle
@@ -60,11 +66,10 @@ export function Constelacion({ grupos }: { grupos: GrupoConstelacion[] }) {
                   strokeWidth="1.5"
                 />
               ))}
-              <text x={cx} y={HORIZONTE + 24}>{`${g.titulo} · ${g.fuentes.length}`.toUpperCase()}</text>
+              <text x={cx} y={CENTRO_Y + RADIO + 38}>{`${g.titulo} · ${g.fuentes.length}`.toUpperCase()}</text>
             </g>
           );
         })}
-        <path d={`M6,${HORIZONTE}H${ANCHO - 6}`} pathLength="1" className="pz-trazo" stroke="#B08D57" strokeWidth="1.5" />
         {TIPOS.map((t, i) => (
           <g key={t.tipo} transform={`translate(${ANCHO / 2 + (i - 1) * 128} 238)`}>
             <circle cx="-55" cy="-4" r="4.5" fill={t.fill} stroke={t.stroke} strokeWidth="1.5" />

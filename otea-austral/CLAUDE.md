@@ -817,6 +817,9 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   la ventana más su alto, ~17 %): la firma usa su propia `entry`, que termina justo al final.
 - **El contorno de foco de un `<a>` dentro de un SVG es el rectángulo que lo encierra** (pisa a los vecinos en un anillo): el
   dial lo cambia por el filo del propio sector (`outline: none` con un reemplazo de ≥ 3:1, como la vitrina).
+- **En un producto de mercados, puntos unidos de izquierda a derecha se leen como una cotización** (la constelación de
+  /fuentes parecía tres series de precios inventadas): una pieza que muestra un registro va como red (un nudo por grupo y
+  un vínculo por elemento, a la misma distancia y repartidos por igual), sin eje ni línea base. `piezas.test.tsx` lo vigila.
 - **El emblema admite variantes de color y posición sin tocar su geometría** (`relieve`, `relieve-sombra`, `x`, `y`,
   `width` para anidarlo en otro SVG).
 

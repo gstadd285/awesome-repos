@@ -50,6 +50,21 @@ describe("piezas de las interiores", () => {
     expect(container.textContent).toContain(`PRIMARIA · ${total}`);
   });
 
+  it("la constelación es una red y no un gráfico: cada fuente se une solo a su ámbito, a la misma distancia", () => {
+    const grupos = fuentesPorAmbito();
+    const { container } = render(
+      <Constelacion grupos={grupos.map((g) => ({ titulo: g.titulo, fuentes: g.fuentes.map((f) => ({ id: f.id, tipo: f.tipo })) }))} />,
+    );
+    const vinculos = [...container.querySelectorAll("path.vinculo")].map((v) => v.getAttribute("d")!.match(/-?[\d.]+/g)!.map(Number));
+    expect(vinculos).toHaveLength(grupos.reduce((t, g) => t + g.fuentes.length, 0));
+    // Un solo segmento por vínculo (del nudo del ámbito a la fuente), nunca una línea que una fuentes entre sí.
+    for (const v of vinculos) expect(v).toHaveLength(4);
+    const nudos = new Set(vinculos.map(([x, y]) => `${x},${y}`));
+    expect(nudos.size).toBe(grupos.length);
+    const distancias = new Set(vinculos.map(([x0, y0, x1, y1]) => Math.round(Math.hypot(x1 - x0, y1 - y0))));
+    expect(distancias.size).toBe(1);
+  });
+
   it("el sello muestra la versión real del texto y la fecha que ella declara; sin versión, solo «provisional»", () => {
     expect(fechaDeVersion("2026-10-borrador-3")).toBe("octubre de 2026");
     expect(fechaDeVersion("borrador")).toBeUndefined();
