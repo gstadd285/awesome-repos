@@ -5,29 +5,22 @@ import { expect, test, type Browser } from "@playwright/test";
  * Presupuesto de la portada (a partir de `peso.mjs` de la auditoría): lo que descarga Chromium con la caché
  * desactivada (bytes comprimidos en la red, incluidas las precargas de enlaces), los nodos del DOM y las
  * animaciones que existen a la vez. Línea base antes del rediseño: 331 KB, 992 nodos y 188 animaciones en
- * escritorio. Umbrales iniciales del rediseño «Horizonte»; T7 los ajusta a lo medido al final.
+ * escritorio.
  * Abre sus propias ventanas (1440 y 390), así que corre solo en el proyecto de escritorio.
  *
- * Nodos: T5 (producto que se toca) subió el umbral de 1300 a 1400. Medido en el build de producción (1440 y 390, el
- * mismo DOM): 1381 nodos, de ellos historia 381 (T4), vitrina 297, «Tu mañana» 226, lista de espera 107, pre-apertura
- * 102, preguntas 75, pie 51 y `<head>` 47. La vitrina guarda las tres alertas reales en el DOM (Ormuz 83 nodos con sus
- * valores de la prueba en paralelo, Chips 48, Cobre 57) porque el cambio de escenario lo hace `:has()` sin JavaScript, y
- * «Tu mañana» guarda los seis avisos de ejemplo (se pliegan, no se desmontan). Antes de subirlo se quitaron 122 nodos que
- * no aportaban (la cara duplicada de cada tema, envoltorios de los avisos, íconos SVG de las direcciones y de los
- * medidores, numerales de las notas): de 1503 a 1381. En la ronda 1 de T5 se midieron 1382 (tres vigías nuevas y una
- * entrada más corta).
- *
- * Animaciones: con las vigías del producto (`.vigia-producto`), las piezas ligadas al scroll de la vitrina, la noche y
- * la lista sueltan su animación lejos de la pantalla. Arriba de la portada pasaron de 195 a 122 (escritorio), así que el
- * umbral baja de 200 a la meta del brief (< 160).
- *
- * CSS: las hojas de la portada comprimidas como las sirve el servidor (gzip de Node, nivel 6: mismos bytes que con
- * `curl`; KB de 1024 B, como el resto de esta prueba). Brief §6: línea base 15 KB (14.405 + 1.317 B), meta ≤ 24 y tope
- * de 30. Tras la ronda 2 de T5 se miden 29.942 + 1.317 B (30,5 KB): los cuatro capítulos del producto cuestan ~5 KB y
- * los recortes sin pérdida a mano ya están hechos (utilidades sueltas, sombras arbitrarias, índices `kx-i` sin uso).
- * Umbral provisional de 31 KB hasta T7, que debe volver a 30 (informe de T5 del rediseño, «Correcciones ronda 2»).
+ * Umbrales definitivos (T7, a lo medido en el build de producción, mediana de 3, 1440 y 390; brief §6):
+ * - Transferido: 373,3 KB en escritorio y 371,0 en el teléfono (JS 161,7) → 390 KB (+4,5 %, bajo el tope de 400).
+ * - Nodos: 1.389 (el mismo DOM en ambos anchos) → 1.400 (+0,8 %). La meta del brief era < 1.250: la vitrina guarda sus
+ *   tres alertas reales en el DOM (el cambio lo hace `:has()` sin JavaScript) y «Tu mañana» sus seis avisos; T5 ya quitó
+ *   122 nodos sin pérdida (de 1.503 a 1.381). Bajar de 1.250 exige quitar contenido: decisión de la persona dueña.
+ * - Animaciones a la vez: 123 en escritorio (17 en el teléfono) → 135 (+10 %, bajo la meta de 160). Las vigías del
+ *   producto (`.vigia-producto`) sueltan lo ligado al scroll lejos de la pantalla.
+ * - CSS: 29.375 + 1.317 B = 29,97 KB → 30 KB, el tope del brief. Para llegar: el reinicio de Tailwind recortado a los
+ *   elementos que el sitio usa (~0,5 KB), los valores por omisión de Tailwind en línea (~0,3 KB), una sola regla de
+ *   impresión, el sol de latón como variable (sus cuatro copias quedaban a más de 32 KB, fuera de la ventana de gzip) y
+ *   las transiciones de los botones en una regla propia (sin `--tw-duration`/`--tw-ease`). Lo que se sume se compensa.
  */
-const UMBRAL = { transferidoKB: 420, nodos: 1400, animaciones: 160, cssKB: 31 };
+const UMBRAL = { transferidoKB: 390, nodos: 1400, animaciones: 135, cssKB: 30 };
 
 const VENTANAS = [
   { nombre: "escritorio 1440", opciones: { viewport: { width: 1440, height: 900 } } },
