@@ -1,11 +1,12 @@
 import { Fragment } from "react";
 
 /**
- * Tope de unidades (letras o palabras) con índice propio. Coincide con las clases `kx-i-0 … kx-i-39`
+ * Tope de unidades (letras o palabras) con índice propio. Coincide con las clases `kx-i-0 … kx-i-30`
  * de `globals.css`; pasado el tope, el índice se satura (solo se pierde el escalonado). Medido en todas las rutas
- * públicas: el texto más largo llega al índice 25 (cada índice de más eran ~5 B de CSS servido).
+ * públicas: el texto más largo es el titular del 404 («Esta ruta no aparece en el horizonte.», índice 30; cada índice de
+ * más eran ~5 B de CSS servido).
  */
-export const MAX_INDICE = 39;
+export const MAX_INDICE = 30;
 
 /**
  * `lectura` anima tramos de varias palabras, no palabra por palabra: el efecto se ve igual de progresivo y

@@ -3,7 +3,7 @@
 @source not "../**/*.test.{ts,tsx}";
 /* Palabras sueltas de comentarios y textos (`filter`, `shadow`, `ring`, «inline»…) que Tailwind tomaba por clases: ningún
    `className` las usa, y cada una traía su utilidad y sus `@property` (`filter`, 13). Las variantes (`sm:inline`) no cambian. */
-@source not inline("visible static contents inline flex-grow shadow ring outline filter");
+@source not inline("visible static contents inline flex-grow shadow ring outline filter transform fixed");
 
 /*
  * Sistema visual de Otea Austral: editorial claro, inspirado en la referencia
@@ -4309,7 +4309,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
 /* ── Texto en movimiento: estructura ──────────────────────────────────────
  * `TextoEnMovimiento` parte el texto en unidades (letras o palabras). La CSP no admite `style`
- * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 39; `MAX_INDICE`).
+ * en el HTML, así que el índice de cada unidad va en una clase `kx-i-N` (0 a 30; `MAX_INDICE`).
  * La máscara `.kx-m` recorta lo que sube desde debajo de la línea; su relleno negativo deja
  * espacio a las tildes de las mayúsculas sin alterar el interlineado.
  */
@@ -4333,8 +4333,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 .kx-i-0 { --i: 0; } .kx-i-1 { --i: 1; } .kx-i-2 { --i: 2; } .kx-i-3 { --i: 3; } .kx-i-4 { --i: 4; } .kx-i-5 { --i: 5; } .kx-i-6 { --i: 6; } .kx-i-7 { --i: 7; }
 .kx-i-8 { --i: 8; } .kx-i-9 { --i: 9; } .kx-i-10 { --i: 10; } .kx-i-11 { --i: 11; } .kx-i-12 { --i: 12; } .kx-i-13 { --i: 13; } .kx-i-14 { --i: 14; } .kx-i-15 { --i: 15; }
 .kx-i-16 { --i: 16; } .kx-i-17 { --i: 17; } .kx-i-18 { --i: 18; } .kx-i-19 { --i: 19; } .kx-i-20 { --i: 20; } .kx-i-21 { --i: 21; } .kx-i-22 { --i: 22; } .kx-i-23 { --i: 23; }
-.kx-i-24 { --i: 24; } .kx-i-25 { --i: 25; } .kx-i-26 { --i: 26; } .kx-i-27 { --i: 27; } .kx-i-28 { --i: 28; } .kx-i-29 { --i: 29; } .kx-i-30 { --i: 30; } .kx-i-31 { --i: 31; }
-.kx-i-32 { --i: 32; } .kx-i-33 { --i: 33; } .kx-i-34 { --i: 34; } .kx-i-35 { --i: 35; } .kx-i-36 { --i: 36; } .kx-i-37 { --i: 37; } .kx-i-38 { --i: 38; } .kx-i-39 { --i: 39; }
+.kx-i-24 { --i: 24; } .kx-i-25 { --i: 25; } .kx-i-26 { --i: 26; } .kx-i-27 { --i: 27; } .kx-i-28 { --i: 28; } .kx-i-29 { --i: 29; } .kx-i-30 { --i: 30; }
 
 /* ── Movimiento ────────────────────────────────────────────────────────────
  * Las animaciones son CSS; las enciende la puerta `html[data-movimiento="completo"]`, que escribe el motor
@@ -4834,12 +4833,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
 /* Héroe «Horizonte vivo»: entrada en tres tiempos (la línea se traza, el titular sale de ella y amanece; los pulsos
    arman la cinta). Todas parten de un estado y terminan en el diseño base (relleno `backwards`, sin residuo). */
-@keyframes hz-trazar {
-  from {
-    transform: scaleX(0);
-  }
-}
-
 @keyframes hz-subir {
   from {
     transform: translateY(108%);
@@ -4876,12 +4869,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   from {
     opacity: 0;
     scale: 0.6;
-  }
-}
-
-@keyframes hz-encender {
-  from {
-    opacity: 0;
   }
 }
 
@@ -4995,12 +4982,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
-@keyframes hz-guia {
-  from {
-    transform: scaleY(0);
-  }
-}
-
 /* Gota de «Desliza»: baja, se asienta y se apaga (bucle de 1,8 s). */
 @keyframes hz-gota {
   0% {
@@ -5062,12 +5043,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 @keyframes hz-pop {
   from {
     scale: 0.86;
-  }
-}
-
-@keyframes hz-llenar {
-  from {
-    transform: scaleX(0);
   }
 }
 
@@ -5146,19 +5121,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 }
 
 /* Salto de ancla largo: la pantalla de destino sube 10 px mientras aparece (la de origen solo se funde). */
-@keyframes otea-vt-salto {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-
-@keyframes otea-vt-fundir {
-  to {
-    opacity: 0;
-  }
-}
-
 /* Cabecera isla, ligada a scroll(root) en los primeros 120 px: `--isla` va de 0 a 1 (la barra a todo el ancho se
    condensa en la píldora y el logo y las acciones la acompañan) y la isla aparece. El progreso es una escala
    horizontal. */
@@ -5168,12 +5130,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
   to {
     --isla: 1;
-  }
-}
-
-@keyframes cab-isla {
-  from {
-    opacity: 0;
   }
 }
 
@@ -5191,12 +5147,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 }
 
 /* El avance aparece con la isla, no antes: sin ella sería una raya suelta bajo el logo. */
-@keyframes cab-progreso-ver {
-  from {
-    opacity: 0;
-  }
-}
-
 @keyframes cab-progreso {
   from {
     scale: 0 1;
@@ -5377,7 +5327,7 @@ html[data-movimiento="completo"] {
   }
 
   &::view-transition-old(site-header) {
-    animation: otea-vt-fundir var(--dur-2) var(--ease-salida) 160ms both;
+    animation: h-vaciar var(--dur-2) var(--ease-salida) 160ms both;
   }
 
   &::view-transition-new(site-header) {
@@ -5420,11 +5370,11 @@ html[data-movimiento="completo"] {
   /* Salto de ancla largo (`DirectorEscena` marca `data-salto` mientras dura): un fundido de unos 320 ms en vez de
      cruzar la historia en avance rápido. */
   &[data-salto]::view-transition-old(root) {
-    animation: otea-vt-fundir 140ms var(--ease-entrada) both;
+    animation: h-vaciar 140ms var(--ease-entrada) both;
   }
 
   &[data-salto]::view-transition-new(root) {
-    animation: otea-vt-salto 280ms var(--ease-salida) 40ms both;
+    animation: hz-asomar 280ms var(--ease-salida) 40ms both;
   }
 
   /* En el salto la cabecera no cambia: sus piezas con nombre no esperan los 420 ms de la navegación entre páginas, ni
@@ -5625,7 +5575,7 @@ html[data-movimiento="completo"] {
           0 1px 2px rgb(15 27 45 / 0.06),
           0 18px 40px -22px rgb(15 27 45 / 0.34);
         animation:
-          cab-isla var(--ease-enfasis) both,
+          m-plano var(--ease-enfasis) both,
           cab-isla-ver linear both;
         animation-timeline: scroll(root), scroll(root);
         animation-range: 0px 120px;
@@ -5660,7 +5610,7 @@ html[data-movimiento="completo"] {
           calc(var(--isla) * 10px + 1px);
         border-radius: 1px;
         background-color: rgb(15 27 45 / 0.12);
-        animation: cab-progreso-ver var(--ease-enfasis) both;
+        animation: m-plano var(--ease-enfasis) both;
         animation-timeline: scroll(root);
         animation-range: 0px 120px;
 
@@ -5695,7 +5645,7 @@ html[data-movimiento="completo"] {
    `--dr`), nunca `style`. */
 html[data-movimiento="completo"] {
   .h-horizonte {
-    animation: hz-trazar 1100ms var(--ease-salida) backwards;
+    animation: h-avance 1100ms var(--ease-salida) backwards;
   }
 
   .hero-antetitulo {
@@ -5720,13 +5670,13 @@ html[data-movimiento="completo"] {
 
   .h-cielo::before,
   .h-suelo::before {
-    animation: hz-encender 1900ms var(--ease-salida) 300ms backwards;
+    animation: m-plano 1900ms var(--ease-salida) 300ms backwards;
   }
 
   .h-reticula {
     animation:
       hz-diferir 1ms 519ms backwards,
-      hz-encender 1200ms var(--ease-enfasis) 520ms backwards;
+      m-plano 1200ms var(--ease-enfasis) 520ms backwards;
   }
 
   .h-pulsos {
@@ -5734,7 +5684,7 @@ html[data-movimiento="completo"] {
   }
 
   .h-reflejo {
-    animation: hz-encender 1600ms var(--ease-salida) 700ms backwards;
+    animation: m-plano 1600ms var(--ease-salida) 700ms backwards;
   }
 
   .hero-texto {
@@ -5772,7 +5722,7 @@ html[data-movimiento="completo"] {
 
   /* La sombra común llega con el primer grupo (antes no hay nada que la proyecte). */
   .cinta::before {
-    animation: hz-encender 2400ms var(--ease-salida) 1600ms backwards;
+    animation: m-plano 2400ms var(--ease-salida) 1600ms backwards;
   }
 
   .cinta-rotulo {
@@ -5781,7 +5731,7 @@ html[data-movimiento="completo"] {
   }
 
   .cinta-rotulo::after {
-    animation: hz-guia 500ms var(--ease-salida) backwards;
+    animation: h-trazar-y 500ms var(--ease-salida) backwards;
     animation-delay: calc(var(--dr) + 120ms);
   }
 
@@ -5805,7 +5755,7 @@ html[data-movimiento="completo"] {
   }
 
   .alerta-viva::before {
-    animation: hz-trazar var(--dur-5) var(--ease-salida) 1880ms backwards;
+    animation: h-avance var(--dur-5) var(--ease-salida) 1880ms backwards;
   }
 
   .av-check {
@@ -5815,7 +5765,7 @@ html[data-movimiento="completo"] {
   }
 
   .av-lleno::after {
-    animation: hz-llenar 380ms var(--ease-enfasis) backwards;
+    animation: h-avance 380ms var(--ease-enfasis) backwards;
   }
   .av-segmento:nth-child(1)::after {
     animation-delay: 1700ms;
@@ -6045,7 +5995,7 @@ html[data-movimiento="completo"][data-motor] {
         animation: h-sello 560ms backwards;
       }
       .plano-segmento::after {
-        animation: hz-llenar 380ms var(--ease-enfasis) backwards;
+        animation: h-avance 380ms var(--ease-enfasis) backwards;
       }
       .plano-ficha-1 .plano-check,
       .plano-segmento-1::after {
@@ -6214,7 +6164,7 @@ html[data-movimiento="completo"] {
 
       .h-horizonte {
         animation:
-          hz-trazar 1100ms var(--ease-salida) backwards,
+          h-avance 1100ms var(--ease-salida) backwards,
           h-alzar var(--ease-enfasis) forwards;
         animation-timeline: auto, --historia;
         animation-range: normal, contain 10% contain 17%;
@@ -6229,7 +6179,7 @@ html[data-movimiento="completo"] {
       .h-reticula {
         animation:
           hz-diferir 1ms 519ms backwards,
-          hz-encender 1200ms var(--ease-enfasis) 520ms backwards,
+          m-plano 1200ms var(--ease-enfasis) 520ms backwards,
           h-apagar var(--ease-entrada) forwards;
         animation-timeline: auto, auto, --historia;
         animation-range: normal, normal, contain 6% contain 10%;
@@ -6317,7 +6267,7 @@ html[data-movimiento="completo"] {
       .h-plano .plano-cota,
       .h-plano .plano-etiqueta {
         animation:
-          hz-trazar var(--ease-salida) backwards,
+          h-avance var(--ease-salida) backwards,
           h-vaciar var(--ease-entrada) forwards;
         animation-timeline: --historia;
         animation-range:
@@ -6385,7 +6335,7 @@ html[data-movimiento="completo"] {
       }
 
       .h-plano .plano-segmento::after {
-        animation: hz-llenar var(--ease-enfasis) backwards;
+        animation: h-avance var(--ease-enfasis) backwards;
         animation-timeline: --historia;
       }
       .h-plano .plano-segmento-1::after {
@@ -6763,27 +6713,6 @@ html[data-movimiento="completo"] {
  * funde (≤ `--dur-2`: es una alerta, no se desplaza) y las notas vuelven a trazarse. Al entrar, los filetes se trazan
  * desde la tarjeta hacia fuera: ligados al scroll en escritorio y, en pantallas táctiles o estrechas y sin líneas de
  * tiempo, una vez por tiempo (`escena-vista`). */
-@keyframes vitrina-fundido {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes vitrina-trazo {
-  from {
-    transform: scaleX(0);
-  }
-}
-
-@keyframes vitrina-trazo-entrada {
-  from {
-    scale: 0 1;
-  }
-  to {
-    scale: 1 1;
-  }
-}
-
 @keyframes vitrina-nota {
   from {
     opacity: 0;
@@ -6839,7 +6768,7 @@ html[data-movimiento="completo"] {
   .vitrina-tarjeta,
   .demo:has(#prueba-ormuz:checked) .solo-b,
   .demo:has(#prueba-ormuz:not(:checked)) .solo-a {
-    animation: vitrina-fundido var(--dur-2) var(--ease-salida) backwards;
+    animation: m-plano var(--dur-2) var(--ease-salida) backwards;
   }
 
   /* Al mostrarse un panel, sus notas vuelven a trazarse (escalonadas cada 90 ms). El texto se enciende en sus hijos
@@ -6852,7 +6781,7 @@ html[data-movimiento="completo"] {
   }
 
   .vitrina-notas .nota::before {
-    animation: vitrina-trazo var(--dur-4) var(--ease-salida) backwards;
+    animation: h-avance var(--dur-4) var(--ease-salida) backwards;
     animation-delay: calc(var(--n, 0) * var(--escalon-anotacion));
   }
 
@@ -6872,8 +6801,8 @@ html[data-movimiento="completo"] {
 
       .vitrina-notas .nota::before {
         animation:
-          vitrina-trazo var(--dur-4) var(--ease-salida) backwards,
-          vitrina-trazo-entrada linear both;
+          h-avance var(--dur-4) var(--ease-salida) backwards,
+          cab-progreso linear both;
         animation-delay: calc(var(--n, 0) * var(--escalon-anotacion)), 0s;
         animation-timeline: auto, --nota;
         animation-range: normal, entry 0px entry 140px;
@@ -6925,7 +6854,7 @@ html[data-movimiento="completo"][data-motor] {
       animation-delay: calc(var(--n, 0) * var(--escalon-anotacion) + 160ms);
     }
     .vitrina-notas.escena-vista:not(.mov-quieto) .nota::before {
-      animation: vitrina-trazo-entrada var(--dur-4) var(--ease-salida) backwards;
+      animation: cab-progreso var(--dur-4) var(--ease-salida) backwards;
       animation-delay: calc(var(--n, 0) * var(--escalon-anotacion));
     }
   }
