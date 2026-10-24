@@ -1,4 +1,10 @@
-@import "tailwindcss" source("../");
+/* Tailwind por partes (como su `index.css`), sin su `preflight.css`: el reinicio va abajo, recortado a los elementos que el
+   sitio usa (una sola hoja viaja con la portada; el reinicio entero eran ~0,5 KB gzip de `abbr`, `kbd`, `sub`, `progress`,
+   `::file-selector-button`…). Si un componente empieza a usar uno de los que faltan (`hr`, `img`, `code`, `small`…),
+   su reinicio vuelve al bloque «Reinicio». */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source("../");
 /* Las pruebas citan clases y propiedades en sus textos (`backdrop-filter`, `transition`…): no generan utilidades. */
 @source not "../**/*.test.{ts,tsx}";
 /* Palabras sueltas de comentarios y textos (`filter`, `shadow`, `ring`, «inline»…) que Tailwind tomaba por clases: ningún
@@ -64,10 +70,40 @@
   --text-lede--line-height: 1.55;
 }
 
+/* Valores por omisión de Tailwind que solo leen sus utilidades: en línea (`.p-4{padding:1rem}` en vez de
+   `calc(var(--spacing) * 4)` y sin sus variables en `:root`). Mismos valores que `tailwindcss/theme.css`; ~0,3 KB gzip. */
+@theme inline {
+  --spacing: 0.25rem;
+  --container-xs: 20rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --tracking-normal: 0em;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @theme inline {
   --font-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
@@ -89,6 +125,9 @@
   --escalon: 40ms; /* listas */
   --escalon-anotacion: 90ms;
   --escalon-demo: 120ms; /* secuencias de demostración */
+  /* El sol de latón (héroe, alba, tablero y lista): un disco sin anillo. Una sola copia: las cuatro quedaban a más de
+     32 KB entre sí, donde gzip ya no las ve repetidas. */
+  --disco-sol: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
 }
 
 /* Destello del botón de latón: se registra para poder transicionarlo. `inherits: false` no llega a los
@@ -139,9 +178,141 @@
   animation-timing-function: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.8%, 1.051 22.9%, 1.056 26.6%, 1.027 33.9%, 0.998 42.5%, 0.994 49.2%, 1 70%);
 }
 
+/* Reinicio: el `preflight.css` de Tailwind 4.3 recortado a lo que hay en el sitio (mismas reglas y valores). No están `hr`,
+   `abbr`, `b`, `code`/`kbd`/`samp`/`pre`, `small`, `sub`/`sup`, `progress`, `menu`, `img`/`video`/`canvas`/`iframe`…,
+   `optgroup`, `::file-selector-button` (no hay subida de archivos), la búsqueda ni los giratorios de número. El
+   `font-family` de `html` tampoco: lo fija `body`. */
 @layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+  }
+
   html {
-    color-scheme: light;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  strong {
+    font-weight: bolder;
+  }
+
+  table {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+
+  :-moz-focusring:where(:not(iframe)) {
+    outline: auto;
+  }
+
+  summary {
+    display: list-item;
+  }
+
+  ol,
+  ul {
+    list-style: none;
+  }
+
+  svg {
+    display: block;
+    vertical-align: middle;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+    opacity: 1;
+  }
+
+  /* Su color lo da `placeholder:text-apoyo` en cada campo (el del reinicio, con `@supports`, no se usaba). */
+  ::placeholder {
+    opacity: 1;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  /* Campos de fecha (panel interno). */
+  ::-webkit-date-and-time-value {
+    min-height: 1lh;
+    text-align: inherit;
+  }
+
+  ::-webkit-datetime-edit {
+    display: inline-flex;
+  }
+
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+
+  ::-webkit-datetime-edit,
+  ::-webkit-datetime-edit-year-field,
+  ::-webkit-datetime-edit-month-field,
+  ::-webkit-datetime-edit-day-field,
+  ::-webkit-datetime-edit-hour-field,
+  ::-webkit-datetime-edit-minute-field,
+  ::-webkit-datetime-edit-second-field,
+  ::-webkit-datetime-edit-millisecond-field,
+  ::-webkit-datetime-edit-meridiem-field {
+    padding-block: 0;
+  }
+
+  ::-webkit-calendar-picker-indicator {
+    line-height: 1;
+  }
+
+  :-moz-ui-invalid {
+    box-shadow: none;
+  }
+
+  button,
+  input:where([type="button"], [type="reset"], [type="submit"]) {
+    appearance: button;
+  }
+
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+}
+
+@layer base {
+  /* El esquema claro lo declara `<meta name="color-scheme" content="light">` (`viewport` del layout): repetido aquí,
+     Lightning CSS sumaba dos variables de su polirrelleno de `light-dark()`. */
+  html {
     background-color: var(--color-fondo);
     /* Cabecera de 72 px en escritorio (+16 px de aire); bajo 1024 px la barra mide 60 px (regla de abajo). */
     scroll-padding-top: 88px;
@@ -268,7 +439,7 @@
 
 /* Titulares grotescos en mayúsculas, como en la referencia. */
 @utility titular {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: -0.025em;
@@ -774,7 +945,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   min-height: 64px;
   margin-inline: -8px;
   padding: 12px 8px;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   /* 30 px desde 400 px de ancho; a 320 px baja a 24 px para que «Cómo funciona» quepa en una línea. */
   font-size: clamp(22px, 7.5vw, 30px);
   font-weight: 500;
@@ -838,8 +1009,8 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   width: 16px;
   height: 16px;
   background-color: var(--color-apoyo);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
 }
 
 .menu-enlace[aria-current="page"] .menu-numero {
@@ -1516,7 +1687,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   width: 3.6cqw;
   height: 3.6cqw;
   border-radius: 50%;
-  background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+  background-image: var(--disco-sol);
   box-shadow: 0 0 1.6cqw 0.2cqw rgb(232 200 140 / 0.55);
 }
 
@@ -1849,7 +2020,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+  background-image: var(--disco-sol);
   box-shadow:
     0 0 0 1px rgb(122 94 51 / 0.18),
     inset 0 -6px 14px -6px rgb(122 94 51 / 0.35),
@@ -2000,7 +2171,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 .h-grano {
   grid-row: 1 / -1;
   opacity: 0.065;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.06 0 0 0 0 0.1 0 0 0 0 0.17 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .06 0 0 0 0 .1 0 0 0 0 .17 0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
 /* Antetítulo: encima del H1, apoyado en el fondo de la fila del cielo. */
@@ -4169,7 +4340,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+  background-image: var(--disco-sol);
   box-shadow:
     0 0 0 1px rgb(122 94 51 / 0.18),
     0 0 28px 6px rgb(232 200 140 / 0.4);
@@ -4540,20 +4711,12 @@ html[data-movimiento]:not([data-mov-ui]) .mov-nota {
     opacity: 0;
     transform: translateY(20px);
   }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 @keyframes otea-revelar {
   from {
     opacity: 0;
     transform: translateY(32px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 
@@ -5358,6 +5521,12 @@ html[data-movimiento="completo"] {
     animation: otea-aparecer 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
 
+  /* Botones (salvo el de latón, que trae las suyas más abajo) y enlaces de la cabecera: color, fondo, sombra y pulsado
+     en 200 ms. Antes de las reglas de cada pieza, que la pisan donde hace falta. */
+  .suave {
+    transition: var(--dur-2) var(--ease-salida);
+    transition-property: background-color, box-shadow, color, scale;
+  }
 
   .punto-escribiendo {
     animation: otea-pulso 1.2s ease-in-out infinite;
@@ -6622,7 +6791,7 @@ html[data-movimiento="completo"] {
         aspect-ratio: 1;
         translate: -50% 46%;
         border-radius: 50%;
-        background-image: radial-gradient(circle at 42% 36%, #FBF1DC 0%, #EBD2A2 30%, #C9A46A 64%, #B08D57 100%);
+        background-image: var(--disco-sol);
         box-shadow:
           0 0 0 1px rgb(122 94 51 / 0.18),
           0 0 60px 10px rgb(232 200 140 / 0.42);
@@ -6878,10 +7047,6 @@ html[data-movimiento="completo"] {
   from {
     opacity: 0;
     translate: 0 6px;
-  }
-  to {
-    opacity: 1;
-    translate: none;
   }
 }
 

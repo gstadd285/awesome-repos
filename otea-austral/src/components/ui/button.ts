@@ -1,12 +1,12 @@
 type Variante = "primary" | "outline" | "ghost";
 type Tamano = "md" | "sm";
 
-// Forma y respuesta común. Las transiciones usan los tokens de movimiento y solo existen con la puerta abierta
-// (`mov:`); el pulsado (`active:scale`) responde en todos los modos. El latón trae sus propias transiciones
+// Forma y respuesta común. Las transiciones (`suave`, en globals.css) usan los tokens de movimiento y solo existen con la
+// puerta abierta; el pulsado (`active:scale`) responde en todos los modos. El latón trae sus propias transiciones
 // (resorte, brillo y destello) en globals.css. Solo los `<button>` impiden seleccionar su texto (pulsar varias
 // veces no pinta selección); los enlaces con forma de botón se pueden seleccionar y copiar.
 const BASE =
-  "inline-flex [&:is(button)]:select-none items-center justify-center gap-2 rounded-pill font-medium active:scale-[0.97] mov:transition-[background-color,box-shadow,color,scale] mov:duration-(--dur-2) mov:ease-(--ease-salida)";
+  "inline-flex [&:is(button)]:select-none items-center justify-center gap-2 rounded-pill font-medium active:scale-[0.97] suave";
 
 const TAMANOS: Record<Tamano, string> = {
   // 14 px con 12 px de relleno vertical: 44 px de alto, un objetivo táctil cómodo.

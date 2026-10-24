@@ -5,7 +5,7 @@ import { EnlaceCuenta } from "./EnlaceCuenta";
 import { NAV_CABECERA, NAV_PRINCIPAL } from "./navigation";
 
 const ENLACE =
-  "rounded-pill text-sm font-medium text-texto-suave hover:text-texto aria-[current=page]:text-texto mov:transition-colors mov:duration-(--dur-2) mov:ease-(--ease-salida)";
+  "rounded-pill text-sm font-medium text-texto-suave hover:text-texto aria-[current=page]:text-texto suave";
 
 /** Menú del teléfono: la navegación completa del producto y «Seguridad». */
 const NAV_MENU = [...NAV_PRINCIPAL, { href: "/seguridad", texto: "Seguridad" }] as const;
