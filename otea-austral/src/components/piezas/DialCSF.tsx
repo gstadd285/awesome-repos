@@ -43,7 +43,7 @@ export function DialCSF() {
           const abajo = centro > 0 && centro < 180;
           const id = `dial-${f.codigo.toLowerCase()}`;
           return (
-            <a key={f.codigo} href={`#funcion-${f.codigo.toLowerCase()}`} aria-label={`${f.nombre} (${f.codigo})`}>
+            <a key={f.codigo} href={`#funcion-${f.codigo.toLowerCase()}`} aria-label={`${f.nombre} ${f.codigo}`}>
               <g className={`kx-i-${k}`}>
                 <path d={sector(desde, hasta)} fill="#F6F3ED" stroke="#C9CACC" />
                 <path id={`${id}-n`} d={arco(desde, hasta, abajo ? R_CODIGO : R_NOMBRE, abajo)} fill="none" />
@@ -62,7 +62,7 @@ export function DialCSF() {
                 ) : null}
                 <text textAnchor="middle" dominantBaseline="middle" aria-hidden="true">
                   <textPath href={`#${id}-n`} startOffset="50%" className="micro" fill="#0F1B2D">
-                    {f.nombre.toUpperCase()}
+                    {f.nombre}
                   </textPath>
                 </text>
                 <text textAnchor="middle" dominantBaseline="middle" aria-hidden="true">

@@ -44,7 +44,7 @@ export function useHidratado(): boolean {
 export const CLASE_CAMPO =
   "mt-3 block w-full rounded-badge bg-papel px-4 py-3 text-base text-texto campo placeholder:text-apoyo";
 export const CLASE_ETIQUETA = "micro text-texto";
-export const CLASE_ENLACE = "text-texto underline underline-offset-4";
+export const CLASE_ENLACE = "enlace text-texto";
 export const CLASE_CASILLA = "h-6 w-6 shrink-0 accent-ink";
 
 export function ErrorDeCampo({ id, children }: { id: string; children?: ReactNode }) {

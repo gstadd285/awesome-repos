@@ -38,7 +38,7 @@ const ETIQUETA_MODO: Record<ModoRespuesta, string> = {
 const NOTA_IA =
   "Las respuestas con IA las redacta un modelo a partir de las preguntas frecuentes del sitio y pueden tener errores: lo importante, contrástalo en la metodología y en las fuentes.";
 
-const ENLACE = "font-medium text-texto underline underline-offset-4";
+const ENLACE = "enlace font-medium text-texto";
 const ATAJO =
   "min-h-11 rounded-card bg-papel-alto px-4 py-2.5 text-left text-sm leading-snug text-texto linea-fina transition-colors hover:bg-papel active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -56,6 +56,25 @@ function useHidratado(): boolean {
   );
 }
 
+/** Tope del escalonado de las frases (`kx-i-N` × 120 ms): una respuesta larga no espera más de medio segundo. */
+const MAX_ESCALON_FRASE = 4;
+
+/**
+ * Parte un texto en frases sin perder ningún carácter: cada trozo termina en su puntuación y el espacio que la sigue, así
+ * que unirlos devuelve el texto exacto (el lector de pantalla y `textContent` leen lo mismo que antes).
+ */
+export function frases(texto: string): string[] {
+  const trozos: string[] = [];
+  const fin = /[.!?…:]+[»”")]*\s+/g;
+  let inicio = 0;
+  for (let m = fin.exec(texto); m; m = fin.exec(texto)) {
+    trozos.push(texto.slice(inicio, m.index + m[0].length));
+    inicio = m.index + m[0].length;
+  }
+  if (inicio < texto.length) trozos.push(texto.slice(inicio));
+  return trozos;
+}
+
 function ultimoIndiceBase(bloques: readonly Bloque[]): number {
   for (let i = bloques.length - 1; i >= 0; i--) if (bloques[i].modo === "base") return i;
   return -1;
@@ -66,8 +85,8 @@ function Escribiendo() {
     <p className="flex items-center gap-2.5 text-sm text-apoyo">
       <span aria-hidden="true" className="flex items-center gap-1">
         <span className="punto-escribiendo h-1.5 w-1.5 rounded-full bg-apoyo" />
-        <span className="punto-escribiendo h-1.5 w-1.5 rounded-full bg-apoyo" />
-        <span className="punto-escribiendo h-1.5 w-1.5 rounded-full bg-apoyo" />
+        <span className="punto-escribiendo kx-i-1 h-1.5 w-1.5 rounded-full bg-apoyo" />
+        <span className="punto-escribiendo kx-i-2 h-1.5 w-1.5 rounded-full bg-apoyo" />
       </span>
       Buscando la respuesta…
     </p>
@@ -123,7 +142,7 @@ function RespuestaAsistente({
   ) : null;
 
   return (
-    <div className="max-w-[94%] space-y-4 rounded-card bg-papel px-4 py-3.5 text-texto linea-fina">
+    <div className="mensaje max-w-[94%] space-y-4 rounded-card bg-papel px-4 py-3.5 text-texto linea-fina">
       <p className="sr-only">Asistente:</p>
       {r.bloques.map((b, i) => (
         <div key={i} className="space-y-2">
@@ -133,7 +152,14 @@ function RespuestaAsistente({
             <p className="micro text-apoyo">Pregunta frecuente: «{b.coincidencia}»</p>
           ) : null}
           {b.texto !== "" ? (
-            <p className="text-base leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]">{b.texto}</p>
+            // La respuesta aparece por frases (cada `span` con su retraso, 120 ms); el texto del párrafo es el mismo.
+            <p className="text-base leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]">
+              {frases(b.texto).map((f, j) => (
+                <span key={j} className={`frase kx-i-${Math.min(j, MAX_ESCALON_FRASE)}`}>
+                  {f}
+                </span>
+              ))}
+            </p>
           ) : null}
         </div>
       ))}
@@ -282,15 +308,25 @@ export function AsistenteChat({ modo, sugeridas }: { modo: ModoRespuesta; sugeri
   }
 
   return (
-    <div className="superficie flex h-[min(86svh,720px)] min-h-[480px] flex-col overflow-hidden rounded-card">
+    // En el teléfono la conversación crece con la página (sin un registro de ~400 px con scroll propio); desde 640 px,
+    // alto fijo y el hilo se desplaza solo. `data-bucle`: fuera de la pantalla, la isla pausa los puntos de «Buscando…»
+    // y las entradas, que aparecen después de cargar la página.
+    <div
+      data-bucle
+      className="superficie flex flex-col overflow-hidden rounded-card sm:h-[min(86svh,720px)] sm:min-h-[480px]"
+    >
       <header className="border-b border-linea px-5 py-4">
         {/* Alto fijo: el botón aparece con la primera pregunta y el encabezado no debe moverse. */}
         <div className="flex min-h-9 items-center justify-between gap-3">
           <p className="micro text-apoyo">Asistente de Otea</p>
           {turnos.length > 0 ? (
-            <button type="button" onClick={borrar} className={buttonClasses("ghost", "shrink-0", "sm")}>
-              Borrar{" "}
-              <span className="sr-only sm:not-sr-only">conversación</span>
+            <button
+              type="button"
+              onClick={borrar}
+              aria-label="Borrar conversación"
+              className={buttonClasses("ghost", "shrink-0", "sm")}
+            >
+              Borrar<span className="hidden sm:inline"> conversación</span>
             </button>
           ) : null}
         </div>
@@ -307,7 +343,7 @@ export function AsistenteChat({ modo, sugeridas }: { modo: ModoRespuesta; sugeri
         aria-label="Conversación con el asistente"
         aria-busy={cargando}
         onScroll={alDesplazar}
-        className="relative flex-1 space-y-6 overflow-y-auto px-5 py-6"
+        className="relative flex-1 space-y-6 overflow-y-auto px-5 py-6 mov:scroll-smooth"
       >
         <div className="max-w-[94%] space-y-4 rounded-card bg-papel px-4 py-3.5 text-texto linea-fina">
           <p className="sr-only">Asistente:</p>
@@ -320,7 +356,7 @@ export function AsistenteChat({ modo, sugeridas }: { modo: ModoRespuesta; sugeri
 
         {turnos.map((turno) => (
           <Fragment key={turno.id}>
-            <div className="ml-auto max-w-[88%] rounded-card bg-ink px-4 py-3 text-base leading-relaxed text-ivory [overflow-wrap:anywhere]">
+            <div className="mensaje ml-auto max-w-[88%] rounded-card bg-ink px-4 py-3 text-base leading-relaxed text-ivory [overflow-wrap:anywhere]">
               <span className="sr-only">Tú: </span>
               {turno.pregunta}
             </div>
@@ -369,11 +405,11 @@ export function AsistenteChat({ modo, sugeridas }: { modo: ModoRespuesta; sugeri
           Enter envía; Mayús + Enter agrega una línea. No escribas datos personales.{" "}
           {modo === "ia" ? "Con IA, tu pregunta se envía a Anthropic para redactar la respuesta; nosotros no la guardamos. " : null}
           Al usar el asistente aceptas las{" "}
-          <Link href="/terminos" className="text-texto underline underline-offset-4">
+          <Link href="/terminos" className="enlace text-texto">
             condiciones de uso
           </Link>{" "}
           y la{" "}
-          <Link href="/privacidad" className="text-texto underline underline-offset-4">
+          <Link href="/privacidad" className="enlace text-texto">
             política de privacidad
           </Link>
           .

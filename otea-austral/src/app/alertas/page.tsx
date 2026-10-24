@@ -46,11 +46,11 @@ export default async function AlertasPage() {
       ) : alertas.length === 0 ? (
         <p className="max-w-[680px] leading-relaxed text-texto-suave">
           Aún no hay alertas publicadas. Mientras tanto, puedes ver{" "}
-          <Link href="/#ejemplos-titulo" className="text-texto underline underline-offset-4">
+          <Link href="/#ejemplos-titulo" className="enlace text-texto">
             cómo se ve una alerta
           </Link>{" "}
           o leer{" "}
-          <Link href="/metodologia" className="text-texto underline underline-offset-4">
+          <Link href="/metodologia" className="enlace text-texto">
             cómo las verificamos
           </Link>
           .

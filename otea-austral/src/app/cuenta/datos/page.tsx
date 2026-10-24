@@ -44,8 +44,8 @@ export default async function DatosPage() {
         </ul>
         {perfil ? (
           <p className="mt-4 text-sm leading-relaxed text-apoyo">
-            Aceptaste las <Link href="/terminos" className="text-texto underline underline-offset-4">condiciones de uso</Link> y la{" "}
-            <Link href="/privacidad" className="text-texto underline underline-offset-4">política de privacidad</Link> (versión {perfil.versionTextos}) el{" "}
+            Aceptaste las <Link href="/terminos" className="enlace text-texto">condiciones de uso</Link> y la{" "}
+            <Link href="/privacidad" className="enlace text-texto">política de privacidad</Link> (versión {perfil.versionTextos}) el{" "}
             {formatearDia(perfil.aceptado)}.
           </p>
         ) : null}

@@ -51,7 +51,7 @@ function IconoAviso() {
     </svg>
   );
 }
-const ENLACE = "text-texto underline underline-offset-4";
+const ENLACE = "enlace text-texto";
 
 /**
  * La inscripción se verifica en dos pasos: dejar el correo y confirmarlo desde el enlace que llega a ese correo.
@@ -158,7 +158,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
       <fieldset className="mt-3 rounded-badge p-4 linea-fina">
         <legend className="micro px-1 text-texto">Antes de enviar</legend>
         <details>
-          <summary className="cursor-pointer text-sm font-medium text-texto">Lo esencial de las condiciones de uso</summary>
+          <summary className="cursor-pointer py-3 text-sm font-medium text-texto">Lo esencial de las condiciones de uso</summary>
           <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-texto-suave">
             <li>Otea ofrece información y análisis. No constituye asesoría financiera.</li>
             <li>El contenido marcado «Datos de ejemplo» es ficticio: sirve para mostrar el servicio.</li>
@@ -166,7 +166,7 @@ export function WaitlistForm({ marca }: { marca: string }) {
             <li>El asistente de preguntas puede fallar: contrasta lo importante en las fuentes.</li>
           </ul>
           <p className="mt-3 text-sm">
-            <Link href="/terminos" className={ENLACE}>
+            <Link href="/terminos" className={`${ENLACE} -my-3 inline-block py-3`}>
               Leer las condiciones de uso completas
             </Link>
           </p>

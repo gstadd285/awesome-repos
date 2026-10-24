@@ -5,7 +5,7 @@ import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AVISOS_DE_IA, MENSAJES_DE_FALLO, SALUDO_INICIAL } from "@/lib/asistente/cliente";
 import { MAX_PREGUNTA, RUTA_ASISTENTE, type EventoAsistente } from "@/lib/asistente/limites";
-import { AsistenteChat } from "./AsistenteChat";
+import { AsistenteChat, frases } from "./AsistenteChat";
 
 const SUGERIDAS = ["¿Cómo calculan la confianza?", "¿Qué fuentes usan?"];
 
@@ -222,6 +222,23 @@ describe("AsistenteChat · preguntar", () => {
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
+  it("la respuesta llega por frases sin cambiar su texto: el párrafo dice lo mismo y nada lleva `style`", async () => {
+    const texto = "Se calcula con las fuentes: nunca a mano. ¿Y si falta la primaria? Baja a media…\nFin";
+    simularFetch(respuesta(baseCompleta(texto)));
+    const user = userEvent.setup();
+    const { container } = montar();
+    await user.click(screen.getByRole("button", { name: SUGERIDAS[0] }));
+    const registro = screen.getByRole("log");
+    await waitFor(() => expect(registro).toHaveAttribute("aria-busy", "false"));
+    const piezas = [...registro.querySelectorAll(".frase")];
+    expect(piezas.map((p) => p.textContent)).toEqual(frases(texto));
+    expect(piezas[0].parentElement?.textContent).toBe(texto);
+    // Escalonado con clases finitas (120 ms cada una, tope en la quinta), jamás `style`.
+    expect(piezas.map((p) => p.className)).toEqual(["frase kx-i-0", "frase kx-i-1", "frase kx-i-2", "frase kx-i-3", "frase kx-i-4"]);
+    expect(container.querySelectorAll(".mensaje")).toHaveLength(2);
+    expect(container.querySelector("[style]")).toBeNull();
+  });
+
   it("mientras responde no se puede preguntar otra cosa", async () => {
     const flujo = simularFlujoManual();
     const user = userEvent.setup();
@@ -399,5 +416,16 @@ describe("AsistenteChat · control de la persona", () => {
     expect(senal?.aborted).toBe(false);
     unmount();
     expect(senal?.aborted).toBe(true);
+  });
+});
+
+describe("frases", () => {
+  it("parte por la puntuación final y une sin perder un carácter", () => {
+    for (const texto of ["", "Una sola frase", "Uno. Dos! Tres? Cuatro… Cinco: seis.", "«Cita.» Luego.\n\nOtra línea.", "Sin espacio.Final"]) {
+      expect(frases(texto).join("")).toBe(texto);
+    }
+    expect(frases("Uno. Dos! Tres?")).toEqual(["Uno. ", "Dos! ", "Tres?"]);
+    expect(frases("Dijo «sí.» Y siguió.")).toEqual(["Dijo «sí.» ", "Y siguió."]);
+    expect(frases("Versión 2.5 del texto.")).toEqual(["Versión 2.5 del texto."]);
   });
 });

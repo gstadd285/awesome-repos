@@ -6,7 +6,7 @@ export function Migas({ actual, className = "" }: { actual: string; className?: 
     <nav aria-label="Ruta de navegación" className={className}>
       <ol className="flex items-center gap-2 text-sm text-apoyo">
         <li>
-          <Link href="/" className="rounded-badge underline-offset-4 hover:text-texto hover:underline">
+          <Link href="/" className="-m-3 inline-block rounded-badge p-3 underline-offset-4 hover:text-texto hover:underline">
             Inicio
           </Link>
         </li>

@@ -63,7 +63,7 @@ describe("piezas de las interiores", () => {
     render(<DialCSF />);
     const nav = screen.getByRole("navigation", { name: "Funciones del marco" });
     for (const f of FUNCIONES) {
-      expect(within(nav).getByRole("link", { name: `${f.nombre} (${f.codigo})` })).toHaveAttribute(
+      expect(within(nav).getByRole("link", { name: `${f.nombre} ${f.codigo}` })).toHaveAttribute(
         "href",
         `#funcion-${f.codigo.toLowerCase()}`,
       );

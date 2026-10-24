@@ -34,7 +34,7 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
     <>
       <header className="cabecera vt-site-header sticky top-0 z-50">
         <div className="cabecera-fila mx-auto flex h-full max-w-[1440px] items-center gap-4 lg:gap-6">
-          <Link href="/" aria-label="Otea Austral, inicio" className="cabecera-logo rounded-badge">
+          <Link href="/" aria-label="Otea Austral, inicio" className="cabecera-logo flex min-h-11 items-center rounded-badge">
             <Logo />
           </Link>
 

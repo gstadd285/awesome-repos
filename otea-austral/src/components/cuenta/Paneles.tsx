@@ -97,7 +97,7 @@ export function ResumenDeDatos() {
       </ul>
       <p className="mt-4 text-sm text-apoyo">
         El detalle está en la{" "}
-        <Link href="/privacidad" className="text-texto underline underline-offset-4">
+        <Link href="/privacidad" className="enlace text-texto">
           política de privacidad
         </Link>
         .

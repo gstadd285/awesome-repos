@@ -4,7 +4,7 @@ import { ConmutadorMovimiento } from "@/components/motion/ControlesMovimiento";
 import { EnlaceCuenta } from "./EnlaceCuenta";
 import { NAV_CONFIANZA, NAV_PRINCIPAL } from "./navigation";
 
-const ENLACE = "block py-2 text-[15px] text-niebla hover:underline underline-offset-4";
+const ENLACE = "flex min-h-11 items-center text-[15px] text-niebla hover:underline underline-offset-4";
 
 /**
  * Pie en tinta: un horizonte de latón con su resplandor, cuatro columnas (marca y lema, Producto, Confianza y

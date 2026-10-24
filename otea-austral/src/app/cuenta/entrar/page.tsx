@@ -50,7 +50,7 @@ export default async function EntrarPage({ searchParams }: PageProps<"/cuenta/en
                   <FormularioEntrar siguiente={destino} />
                   <p className="mt-6 text-sm text-texto-suave">
                     ¿No tienes cuenta?{" "}
-                    <Link href="/cuenta/crear" className="text-texto underline underline-offset-4">
+                    <Link href="/cuenta/crear" className="enlace text-texto">
                       Crea una
                     </Link>
                     .

@@ -81,6 +81,8 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   lo cierra (`hidePopover`), y si el enlace es un ancla de esta página el salto es instantáneo, detrás de la hoja que
  *   se funde, y el foco pasa al destino. Si el foco sale del menú con el teclado, también se cierra.
  * - **Índice de las interiores en el teléfono** (siempre): elegir un apartado pliega el `<details>` «En esta página».
+ * - **Impresión** (siempre): en `beforeprint` quita `data-motor` de `<html>` (lo que el motor oculta hasta que entra en
+ *   pantalla se imprime completo; el CSS de impresión apaga las animaciones) y en `afterprint` lo devuelve.
  *
  * Lo demás solo actúa con la puerta abierta (`html[data-movimiento="completo"]`): observa el atributo y, al cerrarse,
  * retira oyentes, marcas y variables. Escribe solo por CSSOM (`style.setProperty`, admitido por la CSP; nunca un
@@ -363,6 +365,19 @@ export function DirectorEscena() {
       else apagarPuntero();
     };
 
+    // Al imprimir no hay pantalla a la que entrar: se suelta lo que espera a verse y vuelve al terminar.
+    let motor: string | null = null;
+    const alImprimir = () => {
+      motor = raiz.getAttribute("data-motor");
+      raiz.removeAttribute("data-motor");
+    };
+    const trasImprimir = () => {
+      if (motor !== null) raiz.setAttribute("data-motor", motor);
+      motor = null;
+    };
+    window.addEventListener("beforeprint", alImprimir);
+    window.addEventListener("afterprint", trasImprimir);
+
     const vigilante = new MutationObserver(sincronizar);
     vigilante.observe(raiz, { attributes: true, attributeFilter: ["data-movimiento"] });
     fino.addEventListener("change", sincronizar);
@@ -373,6 +388,8 @@ export function DirectorEscena() {
 
     return () => {
       window.removeEventListener("load", alCargar);
+      window.removeEventListener("beforeprint", alImprimir);
+      window.removeEventListener("afterprint", trasImprimir);
       window.clearTimeout(esperaCarga);
       vigilante.disconnect();
       fino.removeEventListener("change", sincronizar);

@@ -298,6 +298,16 @@ describe("movimiento", () => {
     expect(horizonte).toMatch(/className="h-pulsos" data-bucle/);
     const historia = readFileSync(join(process.cwd(), "src/components/home/Story.tsx"), "utf8");
     expect(historia).toMatch(/className="hero-desliza" aria-hidden="true" data-bucle/);
+    // Los puntos de «Buscando…» aparecen después de cargar: los pausa el contenedor del chat, que sí existe al cargar.
+    const chat = readFileSync(join(process.cwd(), "src/components/asistente/AsistenteChat.tsx"), "utf8");
+    expect(chat).toMatch(/<div\s+data-bucle\s+className="superficie /);
+  });
+
+  it("al imprimir no se anima nada: una sola regla para toda clase de entrada, presente o futura", () => {
+    const impresion = [...css.matchAll(/@media print\s*\{/g)];
+    expect(impresion).toHaveLength(1);
+    const bloque = css.slice(impresion[0].index);
+    expect(bloque).toMatch(/html\[data-movimiento="completo"\] \*,\s*html\[data-movimiento="completo"\] ::before,\s*html\[data-movimiento="completo"\] ::after\s*\{\s*animation: none !important;\s*transition: none !important;/);
   });
 
   it("los efectos de puntero solo viven en la puerta y, dentro de ella, con puntero fino", () => {

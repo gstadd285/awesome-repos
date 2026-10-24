@@ -92,7 +92,7 @@ function Notas({ v, prueba }: { v: AlertView; prueba?: AlertView }) {
       medidor: <Medidor nivel={v.confianza} nivelPrueba={prueba?.confianza} />,
       // El simulador de /metodologia calcula con las mismas reglas: aquí se ve un caso, allí se prueban todos.
       enlace: (
-        <Link href="/metodologia#simulador" className="mt-1.5 inline-block text-sm text-texto underline underline-offset-4">
+        <Link href="/metodologia#simulador" className="enlace -mt-1.5 -mb-3 inline-block py-3 text-sm text-texto">
           Pruébalo en el simulador
         </Link>
       ),

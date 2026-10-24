@@ -95,7 +95,7 @@ function Indice({ entradas }: { entradas: EntradaIndice[] }) {
     <ol className="indice mt-3">
       {entradas.map((e) => (
         <li key={e.id}>
-          <a href={`#${e.id}`} className="relative flex gap-3 rounded-badge px-4 py-2 text-sm leading-snug text-texto-suave hover:text-texto">
+          <a href={`#${e.id}`} className="relative flex gap-3 rounded-badge px-4 py-3 text-sm leading-snug text-texto-suave hover:text-texto lg:py-2">
             <span className="contador pt-0.5 text-brass-deep">{e.numero}</span>
             {e.titulo}
           </a>
@@ -112,8 +112,8 @@ function Indice({ entradas }: { entradas: EntradaIndice[] }) {
       <details className="indice-movil group lg:hidden">
         <summary className="micro flex min-h-11 items-center justify-between border-b border-linea bg-papel-alto px-6 text-texto [&::-webkit-details-marker]:hidden">
           En esta página
-          <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3 w-3 group-open:rotate-90">
-            <path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="chevron h-3 w-3">
+            <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </summary>
         <nav aria-label="En esta página (desplegable)">{lista}</nav>

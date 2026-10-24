@@ -50,7 +50,7 @@ export default async function PerfilPage({ searchParams }: PageProps<"/cuenta">)
                 <dt className="text-apoyo">Verificación en dos pasos</dt>
                 <dd className="font-medium text-texto">
                   {perfil.dosPasos ? "Activada" : "Apagada"} ·{" "}
-                  <Link href="/cuenta/seguridad" className="underline underline-offset-4">
+                  <Link href="/cuenta/seguridad" className="enlace">
                     Administrar
                   </Link>
                 </dd>
@@ -58,7 +58,7 @@ export default async function PerfilPage({ searchParams }: PageProps<"/cuenta">)
             </dl>
             <p className="mt-6 text-sm leading-relaxed text-apoyo">
               Tu correo es el identificador de tu cuenta y, por ahora, no se puede cambiar. Si necesitas usar otro, crea una cuenta nueva y elimina esta desde{" "}
-              <Link href="/cuenta/datos" className="text-texto underline underline-offset-4">
+              <Link href="/cuenta/datos" className="enlace text-texto">
                 Tus datos
               </Link>
               .

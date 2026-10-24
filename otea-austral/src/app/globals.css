@@ -4555,6 +4555,28 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
   }
 }
 
+/* Enlaces en texto (prosa, asistente, lista de espera, vitrina): subrayado de 1 px en el color del texto y, al pasar el
+   cursor, un filete de latón de 2 px que crece desde la izquierda justo sobre él (un fondo, sin nodos; en la caja de
+   contenido, así un relleno para el dedo no lo aparta del texto). */
+.enlace,
+.prosa a {
+  text-decoration: underline 1px;
+  /* En `em`: así el subrayado cae dentro de los 2 px del filete de 12 a 17 px (medido a DPR 6). */
+  text-underline-offset: 0.25em;
+  background: linear-gradient(var(--color-brass), var(--color-brass)) 0 100% / 0 2px no-repeat content-box;
+
+  @media (hover: hover) {
+    &:hover {
+      background-size: 100% 2px;
+    }
+  }
+}
+
+/* Chevrón de los desplegables: apunta abajo y da media vuelta al abrirse (con la puerta, en 200 ms). */
+[open] > summary .chevron {
+  rotate: 180deg;
+}
+
 .prosa {
   margin-top: 20px;
   font-size: 17px;
@@ -4568,11 +4590,6 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
   :is(a, strong) {
     color: var(--color-texto);
-  }
-
-  a {
-    text-decoration: underline;
-    text-underline-offset: 4px;
   }
 
   strong {
@@ -4613,7 +4630,7 @@ html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .his
 
 /* ── Pie en tinta: horizonte de latón con su resplandor y la firma ── */
 .pie {
-  padding: 88px 0 env(safe-area-inset-bottom);
+  padding: 88px env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   overflow: clip;
   background: linear-gradient(90deg, transparent, var(--color-brass) 18% 82%, transparent) 0 0 / 100% 1px no-repeat,
     radial-gradient(40% 180px at 50% 0, rgb(176 141 87 / 0.22), transparent) var(--color-ink);
@@ -5510,6 +5527,13 @@ html[data-movimiento]:not([data-mov-ui]) .mov-nota {
   }
 }
 
+@keyframes asistente-entrar {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
 html[data-movimiento="completo"] {
   scroll-behavior: smooth;
   /* Desplegables que se abren con suavidad (donde hay soporte). */
@@ -5528,28 +5552,31 @@ html[data-movimiento="completo"] {
     transition-property: background-color, box-shadow, color, scale;
   }
 
-  .punto-escribiendo {
-    animation: otea-pulso 1.2s ease-in-out infinite;
-  }
-  .punto-escribiendo:nth-child(2) {
-    animation-delay: 150ms;
-  }
-  .punto-escribiendo:nth-child(3) {
-    animation-delay: 300ms;
+  /* Asistente: cada mensaje entra con 8 px y un fundido; la respuesta llega por frases, 120 ms entre una y otra
+     (`kx-i-N`, con tope). El texto del párrafo es el mismo: solo se escalona su opacidad. */
+  .mensaje {
+    animation: asistente-entrar var(--dur-3) var(--ease-salida) backwards;
   }
 
-  /* Al imprimir no hay scroll: todo se muestra completo y quieto. */
-  @media print {
-    .anim-revelar,
-    .anim-aparecer,
-    .kx-l,
-    .kx-p,
-    .kx-w,
-    .historia-escenario > :not(.h-hero),
-    .historia-escenario > :not(.h-hero) *,
-    .historia-escenario > :not(.h-hero) *::after {
-      animation: none !important;
-    }
+  .frase {
+    animation: m-plano var(--dur-3) var(--ease-salida) backwards;
+    animation-delay: calc(var(--i, 0) * var(--escalon-demo));
+  }
+
+  /* Chevrón de los desplegables: media vuelta al abrirse. */
+  .chevron {
+    transition: rotate var(--dur-2) var(--ease-enfasis);
+  }
+
+  /* Enlaces en texto: el filete de latón crece desde la izquierda. */
+  .enlace,
+  .prosa a {
+    transition: background-size var(--dur-3) var(--ease-salida);
+  }
+
+  .punto-escribiendo {
+    animation: otea-pulso 1.2s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 150ms);
   }
 
   /* Revelado ligado al scroll: termina cuando el borde superior del bloque
@@ -5616,8 +5643,8 @@ html[data-movimiento="completo"] {
     block-size: 0;
     overflow-y: clip;
     transition:
-      content-visibility 450ms allow-discrete,
-      block-size 450ms cubic-bezier(0.16, 1, 0.3, 1);
+      content-visibility var(--dur-3) allow-discrete,
+      block-size var(--dur-3) var(--ease-enfasis);
   }
 
   & details[open]::details-content {
@@ -6205,16 +6232,6 @@ html[data-movimiento="completo"] {
       animation:
         hz-chispa 1100ms var(--ease-enfasis) 1880ms backwards,
         hz-chispa-luz 1100ms 1880ms backwards;
-    }
-  }
-
-  /* Al imprimir, todo el héroe en su estado final (cualquier pieza de la entrada, también las que se sumen). */
-  @media print {
-    .h-hero,
-    .h-hero *,
-    .h-hero *::before,
-    .h-hero *::after {
-      animation: none !important;
     }
   }
 }
@@ -7469,14 +7486,6 @@ html[data-movimiento="completo"][data-motor] {
   }
 }
 
-/* Al imprimir, ninguna pieza del producto se anima (vitrina, temas, noche y lista). */
-@media print {
-  html[data-movimiento="completo"] :is(#ejemplos, #temas, .noche, #lista-de-espera) *,
-  html[data-movimiento="completo"] .nota::before {
-    animation: none !important;
-  }
-}
-
 /* ── Interiores, pie y 404: movimiento ──────────────────────────────────────
  * El contenido espera al titular: la entrada sube sin partir de opacidad 0 (es el LCP), la pieza y el cuerpo llegan a
  * los 500–600 ms y los trazos de las piezas se dibujan después (`stroke-dashoffset` con `pathLength="1"`). El riel del
@@ -7638,13 +7647,6 @@ html[data-movimiento="completo"] {
           animation-timeline: --as;
         }
       }
-    }
-  }
-
-  @media print {
-    .int *,
-    .pie-firma::after {
-      animation: none !important;
     }
   }
 }
@@ -7892,5 +7894,17 @@ html:not([data-movimiento="completo"])::view-transition-new(*) {
   html:not([data-movimiento="completo"])::view-transition-old(*),
   html:not([data-movimiento="completo"])::view-transition-new(*) {
     animation: none !important;
+  }
+}
+
+/* Al imprimir no hay scroll ni tiempo: todo queda en su estado final y quieto, sea cual sea la clase de entrada (también
+   las que se sumen). Lo que el motor oculta hasta que entra en pantalla (`[data-motor]`) lo suelta `DirectorEscena` en
+   `beforeprint`. */
+@media print {
+  html[data-movimiento="completo"] *,
+  html[data-movimiento="completo"] ::before,
+  html[data-movimiento="completo"] ::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

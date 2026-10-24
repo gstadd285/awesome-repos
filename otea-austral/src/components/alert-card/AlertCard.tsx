@@ -168,14 +168,10 @@ export function AlertCard({ alerta, nivelTitulo = 3, className = "", alternativa
         </p>
 
         <details className="group mt-3">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-badge py-1 text-sm font-medium text-texto [&::-webkit-details-marker]:hidden">
-            <svg
-              viewBox="0 0 12 12"
-              aria-hidden="true"
-              focusable="false"
-              className="h-3 w-3 transition-transform group-open:rotate-90"
-            >
-              <path d="M4 2 8 6 4 10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          {/* 44 px de alto para el dedo sin mover nada: el relleno de más lo devuelve el margen negativo. */}
+          <summary className="-my-2 flex cursor-pointer list-none items-center gap-2 rounded-badge py-3 text-sm font-medium text-texto [&::-webkit-details-marker]:hidden">
+            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false" className="chevron h-3 w-3">
+              <path d="M2 4 6 8 10 4" fill="none" stroke="currentColor" strokeWidth="1.5" />
             </svg>
             {nFuentesAlt !== nFuentes ? (
               // Un solo hijo del `flex`: si no, cada `span` alterno quedaría separado por el `gap`.
