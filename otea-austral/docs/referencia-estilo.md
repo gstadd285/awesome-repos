@@ -1,4 +1,30 @@
-# Authkit — Style Reference
+# Referencia de estilo
+
+## Vigente: «Horizonte» (octubre de 2026)
+
+Lo que sigue a esta sección es la referencia del estilo anterior (vidrio oscuro, AuthKit) y queda como antecedente. El
+sistema vigente, con sus tokens, vive en `src/app/globals.css` y se explica en `CLAUDE.md` y en `rediseno-horizonte.md`.
+
+- **Latón como material, no como relleno.** Es el único acento de interfaz. El botón principal es un degradado
+  `laton-claro → brass → laton-oscuro` con filo de luz arriba, filo de sombra abajo y sombra de contacto cálida (tinta
+  ≥ 4,9:1 en todo el recorrido). Con un ratón, un brillo sigue al cursor y un destello lo barre una vez al entrar. En las
+  piezas el latón va en filetes de 1–2 px, numerales grabados (`brass-deep`, 4,8:1 sobre el lienzo), el sol (un disco sin
+  anillo, `--disco-sol`) y el filete que crece bajo los enlaces en el texto. Como texto, solo sobre tinta (5,6:1) o en
+  `brass-deep`.
+- **Dos voces tipográficas.** Inter en mayúsculas (peso 500, interletra −0,025 em) solo para H1 y H2. Source Serif 4 (400
+  y 500, sin cursiva) para entradas, títulos de alerta, el lema y la firma del pie. JetBrains Mono para numerales, cotas y
+  rótulos de 12 px. Títulos con `text-wrap: balance`, prosa con `pretty` y medida máxima de 68ch.
+- **Ritmo de capítulos.** La portada alterna superficies para que cada capítulo se lea como una escena: claro (héroe e
+  historia, perla con luz de día) → hoja de papel con filo de latón (vitrina) → claro (temas) → noche → alba (pre-apertura,
+  banda a sangre en tinta) → claro (preguntas y lista) → pie en tinta con la firma «Otea Austral» en latón.
+- **Movimiento.** Cinco duraciones (120–900 ms), tres curvas (salida, énfasis, entrada) y un resorte literal. Todo termina
+  en reposo y se ve completo con movimiento reducido o sin JavaScript.
+
+---
+
+## Antecedente: estilo anterior (vidrio oscuro)
+
+### Authkit — Style Reference
 > Frosted glass cathedral at midnight
 
 **Theme:** dark

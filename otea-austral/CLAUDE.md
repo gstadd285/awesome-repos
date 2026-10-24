@@ -55,10 +55,10 @@ referencia: lienzo perla con luz de día, titulares grotescos en mayúsculas, pi
 ligada al scroll. Se conservan el logo y la paleta de Otea (la referencia usa morado y rosa). El estilo
 anterior (vidrio oscuro, `docs/referencia-estilo.md`) queda como antecedente.
 
-**Rediseño de claridad y texto en movimiento** (`docs/rediseno-claridad-y-movimiento.md`, a pedido de la
-persona responsable): el héroe dice qué es y ofrece una acción; la navegación se reduce a lo esencial; se
-quitan la numeración de secciones, los corchetes y los rótulos de 11 px; el texto aparece «como en un video»
-(ver «Texto en movimiento»). Las decisiones de gusto y los archivos que tocan están en ese documento.
+**Rediseño «Horizonte»** (vigente; visión, guion de la historia, decisiones, medición y pendientes en
+[`docs/rediseno-horizonte.md`](docs/rediseno-horizonte.md)): el emblema hecho escena (horizonte, sol de latón, lente), latón
+como material, dos voces tipográficas y ritmo de capítulos (claro → papel → noche → alba → tinta). Partió del rediseño de
+claridad y texto en movimiento (`docs/rediseno-claridad-y-movimiento.md`, antecedente).
 
 Tokens en `src/app/globals.css` (`@theme`, con la paleta de Tailwind reiniciada):
 
@@ -82,7 +82,9 @@ Utilidades propias: `superficie` (porcelana con borde fino y sombra suave),
 `linea-fina`, `filete-fuerte` y `filete-tinta` (borde del botón «outline» y su hover), `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
 pantalla de error), `fondo-luz`,
 `reticula-puntos`, y el tamaño `text-lede` (18 a 22 px) para el texto
-que explica el producto.
+que explica el producto. Clases propias de uso común: `enlace` (enlaces en texto: subrayado de 1 px y un filete de latón de
+2 px que crece con el cursor; `.prosa a` lo trae solo), `chevron` (desplegables: apunta abajo y da media vuelta con
+`[open]`) y `suave` (transiciones de botones y enlaces de la cabecera, con la puerta).
 
 Reglas:
 
@@ -118,7 +120,11 @@ Reglas:
   activadas, como pide tu sistema» (`mov-nota`).
 - Contraste mínimo AA: lo verifica `src/lib/design/contrast.test.ts` leyendo `globals.css`. El
   latón y la bruma no sirven para texto chico sobre el fondo claro.
-- Página inicial objetivo < 1 MB.
+- **Presupuesto de la portada** (`e2e/presupuesto.spec.ts`, umbrales definitivos de T7): transferido < 390 KB, nodos
+  < 1.400, animaciones a la vez < 135 y **CSS < 30 KB gzip** (las dos hojas; hoy 29,97). Todo `globals.css` viaja con la
+  portada: lo que se sume se compensa (ver «Lo aprendido (pulido y rendimiento final)»).
+- Objetivos táctiles de 44 px (`min-h-11`, o relleno con margen negativo para no mover nada) en botones, `summary`, migas,
+  pie e índice.
 - **Sin atributos `style` en el HTML**: la CSP los bloquea. Todo con clases (las posiciones fijas
   van como clases completas de Tailwind en el código, para que se detecten).
 - Componentes de cliente sin Zod: los temas viven en `src/lib/domain/temas.ts` (sin dependencias).
@@ -197,8 +203,11 @@ de frente y nítido con el alba detrás. Todo es CSS 3D:
   acciones (`.hero-mando`) declaran `visibility: visible` y siguen enfocables. Ya no hay `hz-retirar` (`display`
   animado = hilo principal).
 - **Maquetación diferida de la carga:** con JS, hasta el evento `load` las secciones bajo la historia llevan
-  `content-visibility: auto` (primer pintado más liviano); `DirectorEscena` marca `data-maquetado` en `<html>` tras
-  `load` o al primer clic en un ancla de la página. No se aplica sin JS ni si la dirección trae ancla (`:target`).
+  `content-visibility: auto` (primer pintado más liviano); tras `load` `DirectorEscena` las suelta una por cuadro
+  (`data-maquetada`) y al final marca `data-maquetado` en `<html>` (al instante con el primer clic en un ancla). No se
+  aplica sin JS ni si la dirección trae ancla (`:target`). Durante una transición entre páginas (`:active-view-transition`,
+  salvo los saltos `data-salto`) las secciones fuera de pantalla vuelven a `content-visibility: auto` con su alto
+  recordado: la captura de la página vieja no las pinta.
 - Los bloques de la historia son absolutos y se apilan: **lo que se desvanece debe dejar de interceptar clics**. Solo
   `.h-hero` anima `pointer-events` (y `visibility`), en una clave discreta: es la única animación de hilo principal. Los
   pasos y las piezas que aún no entran o ya salieron se **apartan** con `translate: 0 ±200vh` en el primer o el último
@@ -221,9 +230,11 @@ movimiento»):
 | `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
 | `hz-*` | Entrada en tres tiempos del héroe: la línea se traza, el titular sale del horizonte (< 1,3 s), amanece y los pulsos ponen de pie la cinta; bucle de pulsos con `data-bucle` |
 | `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
-| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista (el mismo observador marca `data-fuera` en las vigías de la historia y en la copia decorativa del texto ligado al scroll, que así no se dibujan lejos de la pantalla); lleva el foco que llega a una parte de la historia fija fuera de su tramo a ese momento (`data-tramo`); escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.h-hero` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); marca `data-maquetado` en `<html>` tras `load` (fin de la maquetación diferida); hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
+| `<DirectorEscena>` | Isla única de cliente (layout): pausa los `[data-bucle]` fuera de vista (el mismo observador marca `data-fuera` en las vigías de la historia y en la copia decorativa del texto ligado al scroll, que así no se dibujan lejos de la pantalla); lleva el foco que llega a una parte de la historia fija fuera de su tramo a ese momento (`data-tramo`); escribe `--mx --my --tx --ty --rx --ry` bajo el puntero y `--cx --cy` en `.h-hero` con el héroe a la vista y `--nx --nw --nv` en la navegación; cierra el menú del teléfono al tocar un enlace (también con movimiento reducido); suelta la maquetación diferida tras `load` (una sección por cuadro y después `data-maquetado` en `<html>`); quita `data-motor` en `beforeprint` y lo devuelve en `afterprint`; hace los saltos de ancla de más de 1,5 pantallas dentro de un fundido (`startViewTransition`, `data-salto`, `pushState` antes de mover para que «Atrás» vuelva) |
 | `<PageTransition>` | Transición entre páginas (React `ViewTransition`), **solo en `src/app/template.tsx`**: dentro de un `page.tsx` React nunca la iniciaba. La cabecera no se mueve; el subrayado, el logo y las acciones viajan con nombre propio. **Con la puerta cerrada no monta el límite** al navegar (la plantilla hidratada lo conserva con salida `none`): ninguna view transition |
 | `<TextoEnMovimiento>` | Texto que aparece como en un video (ver abajo) |
+| `mensaje`, `frase` | Asistente: cada mensaje entra con 8 px y un fundido (`--dur-3`); la respuesta, por frases (`frases()` parte el texto sin perder un carácter; `kx-i-N`, 120 ms, tope en la quinta). El contenedor del chat lleva `data-bucle`: fuera de vista se pausan los puntos de «Buscando…». En el teléfono la conversación crece con la página (sin scroll interno) |
+| `::details-content` | Desplegables (`Fuentes`, índice, «Lo esencial…»): se abren en `--dur-3` con `interpolate-size` y `allow-discrete`, con la puerta; el texto no se anima |
 
 ### Texto en movimiento (`src/components/motion/TextoEnMovimiento.tsx`)
 
@@ -267,7 +278,8 @@ pintado y escribe en `<html>`:
 - **Respaldo sin `animation-timeline`**: el motor observa los bloques `kx-scroll` y las piezas `escena` y les añade
   `kx-visto` / `escena-vista` al entrar en pantalla; el CSS (`html[…][data-timeline="no"][data-motor]`) corre
   entonces la misma animación una vez, con el tiempo. Lo que ya está a la vista al empezar lleva `mov-quieto`
-  (sin parpadeo). **Todo lo que oculta algo cuelga de `[data-motor]`**: si el motor no arranca, el contenido se ve
+  (sin parpadeo): lo decide la **primera entrega del observador**, tras el primer pintado, y solo entonces se pone
+  `data-motor` (nunca leer cajas en `DOMContentLoaded`: fuerza la maquetación entera antes de pintar). **Todo lo que oculta algo cuelga de `[data-motor]`**: si el motor no arranca, el contenido se ve
   completo (`motion.test.ts` lo vigila).
 - El motor debe ser **autocontenido** (se serializa con `toString()`): sin importaciones ni nada fuera de su
   cuerpo; `motor.test.ts` lo ejecuta aislado. La copia interactiva reutiliza el mismo código (con
@@ -288,8 +300,8 @@ radios). Bucles infinitos: solo con `data-bucle` en su contenedor; se pausan sus
 Reglas (las vigila `src/lib/design/motion.test.ts`):
 
 - Toda animación va detrás de la puerta `html[data-movimiento="completo"]`; con movimiento reducido (y sin
-  activarlo) el contenido se ve completo y quieto, y las transiciones se anulan. Al imprimir, las entradas se
-  desactivan.
+  activarlo) el contenido se ve completo y quieto, y las transiciones se anulan. Al imprimir, **una sola regla** apaga
+  toda animación y transición (no hay listas que mantener) y `DirectorEscena` quita `data-motor` en `beforeprint`.
 - Lo ligado al scroll va además dentro de `@supports (animation-timeline: …)`.
 - Las entradas usan `backwards`: al terminar no queda filtro ni transformación residual. Nada de
   `filter: blur` en las entradas (caro y ensucia el texto).
@@ -648,9 +660,9 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **Lo que un borde animado debe contener se mueve con la misma variable**: la isla tenía su forma final desde el primer
   píxel y el logo viajaba por fuera. `@property --isla` (número, heredado) animado por `scroll(root)` en `.cabecera` y
   leído por `::before`, el logo, las acciones y el avance. Una capa pequeña, así que el `inset` animado no pesa.
-- **Con capturas por software (headless) una view transition de la portada tarda ~250-450 ms en empezar**: casi todo es
-  el compositor por software (`SoftwareRenderer`). Quitar nombres o `content-visibility` no lo cambia; hay que medirlo en un
-  dispositivo real antes de recortar la coreografía.
+- **Con capturas por software (headless) una view transition de la portada tarda en empezar**: Chromium pinta la página
+  vieja entera. Con CPU cargada pasaba de 4 s y abortaba (ver «Lo aprendido (pulido y rendimiento final)»); con
+  `content-visibility: auto` en lo que está fuera de pantalla durante la transición, ~3 veces menos.
 - **El borde transparente que sube el `main` bajo la cabecera necesita `background-origin: border-box`**: si no, los
   degradados repiten su mosaico en la banda y queda un escalón de color a los 72 px.
 
@@ -769,8 +781,8 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   deshace. Se tacha un `span` propio y el rótulo va fuera.
 - **Lo ligado a la caja de un grupo termina fuera de pantalla para las piezas de abajo**: cada nota de la vitrina es su
   propia `view-timeline` y su `::before` la lee por nombre.
-- **Tailwind solo escanea `src/` y no lee las pruebas** (`@import "tailwindcss" source("../")` y `@source not
-  "../**/*.test.{ts,tsx}"`): los `.md` del repositorio y los textos de las pruebas (`backdrop-filter`, `transition`…)
+- **Tailwind solo escanea `src/` y no lee las pruebas** (`@import "tailwindcss/utilities.css" layer(utilities) source("../")`
+  y `@source not "../**/*.test.{ts,tsx}"`): los `.md` del repositorio y los textos de las pruebas (`backdrop-filter`, `transition`…)
   generaban utilidades sueltas (`.vidrio`, `.blur`, `.transform` y sus `@property`).
 - **Un `clip-path` que recoge un botón también recorta su anillo de foco** (y sus sombras de fuera): recogido en círculo,
   el botón de la lista apaga sus sombras exteriores (mismo número de sombras, para que se interpolen) y con teclado pinta
@@ -807,6 +819,31 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   dial lo cambia por el filo del propio sector (`outline: none` con un reemplazo de ≥ 3:1, como la vitrina).
 - **El emblema admite variantes de color y posición sin tocar su geometría** (`relieve`, `relieve-sombra`, `x`, `y`,
   `width` para anidarlo en otro SVG).
+
+## Lo aprendido (pulido y rendimiento final)
+
+- **Chromium aborta una view transition si capturar la página vieja más actualizar pasa de 4 s**, y el reloj corre desde
+  `startViewTransition` (un callback síncrono largo no lo dispara; una captura lenta sí). React lo informa como error de
+  consola (`Transition was aborted because of timeout in DOM update`), la navegación igual ocurre. Se reproduce con cuatro
+  navegadores en paralelo y CPU ×3 (`verificacion/T7/vt/` del rediseño).
+- **Leer cajas en `DOMContentLoaded` retrasa el primer pintado** todo lo que cuesta maquetar la página (518 ms a CPU ×4
+  en la portada del teléfono). Para saber qué se ve al empezar, la primera entrega de un `IntersectionObserver`.
+- **gzip solo ve repeticiones a menos de 32 KB**: un valor largo repetido en puntos lejanos de la hoja se paga entero cada
+  vez. Va en una variable de `:root` (`--disco-sol`). El resorte no: nunca `var()` con `linear()`.
+- **Recortes de CSS sin pérdida que ya están hechos**: el reinicio de Tailwind trae solo los elementos que el sitio usa
+  (si un componente empieza a usar `hr`, `img`, `code`, `small`…, su regla vuelve al bloque «Reinicio»); los valores por
+  omisión de Tailwind van en `@theme inline` (las utilidades llevan el valor, sin variable); `color-scheme` lo da la
+  etiqueta `meta` (en el CSS, Lightning sumaba su polirrelleno); una utilidad `duration-*`/`ease-*` arrastra
+  `@property --tw-*` (las transiciones de botones van en `suave`). Lightning también duplica `-webkit-mask-image` y
+  `-webkit-text-decoration`: no se puede evitar con estos objetivos de navegador.
+- **Un `@supports` del reinicio de Tailwind rompía M7** (`motion.test.ts` solo admite los dos `@supports` del proyecto):
+  al copiar CSS de terceros, revisa las guardas.
+- **El filete de un enlace en `content-box`** no se aparta del texto con un relleno para el dedo; con
+  `text-underline-offset: 0.25em` el subrayado cae dentro de los 2 px del filete de 12 a 17 px.
+- **`env(safe-area-inset-*)` vale 0 sin `viewport-fit=cover`** (el sitio usa `auto`, así Safari deja todo en el área
+  segura); las reglas quedan listas por si se cambia.
+- **Medir el LCP alternando servidores y con un build de comparación** (un `git worktree` del commit anterior, con
+  `node_modules` enlazado por `cp -al`: Turbopack rechaza un enlace simbólico fuera de la raíz).
 
 ## Lo aprendido (cuentas de personas usuarias)
 

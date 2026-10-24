@@ -1,5 +1,8 @@
 # Rediseño · claridad y texto en movimiento
 
+> **Antecedente.** Lo vigente es el rediseño «Horizonte» (`rediseno-horizonte.md`), que partió de este. Siguen en pie el
+> texto en movimiento (`TextoEnMovimiento`), la claridad del héroe y la navegación reducida; el resto se reemplazó.
+
 Encargo de la persona responsable: que el texto aparezca «como en un video» al bajar (letras que entran, con
 motion design), que la página sea **más intuitiva** y de **diseño más limpio**, con trabajo de primer nivel; con
 un plan y una revisión crítica antes de seguir.
