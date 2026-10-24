@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { AlertCard } from "@/components/alert-card/AlertCard";
 import { CONFIANZA_ETIQUETA } from "@/components/alert-card/labels";
@@ -81,7 +82,7 @@ function Medidor({ nivel, nivelPrueba }: { nivel: Confianza; nivelPrueba?: Confi
 function Notas({ v, prueba }: { v: AlertView; prueba?: AlertView }) {
   const acotada = filaAcotada(v);
   const correccion = v.correcciones.findLast((c) => c.tipo === "correccion");
-  const notas: { titulo: string; texto: ReactNode; medidor?: ReactNode }[] = [
+  const notas: { titulo: string; texto: ReactNode; medidor?: ReactNode; enlace?: ReactNode }[] = [
     {
       titulo: "Condición",
       texto: `Cada efecto dice bajo qué condición ocurriría: «${minuscula(v.filas[0].condicion)}». Nunca dice «compra» ni «vende».`,
@@ -89,6 +90,12 @@ function Notas({ v, prueba }: { v: AlertView; prueba?: AlertView }) {
     {
       titulo: "Confianza calculada",
       medidor: <Medidor nivel={v.confianza} nivelPrueba={prueba?.confianza} />,
+      // El simulador de /metodologia calcula con las mismas reglas: aquí se ve un caso, allí se prueban todos.
+      enlace: (
+        <Link href="/metodologia#simulador" className="mt-1.5 inline-block text-sm text-texto underline underline-offset-4">
+          Pruébalo en el simulador
+        </Link>
+      ),
       texto: (
         <Alterna
           a={`${mayuscula(CONFIANZA_ETIQUETA[v.confianza])}: ${porQueConfianza(v)}${
@@ -119,8 +126,8 @@ function Notas({ v, prueba }: { v: AlertView; prueba?: AlertView }) {
     },
   ];
   return (
-    // Enfocable: en el teléfono es un riel desplazable sin nada enfocable dentro (WCAG 2.1.1; en WebKit no se alcanzaría
-    // con el teclado).
+    // Enfocable: en el teléfono es un riel desplazable (WCAG 2.1.1; en WebKit no se alcanzaría con el teclado). El riel
+    // recibe el foco antes que el enlace al simulador que lleva dentro.
     <ol className="vitrina-notas escena grid gap-4" aria-label="Cómo leer esta alerta" tabIndex={0}>
       {notas.map((n, i) => (
         <li key={n.titulo} className={`nota nota-${i + 1} relative pt-3.5`}>
@@ -130,6 +137,7 @@ function Notas({ v, prueba }: { v: AlertView; prueba?: AlertView }) {
             {n.medidor}
           </p>
           <p className="nota-texto mt-1.5 max-w-[52ch] text-sm leading-relaxed text-texto-suave">{n.texto}</p>
+          {n.enlace}
         </li>
       ))}
     </ol>

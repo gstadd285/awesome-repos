@@ -3,12 +3,27 @@ import Link from "next/link";
 import { ConfidenceBadge } from "@/components/alert-card/ConfidenceBadge";
 import { VERIFICACION_ETIQUETA } from "@/components/alert-card/labels";
 import { Apartado, ContentPage } from "@/components/layout/ContentPage";
+import { SimuladorConfianza } from "@/components/metodologia/SimuladorConfianza";
+import { alertasEjemplo, enlacesEjemplo, fuentesEjemplo } from "@/data/ejemplo";
+import { Confianza, NivelVerificacion } from "@/lib/domain/schemas";
 
 export const metadata: Metadata = {
   title: "Metodología",
   description:
     "Cómo calcula Otea Austral la confianza de cada alerta, qué exige para publicarla y cómo corrige sus errores.",
 };
+
+/** La alerta de ejemplo del simulador: Ormuz, con sus fuentes reales de ejemplo encendidas al empezar. */
+const ORMUZ = alertasEjemplo.find((a) => a.id === "ejemplo-ormuz")!;
+/** Banco de cuatro fuentes de ejemplo: las dos de Ormuz (primaria y prensa) y una secundaria y otra prensa más. */
+const BANCO = ["ejemplo-agencia-energia", "ejemplo-agencia-noticias", "ejemplo-centro-estudios", "ejemplo-diario-local"].map(
+  (id) => {
+    const f = fuentesEjemplo.find((x) => x.id === id)!;
+    return { id: f.id, organismo: f.organismo, tipo: f.tipo };
+  },
+);
+const INICIAL = enlacesEjemplo.filter((e) => e.alert_id === ORMUZ.id).map((e) => e.source_id);
+const FILAS = ORMUZ.filas.map((f) => ({ sector: f.sector, declarada: f.confianza }));
 
 export default function MetodologiaPage() {
   return (
@@ -23,6 +38,12 @@ export default function MetodologiaPage() {
         </p>
       }
       aviso="Texto provisional · pendiente de revisión legal"
+      cifras={[
+        { valor: Confianza.options.length, rotulo: "niveles de confianza" },
+        { valor: NivelVerificacion.options.length, rotulo: "niveles de verificación" },
+      ]}
+      pieza={<SimuladorConfianza banco={BANCO} inicial={INICIAL} filas={FILAS} />}
+      indice
     >
       <Apartado numero="01" titulo="Niveles de confianza">
         <ul className="!list-none !pl-0">

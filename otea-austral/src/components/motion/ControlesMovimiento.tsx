@@ -21,8 +21,10 @@ export function AvisoMovimiento() {
 }
 
 /**
- * Conmutador del pie: quien tiene «reducir movimiento» (o ya eligió) puede activarlo o desactivarlo.
- * Es un botón de dos estados (`aria-pressed`); el motor actualiza el atributo al cargar y al pulsarlo.
+ * Conmutador del pie (sobre tinta): quien tiene «reducir movimiento» (o ya eligió) puede activarlo o desactivarlo.
+ * Es un botón de dos estados (`aria-pressed`); el motor actualiza el atributo al cargar y al pulsarlo. Un riel con su
+ * bola (decorativos) muestra el estado: la bola salta con un rebote, solo con la puerta abierta. El nombre accesible
+ * empieza por «Animaciones».
  */
 export function ConmutadorMovimiento() {
   return (
@@ -32,11 +34,11 @@ export function ConmutadorMovimiento() {
       aria-pressed="false"
       // El motor corrige `aria-pressed` antes de hidratar (el servidor no sabe qué modo hay).
       suppressHydrationWarning
-      className="mov-conmutador group items-center gap-2 rounded-pill px-3 py-1.5 text-sm text-texto-suave linea-fina transition-colors hover:bg-papel-alto hover:text-texto"
+      className="mov-conmutador group min-h-11 items-center gap-3 text-sm text-niebla"
     >
-      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-mist group-aria-pressed:bg-acento" />
+      <span aria-hidden="true" className="mov-riel" />
       Animaciones
-      <span aria-hidden="true" className="text-apoyo">
+      <span aria-hidden="true" className="text-ivory">
         <span className="hidden group-aria-pressed:inline">activadas</span>
         <span className="group-aria-pressed:hidden">reducidas</span>
       </span>

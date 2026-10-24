@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Apartado, ContentPage } from "@/components/layout/ContentPage";
+import { Sello } from "@/components/piezas/Sello";
 
 export const metadata: Metadata = {
   title: "Aviso legal",
@@ -13,6 +14,8 @@ export default function AvisoLegalPage() {
       rotulo="Aviso legal"
       titulo="Aviso legal."
       aviso="Texto provisional · pendiente de revisión legal"
+      pieza={<Sello documento="Aviso legal" />}
+      indice
     >
       <Apartado numero="01" titulo="Titular">
         <p>

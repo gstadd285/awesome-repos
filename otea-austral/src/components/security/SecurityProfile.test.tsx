@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CONTROLES, FUNCIONES } from "@/lib/security/nist-csf";
 import { ControlStatus } from "./ControlStatus";
 import { SecurityProfile } from "./SecurityProfile";
 
 const GITHUB = "https://github.com/o/r/security/advisories/new";
+
+// La página va en `ContentPage`: la cabecera y el pie leen la sesión de la cuenta (un componente asíncrono de servidor).
+vi.mock("@/components/layout/EnlaceCuenta", () => ({ EnlaceCuenta: () => null }));
 
 describe("SecurityProfile", () => {
   it("presenta el marco y aclara que no es una certificación", () => {

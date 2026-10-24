@@ -80,6 +80,7 @@ function cerrarMenu(menu: HTMLElement | null) {
  * - **Menú del teléfono** (siempre, también con movimiento reducido: no es movimiento): un clic en un enlace del menú
  *   lo cierra (`hidePopover`), y si el enlace es un ancla de esta página el salto es instantáneo, detrás de la hoja que
  *   se funde, y el foco pasa al destino. Si el foco sale del menú con el teclado, también se cierra.
+ * - **Índice de las interiores en el teléfono** (siempre): elegir un apartado pliega el `<details>` «En esta página».
  *
  * Lo demás solo actúa con la puerta abierta (`html[data-movimiento="completo"]`): observa el atributo y, al cerrarse,
  * retira oyentes, marcas y variables. Escribe solo por CSSOM (`style.setProperty`, admitido por la CSP; nunca un
@@ -262,6 +263,9 @@ export function DirectorEscena() {
       // Con altos estimados el salto aterrizaría mal: todo se maqueta antes de medir o de dejar saltar al navegador.
       if (destino) maquetar();
       const abierta = raiz.dataset.movimiento === "completo";
+      // El índice desplegable de las interiores (teléfono) se pliega al elegir un apartado: no queda tapando el destino.
+      const indice = enlace.closest<HTMLDetailsElement>("details.indice-movil");
+      if (indice) indice.open = false;
       const menu = enlace.closest<HTMLElement>("#menu-movil");
       if (menu) {
         cerrarMenu(menu);

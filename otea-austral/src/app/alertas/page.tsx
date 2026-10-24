@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertCard } from "@/components/alert-card/AlertCard";
 import { ContentPage } from "@/components/layout/ContentPage";
+import { Radar } from "@/components/piezas/Radar";
 import { repositorioAlertas } from "@/lib/alertas/instancia";
 import type { AlertView } from "@/lib/domain/view";
 import { logSecurityEvent } from "@/lib/security/log";
@@ -30,6 +31,7 @@ export default async function AlertasPage() {
       ruta="/alertas"
       rotulo="Alertas"
       titulo="Alertas publicadas."
+      pieza={<Radar rotulo={error ? "Sin datos" : alertas.length ? `${alertas.length} ${alertas.length === 1 ? "publicada" : "publicadas"}` : "Sin alertas publicadas"} />}
       intro={
         <p>
           Cada alerta muestra su confianza calculada desde las fuentes, sus correcciones con fecha y, si corresponde,

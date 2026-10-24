@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Apartado, ContentPage } from "@/components/layout/ContentPage";
+import { Sello } from "@/components/piezas/Sello";
 import { VERSION_CONSENTIMIENTO } from "@/lib/waitlist/schema";
 
 export const metadata: Metadata = {
@@ -17,6 +18,8 @@ export default function TerminosPage() {
       titulo="Condiciones de uso."
       intro={<p>Las reglas para usar el sitio, el asistente de preguntas, la lista de espera y las cuentas, en lenguaje simple.</p>}
       aviso="Texto provisional · pendiente de revisión legal"
+      pieza={<Sello documento="Condiciones de uso" version={VERSION_CONSENTIMIENTO} />}
+      indice
     >
       <Apartado numero="01" titulo="Qué es Otea Austral">
         <p>

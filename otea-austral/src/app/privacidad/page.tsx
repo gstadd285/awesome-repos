@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Apartado, ContentPage } from "@/components/layout/ContentPage";
+import { Sello } from "@/components/piezas/Sello";
+import { VERSION_CONSENTIMIENTO } from "@/lib/waitlist/schema";
 
 export const metadata: Metadata = {
   title: "Privacidad",
@@ -15,6 +17,8 @@ export default function PrivacidadPage() {
       titulo="Tus datos, los mínimos."
       intro={<p>Qué datos tratamos, para qué y cómo puedes pedir que los cambiemos o los borremos.</p>}
       aviso="Texto provisional · pendiente de revisión legal"
+      pieza={<Sello documento="Privacidad" version={VERSION_CONSENTIMIENTO} />}
+      indice
     >
       <Apartado numero="01" titulo="Quién es responsable">
         <p>
