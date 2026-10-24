@@ -104,7 +104,18 @@ Reglas:
   del avance de lectura y su `::after`, el latón). La pastilla de hover (`.nav-indicador`) lee `--nx --nw --nv` de
   `DirectorEscena`. Bajo 1024 px, botón «Menú» de 44 px que abre `<nav id="menu-movil" popover>` (pantalla completa bajo 640 px, panel de 440 px encima; sin `@supports`); bajo
   400 px «Alertas» vive solo en el menú. El pie lleva la navegación completa (`#pie-navegacion`). Las páginas
-  interiores usan `ContentPage` (ruta de navegación `Migas`).
+  interiores usan `ContentPage` (ruta de navegación `Migas`; ver «Interiores de autor»).
+- **Interiores de autor** (`ContentPage`): titular de 44 a 88 px (`int-h1`), entrada en Source Serif 4, `cifras` de rodillo
+  (`piezas/Cifra.tsx`: **solo conteos reales del código**) y una `pieza` propia en porcelana a la derecha (en el teléfono, bajo
+  la entrada): simulador de confianza (/metodologia, `respaldo.ts`), constelación de fuentes, dial del CSF (sus sectores son la
+  navegación «Funciones del marco»), radar y sello legal (versión y fecha reales de `VERSION_CONSENTIMIENTO`). Con `indice`
+  (o `indice` a secas, que lo arma con los `<Apartado>`), un índice fijo de 240 px que marca el apartado en curso solo con CSS
+  (`scroll-target-group` + `:target-current`) y, en el teléfono, un `<details>` pegajoso «En esta página». Prosa a 68ch
+  (`prosa`, `max-w-[720px]`). Las piezas son SVG de servidor con sus colores como **atributos** (no CSS) y `aria-hidden`.
+- **Pie en tinta** (`SiteFooter`): horizonte de latón con resplandor, cuatro columnas, el aviso de no asesoría y la firma
+  «Otea Austral» en latón, que con la puerta y línea de tiempo recorre un velo tinta que se retira (`translate`) mientras la
+  firma entra en pantalla. El conmutador del pie es un riel con bola; sin nada que elegir, el pie dice «Animaciones
+  activadas, como pide tu sistema» (`mov-nota`).
 - Contraste mínimo AA: lo verifica `src/lib/design/contrast.test.ts` leyendo `globals.css`. El
   latón y la bruma no sirven para texto chico sobre el fondo claro.
 - Página inicial objetivo < 1 MB.
@@ -205,8 +216,8 @@ movimiento»):
 
 | Clase / componente | Efecto |
 |---|---|
-| `anim-aparecer` + `anim-retraso-1…4` | Entrada al cargar: sube, se enfoca y aparece |
-| `anim-escalonado` + `[--retraso-base:Xms]` | Los hijos entran uno tras otro |
+| `anim-aparecer` | Entrada al cargar: sube, se enfoca y aparece |
+| `int-entrada`, `int-sigue`, `int-pieza`, `int-cuerpo` | Interiores: la entrada sube sin partir de opacidad 0 (LCP); lo demás espera al titular (450–600 ms) |
 | `anim-revelar` | Aparece al hacer scroll (se completa 280 px después de entrar) |
 | `hz-*` | Entrada en tres tiempos del héroe: la línea se traza, el titular sale del horizonte (< 1,3 s), amanece y los pulsos ponen de pie la cinta; bucle de pulsos con `data-bucle` |
 | `superficie-interactiva` | Lo clicable: el borde se marca, la sombra crece y sube 2 px (hover solo con `@media (hover: hover)`) |
@@ -228,8 +239,9 @@ una `sr-only` para lectores de pantalla y otra `aria-hidden` partida, así que e
 | `data-texto="unico"` | Táctil o < 1024 px | Cada bloque se revela **una sola vez, por tiempo**, al entrar (`kx-visto`): nunca queda a medias al dejar de deslizar |
 
 - Letras **solo en los H1**: partir en letras pierde el kerning (medido +0,74 % de ancho en el titular).
-- La CSP prohíbe `style`: el índice de cada unidad va en una clase `kx-i-N` (0 a 39, `MAX_INDICE`; el texto más
-  largo del sitio llega a 25); pasado el tope se satura. Nunca uses `style` ni `animation-delay` en línea.
+- La CSP prohíbe `style`: el índice de cada unidad va en una clase `kx-i-N` (0 a 30, `MAX_INDICE`; el texto más
+  largo del sitio, el titular del 404, llega a 30); pasado el tope se satura. Nunca uses `style` ni `animation-delay` en
+  línea. Las piezas reutilizan esas clases para su escalonado (`--i`).
 - Cada bloque de scroll define **una** línea de tiempo (`view-timeline: --kx`) que comparten sus unidades:
   una por unidad costaba mucho más. Rangos en `vh`; terminan antes de la zona de lectura (≈ 60 % de la pantalla):
   `e2e/portada.spec.ts` lo comprueba. No lo uses en alertas, tablas, formularios ni textos legales.
@@ -775,6 +787,26 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   borde hecho con sombra va en una utilidad propia (`filete-fuerte`). Lo mismo con `-translate-y-1/2` (tres `@property`).
 - **jsdom no quita el foco a un botón que se desactiva** (Chromium sí, y lo manda al `<body>`): para probar a dónde va el
   foco tras un envío, se envía sin foco (`requestSubmit`).
+
+## Lo aprendido (interiores de autor, pie en tinta y 404)
+
+- **Todo `globals.css` viaja con la portada** (una sola hoja; `presupuesto.spec.ts` mide su gzip): el CSS de una página
+  interior se paga en la portada. Usa utilidades que ya existen (una utilidad nueva cuesta ~25 B), pinta los SVG con
+  atributos (`fill`, `stroke`, `fontSize`) y deja en el CSS solo lo que no se puede escribir de otro modo.
+- **Tailwind convierte en utilidad cualquier palabra suelta de un comentario** que coincida con una utilidad propia («con
+  resorte y…» generó `.resorte`, ~0,2 KB); con signos pegados («resorte.») no. Revisa la lista de utilidades tras cambiar
+  textos; `@source not inline(…)` excluye palabras (`transform`, `fixed`…).
+- **Claves idénticas con nombres distintos se pagan dos veces**: se fusionaron once (`h-avance`, `m-plano`, `cab-progreso`…).
+  Antes de crear una clave, busca una igual.
+- **Índice vivo sin una línea de tiempo por apartado**: `scroll-target-group: auto` en la lista de anclas y `:target-current`
+  en el enlace del apartado en curso (Chromium 140+; en el resto, una lista normal). Es un estado, no un movimiento: vale
+  también con movimiento reducido.
+- **Un `view()` del último elemento de la página nunca llega a `cover 55 %`** (al final del scroll su `cover` es su alto entre
+  la ventana más su alto, ~17 %): la firma usa su propia `entry`, que termina justo al final.
+- **El contorno de foco de un `<a>` dentro de un SVG es el rectángulo que lo encierra** (pisa a los vecinos en un anillo): el
+  dial lo cambia por el filo del propio sector (`outline: none` con un reemplazo de ≥ 3:1, como la vitrina).
+- **El emblema admite variantes de color y posición sin tocar su geometría** (`relieve`, `relieve-sombra`, `x`, `y`,
+  `width` para anidarlo en otro SVG).
 
 ## Lo aprendido (cuentas de personas usuarias)
 
