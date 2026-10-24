@@ -1898,13 +1898,26 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
 
 /* Primer pintado ligero: hasta que la página termina de cargar, lo que queda bajo la historia no se maqueta ni se pinta
    (salvo cerca de la pantalla). Medido en el perfil móvil lento (CPU ×4 y 4G lento), el primer pase de estilo y
-   maquetación de la portada entera retrasaba el LCP ~270 ms. Solo dura la carga: `DirectorEscena` marca
-   `data-maquetado` en `<html>` tras el evento `load` (o al primer clic en un ancla), porque con altos estimados los
-   saltos de ancla aterrizaban mal. Sin JavaScript (no hay `data-movimiento`) o si la dirección trae un ancla
-   (`:target`), no se aplica. */
-html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .historia ~ section {
+   maquetación de la portada entera retrasaba el LCP ~270 ms. Solo dura la carga: tras el evento `load`
+   `DirectorEscena` suelta una sección por cuadro (`data-maquetada`) y al final marca `data-maquetado` en `<html>` (al
+   instante con el primer clic en un ancla), porque con altos estimados los saltos de ancla aterrizaban mal. Sin
+   JavaScript (no hay `data-movimiento`) o si la dirección trae un ancla (`:target`), no se aplica. */
+html[data-movimiento]:not([data-maquetado]):not(:has(:target)) #contenido > .historia ~ section:not([data-maquetada]) {
   content-visibility: auto;
+}
+
+/* Las secciones recuerdan su alto (`auto`) para el caso de arriba y para la captura de la página que se va: al iniciar
+   una transición entre páginas, Chromium pinta la página vieja entera (la portada mide ~10 000 px, con la historia 3D) y,
+   si la captura más la actualización pasan de 4 s, aborta («Transition was aborted because of timeout in DOM update»).
+   Con la CPU cargada pasaba (e2e intermitente). Durante la transición lo que no está en pantalla no se pinta, con su alto
+   real: misma maquetación, captura ~3 veces más barata (CPU ×4: de 1,2–2,3 s a ~0,5 s). Los saltos de ancla en fundido
+   (`data-salto`) no la llevan. Regla aparte: un navegador sin `:active-view-transition` la descarta entera. */
+#contenido > section {
   contain-intrinsic-size: auto 1100px;
+}
+
+html:active-view-transition:not([data-salto]) #contenido > section {
+  content-visibility: auto;
 }
 
 /* ── Héroe «Horizonte vivo» (estructura y estado final) ──────────────────────

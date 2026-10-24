@@ -106,25 +106,25 @@ export function motorMovimiento(opciones: OpcionesMotor): void {
 
   const arrancarRespaldo = (): void => {
     if (!quiereRespaldo || observador || !doc.body || typeof IntersectionObserver === "undefined") return;
-    // Lo que ya está a la vista al empezar se da por visto y quieto: así no parpadea (visible, tenue, animado).
-    const alto = window.innerHeight;
-    doc.querySelectorAll(SELECTOR).forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (r.top < alto * 0.9 && r.bottom > 0) marcar(el, true);
-    });
+    // Lo que ya está a la vista al empezar se da por visto y quieto (no parpadea: visible, tenue, animado). No se mide
+    // aquí: leer cajas en `DOMContentLoaded` forzaba la maquetación entera de la portada antes del primer pintado (~0,5 s
+    // a CPU ×4 en el teléfono). Lo dice la primera entrega del observador, que llega tras el primer pintado; hasta
+    // entonces no hay `data-motor` y nada se oculta.
+    let primera = true;
     observador = new IntersectionObserver(
       (entradas) => {
         entradas.forEach((e) => {
           if (!e.isIntersecting) return;
-          marcar(e.target, false);
+          marcar(e.target, primera);
           observador?.unobserve(e.target);
         });
+        if (primera) raiz.setAttribute("data-motor", "listo");
+        primera = false;
       },
       // Se dispara cuando el borde superior pasa del 88 % de la altura: da tiempo a terminar antes de leer.
       { rootMargin: "0px 0px -12% 0px" },
     );
     observarEn(doc.body);
-    raiz.setAttribute("data-motor", "listo");
   };
 
   const detenerRespaldo = (): void => {

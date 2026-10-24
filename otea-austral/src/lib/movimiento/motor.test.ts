@@ -28,6 +28,16 @@ class ObservadorFalso {
   entra(el: Element) {
     this.alEntrar([{ target: el, isIntersecting: true }]);
   }
+  /** Primera entrega, como la del navegador tras el primer pintado: todos los observados, con el borde de -12 %. */
+  primeraEntrega() {
+    const alto = window.innerHeight;
+    this.alEntrar(
+      [...this.observados].map((target) => {
+        const r = target.getBoundingClientRect();
+        return { target, isIntersecting: r.top < alto * 0.88 && r.bottom > 0 };
+      }),
+    );
+  }
 }
 
 let sistemaReduce = false;
@@ -231,13 +241,19 @@ describe("respaldo sin líneas de tiempo", () => {
   it("sin soporte, da por vistos y quietos los bloques que ya están a la vista y observa el resto", () => {
     preparar({ timeline: false });
     const { visible, abajo, plano } = pagina();
+    const medir = vi.spyOn(visible, "getBoundingClientRect");
     motorMovimiento(OPCIONES);
     expect(raiz.getAttribute("data-timeline")).toBe("no");
+    // Antes del primer pintado no mide nada (forzaría la maquetación) ni oculta nada.
+    expect(medir).not.toHaveBeenCalled();
+    expect(raiz.hasAttribute("data-motor")).toBe(false);
+    ObservadorFalso.instancias[0].primeraEntrega();
     expect(raiz.getAttribute("data-motor")).toBe("listo");
     expect(visible.classList.contains("kx-visto") && visible.classList.contains("mov-quieto")).toBe(true);
     expect(abajo.classList.contains("kx-visto")).toBe(false);
     expect(plano.classList.contains("escena-vista")).toBe(false);
     const [observador] = ObservadorFalso.instancias;
+    expect(observador.observados.has(visible)).toBe(false);
     expect(observador.observados.has(abajo) && observador.observados.has(plano)).toBe(true);
     expect(observador.opciones?.rootMargin).toBe("0px 0px -12% 0px");
   });
@@ -247,6 +263,7 @@ describe("respaldo sin líneas de tiempo", () => {
     const { abajo, plano } = pagina();
     motorMovimiento(OPCIONES);
     const [observador] = ObservadorFalso.instancias;
+    observador.primeraEntrega();
     observador.entra(abajo);
     observador.entra(plano);
     expect(abajo.classList.contains("kx-visto")).toBe(true);
@@ -271,6 +288,7 @@ describe("respaldo sin líneas de tiempo", () => {
     pagina();
     document.body.append(el("button", { "data-mov-conmutar": "", "aria-pressed": "true" }, "Animaciones"));
     motorMovimiento(OPCIONES);
+    ObservadorFalso.instancias[0].primeraEntrega();
     expect(raiz.getAttribute("data-motor")).toBe("listo");
     document.querySelector<HTMLButtonElement>("[data-mov-conmutar]")!.click();
     expect(raiz.getAttribute("data-movimiento")).toBe("reducido");
@@ -305,6 +323,7 @@ describe("revelado único en pantallas táctiles o estrechas (data-texto)", () =
     motorMovimiento(OPCIONES);
     expect(raiz.getAttribute("data-texto")).toBe("unico");
     expect(raiz.hasAttribute("data-timeline")).toBe(false);
+    ObservadorFalso.instancias[0].primeraEntrega();
     expect(raiz.getAttribute("data-motor")).toBe("listo");
     // Lo que ya se ve no parpadea; lo demás espera a entrar.
     expect(visible.classList.contains("kx-visto") && visible.classList.contains("mov-quieto")).toBe(true);
@@ -322,6 +341,7 @@ describe("revelado único en pantallas táctiles o estrechas (data-texto)", () =
     preparar({ estrecha: true });
     pagina();
     motorMovimiento(OPCIONES);
+    ObservadorFalso.instancias[0].primeraEntrega();
     expect(raiz.getAttribute("data-motor")).toBe("listo");
     tactil = false;
     oyentesTactil.forEach((f) => f());
@@ -330,6 +350,7 @@ describe("revelado único en pantallas táctiles o estrechas (data-texto)", () =
     tactil = true;
     oyentesTactil.forEach((f) => f());
     expect(raiz.getAttribute("data-texto")).toBe("unico");
+    ObservadorFalso.instancias.at(-1)!.primeraEntrega();
     expect(raiz.getAttribute("data-motor")).toBe("listo");
   });
 

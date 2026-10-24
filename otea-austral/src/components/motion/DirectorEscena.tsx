@@ -69,9 +69,9 @@ function cerrarMenu(menu: HTMLElement | null) {
  *   la historia en avance rápido. Antes de mover guarda la entrada en el historial (`pushState`), así «Atrás» vuelve a
  *   donde estaba; después mueve el foco al destino (`tabindex="-1"` si no lo tenía).
  * - **Maquetación diferida** (siempre): mientras la página carga, el CSS deja sin maquetar lo que queda bajo la historia
- *   (`content-visibility`, para que el primer pintado llegue antes). Tras el evento `load`, o al primer clic en un ancla
- *   de esta página, marca `data-maquetado` en `<html>` y todo se maqueta con su alto real: los saltos de ancla
- *   aterrizan donde deben.
+ *   (`content-visibility`, para que el primer pintado llegue antes). Tras el evento `load` suelta una sección por cuadro
+ *   (`data-maquetada`: soltarlas todas a la vez era una tarea de ~300 ms a CPU ×4) y al final marca `data-maquetado` en
+ *   `<html>`; un clic en un ancla de esta página lo marca al instante. Así los saltos de ancla aterrizan donde deben.
  * - **Vigías:** el mismo observador marca `data-fuera` en las franjas `[data-vigia]` de la historia y en la copia
  *   decorativa de los textos ligados al scroll (`.kx-scroll > .kx-visual`). El CSS deja de dibujar lo que no está cerca
  *   de la pantalla: una animación ligada al scroll mantiene su capa viva también fuera de su tramo.
@@ -248,7 +248,14 @@ export function DirectorEscena() {
     const maquetar = () => raiz.toggleAttribute("data-maquetado", true);
     let esperaCarga = 0;
     const alCargar = () => {
-      esperaCarga = window.setTimeout(maquetar, 0);
+      const pendientes = [...document.querySelectorAll<HTMLElement>("#contenido > .historia ~ section")];
+      const soltar = () => {
+        const seccion = pendientes.shift();
+        if (!seccion || raiz.hasAttribute("data-maquetado")) return maquetar();
+        seccion.toggleAttribute("data-maquetada", true);
+        esperaCarga = requestAnimationFrame(soltar);
+      };
+      esperaCarga = requestAnimationFrame(soltar);
     };
     if (!raiz.hasAttribute("data-maquetado")) {
       if (document.readyState === "complete") alCargar();
@@ -390,7 +397,7 @@ export function DirectorEscena() {
       window.removeEventListener("load", alCargar);
       window.removeEventListener("beforeprint", alImprimir);
       window.removeEventListener("afterprint", trasImprimir);
-      window.clearTimeout(esperaCarga);
+      cancelAnimationFrame(esperaCarga);
       vigilante.disconnect();
       fino.removeEventListener("change", sincronizar);
       document.removeEventListener("click", alClic, true);

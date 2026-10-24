@@ -310,6 +310,12 @@ describe("movimiento", () => {
     expect(bloque).toMatch(/html\[data-movimiento="completo"\] \*,\s*html\[data-movimiento="completo"\] ::before,\s*html\[data-movimiento="completo"\] ::after\s*\{\s*animation: none !important;\s*transition: none !important;/);
   });
 
+  it("la captura de la página que se va no pinta lo que está fuera de pantalla, con su alto real", () => {
+    // Una transición entre páginas aborta si capturar más actualizar pasa de 4 s (e2e intermitente con la CPU cargada).
+    expect(css).toMatch(/#contenido > section \{\s*contain-intrinsic-size: auto 1100px;/);
+    expect(css).toMatch(/html:active-view-transition:not\(\[data-salto\]\) #contenido > section \{\s*content-visibility: auto;/);
+  });
+
   it("los efectos de puntero solo viven en la puerta y, dentro de ella, con puntero fino", () => {
     // Las variables que escribe DirectorEscena: brillo (--mx/--my), atracción (--tx/--ty), inclinación
     // (--rx/--ry) y la luz del héroe (--cx/--cy).
