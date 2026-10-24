@@ -9,16 +9,11 @@ import {
   CorrectionSchema,
   type Alert,
   type AlertAudit,
-  type Confianza,
   type Correction,
   type EstadoAlerta,
-  type NivelVerificacion,
-  type TipoFuente,
 } from "./schemas";
 import { frasesProhibidas, motivoLenguaje } from "./lenguaje";
-
-/** Lo mínimo de una fuente que importa para calcular el respaldo. */
-export type FuenteRespaldo = { tipo: TipoFuente; organismo: string };
+import { contarOrganismosDistintos, type FuenteRespaldo } from "./respaldo";
 
 export type Resultado<T> =
   | { ok: true; valor: T }
@@ -38,52 +33,18 @@ export type Transicion = {
   correccion?: Correction;
 };
 
-const ORDEN_CONFIANZA: Record<Confianza, number> = { baja: 0, media: 1, alta: 2 };
-
 const ESTADOS_PUBLICADOS: readonly EstadoAlerta[] = ["publicada", "corregida"];
 
 // ── Respaldo y confianza ───────────────────────────────────────────────────
-
-/** "Banco Central de Chile " y "banco central de chile" son el mismo organismo. */
-export function normalizarOrganismo(organismo: string): string {
-  return organismo
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLowerCase();
-}
-
-export function contarOrganismosDistintos(fuentes: readonly FuenteRespaldo[]): number {
-  return new Set(fuentes.map((f) => normalizarOrganismo(f.organismo))).size;
-}
-
-/**
- * Regla 1: `alta` exige al menos una fuente primaria.
- * Regla 2: con solo prensa, el máximo es `media` (y requiere dos organismos).
- * Regla 6: es el único camino para obtener la confianza; no se edita a mano.
- */
-export function calcularConfianza(fuentes: readonly FuenteRespaldo[]): Confianza {
-  if (fuentes.length === 0) return "baja";
-  if (fuentes.some((f) => f.tipo === "primaria")) return "alta";
-  if (fuentes.some((f) => f.tipo === "secundaria")) return "media";
-  // Solo prensa: sirve para detectar, no para confirmar.
-  return contarOrganismosDistintos(fuentes) >= 2 ? "media" : "baja";
-}
-
-export function calcularNivelVerificacion(
-  fuentes: readonly FuenteRespaldo[],
-): NivelVerificacion {
-  if (fuentes.length === 0) return "sin_verificar";
-  if (fuentes.some((f) => f.tipo === "primaria")) return "fuente_oficial";
-  if (contarOrganismosDistintos(fuentes) >= 2) return "dos_fuentes";
-  return "una_fuente";
-}
-
-/** La confianza de una fila nunca supera la que respaldan las fuentes. */
-export function acotarConfianza(declarada: Confianza, maxima: Confianza): Confianza {
-  return ORDEN_CONFIANZA[declarada] <= ORDEN_CONFIANZA[maxima] ? declarada : maxima;
-}
+// Viven en `respaldo.ts` (sin dependencias, para el simulador de /metodologia): estas son las mismas funciones.
+export {
+  acotarConfianza,
+  calcularConfianza,
+  calcularNivelVerificacion,
+  contarOrganismosDistintos,
+  normalizarOrganismo,
+  type FuenteRespaldo,
+} from "./respaldo";
 
 // ── Publicación ────────────────────────────────────────────────────────────
 
