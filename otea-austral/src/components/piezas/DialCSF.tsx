@@ -43,7 +43,7 @@ export function DialCSF() {
           const abajo = centro > 0 && centro < 180;
           const id = `dial-${f.codigo.toLowerCase()}`;
           return (
-            <a key={f.codigo} href={`#funcion-${f.codigo.toLowerCase()}`} aria-label={`${f.nombre} ${f.codigo}`}>
+            <a key={f.codigo} href={`#funcion-${f.codigo.toLowerCase()}`}>
               <g className={`kx-i-${k}`}>
                 <path d={sector(desde, hasta)} fill="#F6F3ED" stroke="#C9CACC" />
                 <path id={`${id}-n`} d={arco(desde, hasta, abajo ? R_CODIGO : R_NOMBRE, abajo)} fill="none" />
@@ -60,12 +60,12 @@ export function DialCSF() {
                     strokeLinecap="round"
                   />
                 ) : null}
-                <text textAnchor="middle" dominantBaseline="middle" aria-hidden="true">
+                {/* Nombre y código en un solo texto, separados por un espacio: son el nombre accesible del enlace (lo que se
+                    ve es lo que se lee, sin `aria-label` que pueda no coincidir). */}
+                <text textAnchor="middle" dominantBaseline="middle">
                   <textPath href={`#${id}-n`} startOffset="50%" className="micro" fill="#0F1B2D">
                     {f.nombre}
-                  </textPath>
-                </text>
-                <text textAnchor="middle" dominantBaseline="middle" aria-hidden="true">
+                  </textPath>{" "}
                   <textPath href={`#${id}-c`} startOffset="50%" className="contador" fill="#7A5E33">
                     {f.codigo}
                   </textPath>

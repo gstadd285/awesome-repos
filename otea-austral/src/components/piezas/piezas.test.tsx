@@ -78,10 +78,10 @@ describe("piezas de las interiores", () => {
     render(<DialCSF />);
     const nav = screen.getByRole("navigation", { name: "Funciones del marco" });
     for (const f of FUNCIONES) {
-      expect(within(nav).getByRole("link", { name: `${f.nombre} ${f.codigo}` })).toHaveAttribute(
-        "href",
-        `#funcion-${f.codigo.toLowerCase()}`,
-      );
+      const enlace = within(nav).getByRole("link", { name: `${f.nombre} ${f.codigo}` });
+      expect(enlace).toHaveAttribute("href", `#funcion-${f.codigo.toLowerCase()}`);
+      // El nombre sale del texto visible (axe: `label-content-name-mismatch` con un `aria-label` aparte).
+      expect(enlace).not.toHaveAttribute("aria-label");
     }
   });
 });
