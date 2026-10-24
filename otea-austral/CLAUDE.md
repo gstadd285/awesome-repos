@@ -77,7 +77,7 @@ Tokens en `src/app/globals.css` (`@theme`, con la paleta de Tailwind reiniciada)
 | `gana`, `condicionado`, `pierde` | estado | Solo alertas y sus piezas |
 
 Utilidades propias: `superficie` (porcelana con borde fino y sombra suave),
-`superficie-interactiva` (solo en lo clicable), `vidrio` (porcelana al 98,5 %, **sin `backdrop-filter`**; la cabecera usa el mismo material en `header::before`),
+`superficie-interactiva` (solo en lo clicable), `vidrio` (porcelana opaca, **sin `backdrop-filter`**: sin desenfoque, la translucidez solo dejaba ver texto fantasma; la cabecera usa el mismo material en `header::before`),
 `boton-laton` (latón como material), `campo` (campos con el foco del sitio), `salto-contenido` (píldora en la cabecera que ocupa el lugar del logo), `cifras`,
 `linea-fina`, `filete-fuerte` y `filete-tinta` (borde del botón «outline» y su hover), `titular`, `micro` (rótulos en mayúsculas de 12 px), `contador`, `corchetes` (`[ … ]`, solo el panel y la
 pantalla de error), `fondo-luz`,

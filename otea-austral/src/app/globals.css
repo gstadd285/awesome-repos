@@ -407,11 +407,11 @@
     0 24px 48px -24px rgb(15 27 45 / 0.3);
 }
 
-/* Porcelana casi opaca (cabecera, paneles flotantes). Sin `backdrop-filter`: el desenfoque sobre la escena 3D,
-   que cambia en cada cuadro, costaba ~11 fps en la historia. Al 98,5 % el texto que pasa por debajo ya no
-   se distingue (al 94 % un titular todavía se leía a 3×). */
+/* Porcelana opaca (cabecera, paneles flotantes). Sin `backdrop-filter`: el desenfoque sobre la escena 3D, que cambia
+   en cada cuadro, costaba ~11 fps en la historia; y sin él la translucidez no aporta nada (al 98,5 % el texto que
+   pasaba por debajo todavía se leía como un fantasma a 3×). */
 @utility vidrio {
-  background-color: rgb(252 250 246 / 0.985);
+  background-color: var(--color-papel-alto);
   box-shadow: inset 0 -1px 0 var(--color-linea);
 }
 
@@ -714,7 +714,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background-color: rgb(252 250 246 / 0.985);
+    background-color: var(--color-papel-alto);
     box-shadow: inset 0 -1px 0 var(--color-linea);
   }
 
@@ -5236,13 +5236,6 @@ html[data-movimiento]:not([data-mov-ui]) .mov-nota {
   }
 }
 
-/* La entrada y los botones no parten de opacidad 0 (son el LCP y lo primero que se lee): solo se asientan. */
-@keyframes hz-asentar {
-  from {
-    transform: translateY(10px);
-  }
-}
-
 @keyframes hz-amanecer {
   from {
     transform: translateY(86%);
@@ -6050,14 +6043,6 @@ html[data-movimiento="completo"] {
     animation: m-plano 1600ms var(--ease-salida) 700ms backwards;
   }
 
-  .hero-texto {
-    animation: hz-asentar 600ms var(--ease-salida) 760ms backwards;
-  }
-
-  .hero-mando {
-    animation: hz-asentar 600ms var(--ease-salida) 880ms backwards;
-  }
-
   /* Un barrido de brillo, una sola vez, cuando el botón ya está quieto. */
   .hero-acciones .boton-laton::after {
     animation: hz-barrido 1100ms var(--ease-enfasis) 1900ms backwards;
@@ -6479,19 +6464,15 @@ html[data-movimiento="completo"] {
       }
 
       .hero-texto {
-        animation:
-          hz-asentar 600ms var(--ease-salida) 760ms backwards,
-          h-salir var(--ease-entrada) forwards;
-        animation-timeline: auto, --historia;
-        animation-range: normal, contain 3.6% contain 5.8%;
+        animation: h-salir var(--ease-entrada) forwards;
+        animation-timeline: --historia;
+        animation-range: contain 3.6% contain 5.8%;
       }
 
       .hero-mando {
-        animation:
-          hz-asentar 600ms var(--ease-salida) 880ms backwards,
-          h-salir var(--ease-entrada) forwards;
-        animation-timeline: auto, --historia;
-        animation-range: normal, contain 4.2% contain 6.4%;
+        animation: h-salir var(--ease-entrada) forwards;
+        animation-timeline: --historia;
+        animation-range: contain 4.2% contain 6.4%;
       }
 
       .hero-desliza {

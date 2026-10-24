@@ -158,4 +158,4 @@ Scripts y datos: `verificacion/T7/medicion/` de la carpeta de trabajo del redise
 5. **`data-foco`** (luz cálida bajo el cursor en las tarjetas clicables) no se aplicó: la isla ya escribe `--mx --my`,
    pero la regla (~60 B) no cabe bajo el tope de 30 KB de CSS. Requiere compensar con otro recorte o subir el tope.
 6. **Chevrón de los desplegables:** ahora apunta abajo y da media vuelta. Antes era una flecha a la derecha que giraba 90°.
-7. El texto que pasa bajo la barra de 60 px en el teléfono (porcelana al 98,5 %) conviene revisarlo en un dispositivo real.
+7. La barra del teléfono ya es opaca (antes, porcelana al 98,5 %, dejaba ver el texto que pasaba debajo).
