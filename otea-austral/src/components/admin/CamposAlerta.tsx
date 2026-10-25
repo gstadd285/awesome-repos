@@ -1,7 +1,7 @@
 import { CONFIANZA_ETIQUETA, DIRECCION_ETIQUETA } from "@/components/alert-card/labels";
 import { MAX_FILAS } from "@/lib/alertas/formulario";
 import type { Alert } from "@/lib/domain/schemas";
-import { TEMA_ETIQUETA, TEMAS } from "@/lib/domain/temas";
+import { TEMA_ETIQUETA, TEMAS, type Tema } from "@/lib/domain/temas";
 import { AYUDA, CAMPO, ETIQUETA } from "./estilos";
 import { IMPACTO_ETIQUETA } from "./etiquetas";
 
@@ -10,9 +10,9 @@ type Contenido = Pick<Alert, "tema" | "evento" | "resumen" | "impacto" | "filas"
 /**
  * Campos del contenido de una alerta. Sin JavaScript: muestra las filas
  * existentes y dos vacías (hasta ocho); una fila sin sector ni condición se
- * ignora.
+ * ignora. `tema` propone el tema de una alerta nueva (el de su evento candidato).
  */
-export function CamposAlerta({ prefijo, alerta }: { prefijo: string; alerta?: Contenido }) {
+export function CamposAlerta({ prefijo, alerta, tema }: { prefijo: string; alerta?: Contenido; tema?: Tema }) {
   const filas = alerta?.filas ?? [];
   const espacios = Math.min(MAX_FILAS, Math.max(filas.length + 2, 3));
   const id = (campo: string) => `${prefijo}-${campo}`;
@@ -24,7 +24,7 @@ export function CamposAlerta({ prefijo, alerta }: { prefijo: string; alerta?: Co
           <label htmlFor={id("tema")} className={ETIQUETA}>
             Tema
           </label>
-          <select id={id("tema")} name="tema" defaultValue={alerta?.tema ?? TEMAS[0]} className={CAMPO}>
+          <select id={id("tema")} name="tema" defaultValue={alerta?.tema ?? tema ?? TEMAS[0]} className={CAMPO}>
             {TEMAS.map((t) => (
               <option key={t} value={t}>
                 {TEMA_ETIQUETA[t]}

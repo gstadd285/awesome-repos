@@ -156,15 +156,17 @@ function validar(alerta: Alert): Resultado<Alert> {
   return motivos.length > 0 ? { ok: false, motivos } : { ok: true, valor: r.data };
 }
 
+/** Toda alerta nace como borrador. `nota` deja el origen en la auditoría (p. ej. el evento candidato del que sale). */
 export function crearAlerta(
   datos: Omit<Alert, "estado">,
   ctx: Contexto,
+  nota = "",
 ): Resultado<Transicion> {
   const v = validar({ ...datos, estado: "borrador" });
   if (!v.ok) return v;
   return {
     ok: true,
-    valor: { alerta: v.valor, auditoria: [filaAuditoria(v.valor, "creada", ctx)] },
+    valor: { alerta: v.valor, auditoria: [filaAuditoria(v.valor, "creada", ctx, nota.trim().slice(0, 500))] },
   };
 }
 

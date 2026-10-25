@@ -45,6 +45,7 @@ test.describe("ninguna respuesta del servidor contiene secretos", () => {
     "/admin",
     "/admin/alertas",
     "/admin/alertas/nueva",
+    "/admin/eventos",
   ];
 
   for (const ruta of RUTAS) {
@@ -61,7 +62,7 @@ test.describe("ninguna respuesta del servidor contiene secretos", () => {
   }
 
   test("las páginas del panel no se guardan en ninguna caché", async ({ request }) => {
-    for (const ruta of ["/admin", "/admin/alertas", "/admin/alertas/nueva"]) {
+    for (const ruta of ["/admin", "/admin/alertas", "/admin/alertas/nueva", "/admin/eventos"]) {
       const r = await request.get(ruta, { maxRedirects: 0 });
       expect(r.headers()["cache-control"] ?? "", ruta).toMatch(/no-store/);
       expect(r.headers()["x-robots-tag"] ?? "", ruta).toContain("noindex");

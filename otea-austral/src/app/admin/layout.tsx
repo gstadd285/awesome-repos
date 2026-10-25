@@ -22,12 +22,18 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     <>
       <header className="border-b border-linea bg-papel-alto">
         <div className="mx-auto flex min-h-[72px] max-w-[1200px] flex-wrap items-center gap-x-6 gap-y-3 px-6 py-3">
-          <Link href={sesion ? "/admin/alertas" : "/"} aria-label="Otea Austral" className="rounded-badge">
+          <Link href={sesion ? "/admin" : "/"} aria-label="Otea Austral" className="rounded-badge">
             <Logo />
           </Link>
           <p className="micro text-apoyo">Panel interno</p>
           {sesion ? (
             <nav aria-label="Panel" className="ml-auto flex items-center gap-6">
+              <Link href="/admin" className={ENLACE}>
+                Tablero
+              </Link>
+              <Link href="/admin/eventos" className={ENLACE}>
+                Eventos
+              </Link>
               <Link href="/admin/alertas" className={ENLACE}>
                 Alertas
               </Link>

@@ -11,6 +11,7 @@ import {
   retractarAccion,
   type Hecho,
 } from "@/app/admin/alertas/acciones";
+import { AvisoSinAccesoPrivado } from "@/components/admin/AvisoSinAccesoPrivado";
 import { AlertCard } from "@/components/alert-card/AlertCard";
 import { TIPO_FUENTE_ETIQUETA } from "@/components/alert-card/labels";
 import { CamposAlerta } from "@/components/admin/CamposAlerta";
@@ -34,6 +35,7 @@ const AVISOS: Record<Hecho, string> = {
   retractada: "Alerta retractada. Sigue visible, tachada, con el aviso arriba.",
   "fuente-agregada": "Fuente enlazada.",
   "fuente-retirada": "Fuente retirada. Queda en el historial.",
+  "desde-evento": "Borrador creado desde el evento candidato, con sus fuentes enlazadas.",
 };
 
 const esHecho = (v: unknown): v is Hecho => typeof v === "string" && Object.hasOwn(AVISOS, v);
@@ -113,6 +115,8 @@ export default async function DetalleAlertaPage({ params, searchParams }: PagePr
               <p className="mt-4 text-sm text-texto">Cumple las reglas para publicarse.</p>
             )
           ) : null}
+
+          {enEdicion && !alerta.es_ejemplo ? <AvisoSinAccesoPrivado className="mt-4" /> : null}
 
           {alerta.estado === "borrador" ? (
             <FormularioPanel accion={enviarARevisionAccion} boton="Enviar a revisión" variante="outline" titulo="Enviar a revisión">

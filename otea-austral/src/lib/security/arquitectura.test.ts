@@ -223,9 +223,60 @@ describe("autenticación del panel (control 6)", () => {
   });
 
   it("las páginas privadas del panel usan `exigirSesion` (redirige al acceso), no solo `sesionActual`", () => {
-    const privadas = paginas.filter((r) => relativa(r).startsWith("src/app/admin/alertas/") && r.endsWith("page.tsx"));
-    expect(privadas.length).toBeGreaterThanOrEqual(3);
+    const privadas = paginas.filter((r) => /^src\/app\/admin\/(alertas|eventos)\//.test(relativa(r)) && r.endsWith("page.tsx"));
+    expect(privadas.map(relativa)).toEqual(
+      expect.arrayContaining(["src/app/admin/eventos/page.tsx", "src/app/admin/eventos/[id]/page.tsx"]),
+    );
+    expect(privadas.length).toBeGreaterThanOrEqual(5);
     for (const ruta of privadas) expect(leer(ruta), relativa(ruta)).toMatch(/\bexigirSesion\(/);
+  });
+
+  it("el tablero de /admin solo se muestra con sesión: sin ella, el formulario de acceso", () => {
+    const inicio = leer(path.join(SRC, "app/admin/page.tsx"));
+    const antesDelTablero = inicio.slice(0, inicio.indexOf("cola.tablero("));
+    expect(antesDelTablero).toMatch(/const sesion = await sesionActual\(\);\n\s*if \(!sesion\) \{[\s\S]*?return \(/);
+  });
+});
+
+describe("cola de eventos candidatos (docs/alertas-reales.md §3 y §5)", () => {
+  const acciones = leer(path.join(SRC, "app/admin/eventos/acciones.ts"));
+  const cola = leer(path.join(SRC, "lib/ingesta/cola-postgres.ts"));
+
+  it("las dos acciones exigen sesión y CSRF antes de leer el formulario o tocar la base", () => {
+    const exportadas = funcionesExportadas(acciones);
+    expect(exportadas.map((f) => f.nombre).sort()).toEqual(["crearAlertaDesdeEventoAccion", "descartarEventoAccion"]);
+    for (const { nombre, cuerpo } of exportadas) {
+      expect(cuerpo.replace(/^\{/, "").trim().split("\n")[0], nombre).toBe("const sesion = await exigirAccionAdmin(datos);");
+    }
+  });
+
+  it("una alerta creada desde un evento nunca es de ejemplo y sus fuentes salen de la base, no del formulario", () => {
+    expect(cola).toMatch(/crearConFuentes\(\{ \.\.\.datos, es_ejemplo: false \}/);
+    expect(acciones).not.toMatch(/es_ejemplo: (true|datos)/);
+    // Del formulario solo llegan los ids de los ítems; título, enlace y fechas se leen de `fuente_items`.
+    expect(acciones).not.toMatch(/getAll\("(url|titulo|titulo_documento)"\)/);
+    expect(cola).toMatch(/where i\.evento_id = \$1 and i\.id = any\(\$2::uuid\[\]\)/);
+  });
+
+  it("nada de la agrupación ni de la cola llama a una IA", () => {
+    const deLaCola = fuentes.filter((r) => /^src\/(lib\/ingesta|app\/admin\/eventos|components\/admin)\//.test(relativa(r)));
+    expect(deLaCola.length).toBeGreaterThanOrEqual(10);
+    const infractores = deLaCola.filter((r) => /@anthropic-ai|@\/lib\/asistente|@\/lib\/borradores/.test(leer(r))).map(relativa);
+    expect(infractores).toEqual([]);
+  });
+
+  it("en el panel, todo enlace que abre otra pestaña lleva rel=\"noopener noreferrer\" y un href pasado por safeHref", () => {
+    const delPanel = fuentes.filter((r) => /^src\/(app\/admin|components\/admin)\//.test(relativa(r)) && r.endsWith(".tsx"));
+    let enlaces = 0;
+    for (const ruta of delPanel) {
+      for (const m of leer(ruta).matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)) {
+        enlaces++;
+        expect(m[0], relativa(ruta)).toMatch(/rel="noopener noreferrer"/);
+        expect(m[0], relativa(ruta)).toMatch(/href=\{href\}/);
+        expect(leer(ruta), relativa(ruta)).toMatch(/const href = safeHref\(/);
+      }
+    }
+    expect(enlaces).toBeGreaterThanOrEqual(2);
   });
 });
 
@@ -350,6 +401,7 @@ describe("inventario de la superficie expuesta", () => {
       "src/app/acciones/lista-de-espera.ts",
       "src/app/admin/acciones.ts",
       "src/app/admin/alertas/acciones.ts",
+      "src/app/admin/eventos/acciones.ts",
     ]);
   });
 

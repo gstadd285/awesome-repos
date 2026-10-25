@@ -276,6 +276,64 @@ function exigir<T>(r: Resultado<T>): T {
   return r.valor;
 }
 
+/** Inserta la alerta que deja `crearAlerta` (siempre un borrador, versión 1) con su fila de auditoría. */
+async function insertarNueva(tx: Consultor, t: Transicion): Promise<void> {
+  const a = t.alerta;
+  await tx.consulta(
+    `insert into alertas (id, tema, evento, resumen, filas, fecha, revisor, impacto, es_ejemplo)
+     values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9)`,
+    [a.id, a.tema, a.evento, a.resumen, JSON.stringify(a.filas), a.fecha, a.revisor, a.impacto, a.es_ejemplo],
+  );
+  await insertarAuditoria(tx, t.auditoria);
+}
+
+/**
+ * Enlaza un documento de una fuente del registro a una alerta bloqueada (regla 4 si ya está publicada): valida el
+ * enlace, exige la fuente activa y sin duplicados, deja la fila de auditoría y devuelve la versión nueva.
+ */
+async function enlazar(
+  tx: Consultor,
+  b: Bloqueada,
+  enlace: DatosEnlace,
+  ctx: Contexto,
+  textoCorreccion?: string,
+): Promise<number> {
+  const id = b.alerta.id;
+  const validado = AlertSourceSchema.safeParse({ ...enlace, alert_id: id });
+  if (!validado.success) {
+    throw new Rechazo(validado.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`));
+  }
+  const e = validado.data;
+  const [fuente] = await tx.consulta<{ organismo: string }>("select organismo from fuentes where id = $1 and activa", [
+    e.source_id,
+  ]);
+  if (!fuente) throw new Rechazo(["La fuente no está activa en el registro."]);
+  if (b.activos.some((a) => a.url === e.url)) {
+    throw new Rechazo(["Ese documento ya está enlazado a la alerta."]);
+  }
+  const t = exigir(
+    cambiarFuentes(b.alerta, `Fuente agregada: ${fuente.organismo} · ${e.titulo_documento}`, ctx, textoCorreccion),
+  );
+  await tx.consulta(
+    `insert into alerta_fuentes (id, alert_id, source_id, titulo_documento, url, fecha_publicacion,
+       fecha_consulta, identificador)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [ctx.generarId(), id, e.source_id, e.titulo_documento, e.url, e.fecha_publicacion, e.fecha_consulta, e.identificador ?? null],
+  );
+  return guardar(tx, b, t);
+}
+
+/** Opciones de `crearConFuentes`. */
+export type OpcionesCreacion = {
+  /** Origen de la alerta para su fila `creada` de la auditoría. */
+  nota?: string;
+  /**
+   * Corre al final, dentro de la misma transacción (p. ej. marcar el evento candidato como convertido). Si devuelve
+   * motivos, se revierte todo: ni la alerta ni sus fuentes quedan guardadas.
+   */
+  vincular?: (tx: Consultor, alertId: string) => Promise<string[]>;
+};
+
 // ── Repositorio ─────────────────────────────────────────────────────────────
 
 export function crearRepositorioAlertas(db: BaseDeDatos) {
@@ -289,6 +347,35 @@ export function crearRepositorioAlertas(db: BaseDeDatos) {
     try {
       const nueva = await db.transaccion(async (tx) => paso(await bloquear(tx, id, version), tx));
       return { ok: true, valor: { id, version: nueva } };
+    } catch (error) {
+      return traducirError(error);
+    }
+  }
+
+  /**
+   * Crea un borrador y le enlaza sus fuentes en **una** transacción, con las mismas reglas que el alta y
+   * `agregarFuente` (una fila `creada` y una `editada` por fuente). Lo usa la cola de eventos candidatos
+   * (`docs/alertas-reales.md` §5): si una fuente o `vincular` fallan, no queda nada.
+   */
+  async function crearConFuentes(
+    datos: DatosNuevaAlerta,
+    enlaces: readonly DatosEnlace[],
+    ctx: Contexto,
+    { nota = "", vincular }: OpcionesCreacion = {},
+  ): Promise<Cambio> {
+    const id = ctx.generarId();
+    const r = crearAlerta({ ...datos, id, fecha: ctx.fecha }, ctx, nota);
+    if (!r.ok) return r;
+    try {
+      const version = await db.transaccion(async (tx) => {
+        await insertarNueva(tx, r.valor);
+        let actual = 1;
+        for (const enlace of enlaces) actual = await enlazar(tx, await bloquear(tx, id, actual), enlace, ctx);
+        const motivos = vincular ? await vincular(tx, id) : [];
+        if (motivos.length > 0) throw new Rechazo(motivos);
+        return actual;
+      });
+      return { ok: true, valor: { id, version } };
     } catch (error) {
       return traducirError(error);
     }
@@ -380,25 +467,11 @@ export function crearRepositorioAlertas(db: BaseDeDatos) {
       return filas.map((f) => ({ ...f, tipo: TipoFuente.parse(f.tipo) }));
     },
 
-    async crear(datos: DatosNuevaAlerta, ctx: Contexto): Promise<Cambio> {
-      const id = ctx.generarId();
-      const r = crearAlerta({ ...datos, id, fecha: ctx.fecha }, ctx);
-      if (!r.ok) return r;
-      const a = r.valor.alerta;
-      try {
-        await db.transaccion(async (tx) => {
-          await tx.consulta(
-            `insert into alertas (id, tema, evento, resumen, filas, fecha, revisor, impacto, es_ejemplo)
-             values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9)`,
-            [a.id, a.tema, a.evento, a.resumen, JSON.stringify(a.filas), a.fecha, a.revisor, a.impacto, a.es_ejemplo],
-          );
-          await insertarAuditoria(tx, r.valor.auditoria);
-        });
-        return { ok: true, valor: { id, version: 1 } };
-      } catch (error) {
-        return traducirError(error);
-      }
+    crear(datos: DatosNuevaAlerta, ctx: Contexto): Promise<Cambio> {
+      return crearConFuentes(datos, [], ctx);
     },
+
+    crearConFuentes,
 
     enviarARevision(id: string, version: number, ctx: Contexto): Promise<Cambio> {
       return cambiar(id, version, (b, tx) => guardar(tx, b, exigir(enviarARevision(b.alerta, ctx))));
@@ -439,40 +512,7 @@ export function crearRepositorioAlertas(db: BaseDeDatos) {
       ctx: Contexto,
       textoCorreccion?: string,
     ): Promise<Cambio> {
-      return cambiar(id, version, async (b, tx) => {
-        const validado = AlertSourceSchema.safeParse({ ...enlace, alert_id: id });
-        if (!validado.success) {
-          throw new Rechazo(validado.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`));
-        }
-        const e = validado.data;
-        const [fuente] = await tx.consulta<{ organismo: string }>(
-          "select organismo from fuentes where id = $1 and activa",
-          [e.source_id],
-        );
-        if (!fuente) throw new Rechazo(["La fuente no está activa en el registro."]);
-        if (b.activos.some((a) => a.url === e.url)) {
-          throw new Rechazo(["Ese documento ya está enlazado a la alerta."]);
-        }
-        const t = exigir(
-          cambiarFuentes(b.alerta, `Fuente agregada: ${fuente.organismo} · ${e.titulo_documento}`, ctx, textoCorreccion),
-        );
-        await tx.consulta(
-          `insert into alerta_fuentes (id, alert_id, source_id, titulo_documento, url, fecha_publicacion,
-             fecha_consulta, identificador)
-           values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [
-            ctx.generarId(),
-            id,
-            e.source_id,
-            e.titulo_documento,
-            e.url,
-            e.fecha_publicacion,
-            e.fecha_consulta,
-            e.identificador ?? null,
-          ],
-        );
-        return guardar(tx, b, t);
-      });
+      return cambiar(id, version, (b, tx) => enlazar(tx, b, enlace, ctx, textoCorreccion));
     },
 
     /** Retira un enlace: queda en el historial, deja de contar para la confianza. */

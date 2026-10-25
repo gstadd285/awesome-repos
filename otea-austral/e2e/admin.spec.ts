@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import pg from "pg";
@@ -218,6 +219,110 @@ test.describe("panel interno con sesión", () => {
         "Retractada",
       ]);
       expect(new Set(await filas.locator("td:nth-child(3)").allTextContents())).toEqual(new Set(["e2e"]));
+    });
+
+    expect(errores).toEqual([]);
+  });
+
+  /**
+   * Cola de eventos candidatos (F3). DATOS DE PRUEBA: dos eventos sintéticos con títulos «(ejemplo)» y enlaces de
+   * example.org, escritos como los deja la agrupación (en una transacción, para que la ingesta de otra prueba no los
+   * tome antes). Temas distintos de los de `tareas.spec.ts`, para que su corrida no los mezcle.
+   */
+  async function eventoDePrueba(tema: string, items: { fuente: string; titulo: string }[]): Promise<string> {
+    const cliente = new pg.Client({ connectionString: process.env.DATABASE_URL });
+    await cliente.connect();
+    try {
+      await cliente.query("begin");
+      const id = randomUUID();
+      await cliente.query(
+        `insert into eventos_candidatos (id, tema, titulo_referencia, primero, ultimo, puntaje)
+         values ($1, $2, $3, now() - interval '1 hour', now(), 60)`,
+        [id, tema, items[0].titulo],
+      );
+      for (const [i, item] of items.entries()) {
+        const { rows } = await cliente.query(
+          `insert into fuente_items (source_id, feed_url, clave, titulo, url, identificador, publicado)
+           values ($1, 'https://example.org/e2e/feed.xml', $2, $3, $4, $5, now() - interval '1 hour') returning id`,
+          [item.fuente, createHash("sha256").update(`${id}-${i}`).digest("hex"), item.titulo, `https://example.org/e2e/${sufijo}/evento-${i}`, `folio-${i + 1}`],
+        );
+        await cliente.query("update fuente_items set evento_id = $1 where id = $2", [id, rows[0].id]);
+      }
+      await cliente.query("commit");
+      return id;
+    } finally {
+      await cliente.end();
+    }
+  }
+
+  test("cola de eventos: con sus fuentes oficiales se crea a mano un borrador real, y otro evento se descarta", async ({ page }) => {
+    const errores = vigilarErrores(page);
+    const titulo = `Producción de cobre de prueba ${sufijo} (ejemplo)`;
+    const otroTitulo = `Aviso de prueba ${sufijo} sobre el crudo (ejemplo)`;
+    await eventoDePrueba("cobre", [
+      { fuente: "cochilco", titulo },
+      { fuente: "banco-mundial", titulo: `Informe de prueba ${sufijo} del mercado del cobre (ejemplo)` },
+    ]);
+    await eventoDePrueba("energia", [{ fuente: "opep", titulo: otroTitulo }]);
+
+    await test.step("el tablero avisa que no hay acceso privado y lleva a la cola", async () => {
+      await page.goto("/admin");
+      await expect(page.getByRole("heading", { level: 1, name: "Tablero" })).toBeVisible();
+      await expect(page.getByRole("note", { name: "Sin acceso privado" })).toContainText("no publiques alertas reales");
+      await page.getByRole("link", { name: "Revisar la cola de eventos" }).click();
+      await expect(page).toHaveURL(/\/admin\/eventos$/);
+    });
+
+    await test.step("la cola muestra el evento con sus fuentes, enlazadas al documento en otra pestaña", async () => {
+      await expect(page.getByRole("note", { name: "Sin acceso privado" })).toBeVisible();
+      const tarjeta = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: titulo }) });
+      await expect(tarjeta).toContainText("Cobre");
+      await expect(tarjeta).toContainText("Puntaje 60");
+      const enlaces = tarjeta.getByRole("link", { name: /\(se abre en una pestaña nueva\)$/ });
+      await expect(enlaces).toHaveCount(2);
+      for (const enlace of await enlaces.all()) {
+        await expect(enlace).toHaveAttribute("href", new RegExp(`^https://example\\.org/e2e/${sufijo}/evento-\\d$`));
+        await expect(enlace).toHaveAttribute("target", "_blank");
+        await expect(enlace).toHaveAttribute("rel", "noopener noreferrer");
+      }
+      await tarjeta.getByRole("link", { name: "Revisar y crear alerta" }).click();
+      await expect(page).toHaveURL(/\/admin\/eventos\/[0-9a-f-]{36}$/);
+    });
+
+    await test.step("crea la alerta en borrador, real y con las dos fuentes ya enlazadas", async () => {
+      const form = page.getByRole("form", { name: "Crear alerta desde el evento" });
+      await expect(form.getByRole("checkbox", { checked: true })).toHaveCount(2);
+      await expect(form.getByLabel("Tema")).toHaveValue("cobre");
+      await expect(form.getByLabel(/Datos de ejemplo/)).toHaveCount(0);
+      await form.getByLabel("Evento").fill(`Evento de prueba desde la cola ${sufijo}`);
+      await form.getByLabel("Resumen").fill("Escenario ficticio para las pruebas de navegador, escrito con palabras propias.");
+      await form.locator('[name="fila_0_sector"]').fill("Mineras de prueba");
+      await form.locator('[name="fila_0_condicion"]').fill("Si la producción se sostiene");
+      await form.getByRole("button", { name: "Crear borrador con estas fuentes" }).click();
+
+      await expect(page).toHaveURL(/\/admin\/alertas\/[0-9a-f-]{36}\?hecho=desde-evento$/);
+      await expect(page.getByText("Borrador creado desde el evento candidato, con sus fuentes enlazadas.")).toBeVisible();
+      await expect(page.getByText("Borrador", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("Datos de ejemplo")).toHaveCount(0);
+      await expect(page.getByRole("note", { name: "Sin acceso privado" })).toContainText("no publiques alertas reales");
+      const fuente = page.getByRole("link", { name: new RegExp(`^${titulo.replace(/[()]/g, "\\$&")}`) }).first();
+      await expect(fuente).toHaveAttribute("rel", "noopener noreferrer");
+      await expect(page.locator("[data-confianza]").first()).toHaveAttribute("data-confianza", "alta");
+      const acciones = await page.getByRole("table").last().locator("tbody tr td:nth-child(2)").allTextContents();
+      expect(acciones).toEqual(["Creada", "Editada", "Editada"]);
+      await expect(page.getByRole("table").last()).toContainText("Desde el evento candidato");
+    });
+
+    await test.step("el evento convertido sale de la cola; el otro se descarta y queda en la auditoría", async () => {
+      await page.goto("/admin/eventos");
+      await expect(page.getByRole("heading", { name: titulo })).toHaveCount(0);
+      const tarjeta = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: otroTitulo }) });
+      await tarjeta.getByText("Descartar", { exact: true }).click();
+      const form = page.getByRole("form", { name: `Descartar ${otroTitulo}` });
+      await form.getByLabel("Motivo (interno, opcional)").fill("Prueba de navegador: sin relevancia.");
+      await form.getByRole("button", { name: "Descartar evento" }).click();
+      await expect(page.getByText("Evento descartado. Queda en la auditoría.")).toBeVisible();
+      await expect(page.getByRole("heading", { name: otroTitulo })).toHaveCount(0);
     });
 
     expect(errores).toEqual([]);

@@ -24,7 +24,8 @@ export type Hecho =
   | "editada"
   | "retractada"
   | "fuente-agregada"
-  | "fuente-retirada";
+  | "fuente-retirada"
+  | "desde-evento";
 
 const FORMULARIO_VENCIDO: EstadoAccion = {
   estado: "error",
