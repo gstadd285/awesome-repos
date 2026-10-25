@@ -418,6 +418,11 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
     (si la migración ya se aplicó en algún lugar, en una migración nueva).
   - Los componentes de cliente de `components/cuenta/` solo importan `@/lib/cuentas/formato-secreto` (el resto de `lib/cuentas` y
     `lib/correo` es del servidor).
+  - **Acceso anticipado por invitación** (`CUENTAS_MODO=invitacion`, apagado; `invitaciones.ts`, `/admin/invitaciones`, migración
+    `0009`; `docs/cuentas.md` §13): una cuenta solo se crea con un código de un solo uso (100 bits, solo su HMAC en la base, vence, se
+    revoca, auditoría de solo agregar) que se gasta en la transacción que crea la cuenta. **Un código que no sirve responde igual que
+    uno bueno y no envía nada** (el formulario solo valida su forma): no agregues un mensaje que lo distinga. El código nunca vuelve en
+    `valores`; los límites cuentan todos los pedidos (IP, código y 5 correos por invitación en la base).
 - **Ingesta de metadatos** (`src/lib/ingesta/`, `src/lib/tareas/`, `POST /api/tareas/ingesta`, migración `0007`; diseño en
   `docs/alertas-reales.md` §2 y §2.4, operación en `docs/despliegue.md` §13). Reglas:
   - **Apagada por omisión** (`TAREAS_MODO=inactivo`: la ruta da 404 a los siete métodos). Solo la activa el servicio privado
@@ -434,7 +439,11 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
     migración `0008`; `docs/alertas-reales.md` §3.1): la agrupación es pura y determinista y corre al final de cada corrida, sin
     red ni IA. Una alerta creada desde un evento nace en borrador, **nunca de ejemplo**, por `crearConFuentes` (reglas de
     `rules.ts`, una transacción) y con sus fuentes leídas de `fuente_items` (del formulario solo llegan ids). `evento_auditoria`
-    es de solo agregar. **Hasta el acceso privado (F4) no se publica nada real**: el panel lo avisa; no quites el aviso.
+    es de solo agregar.
+- **Alertas reales solo con sesión** (F4, `docs/alertas-reales.md` §6.1): `/alertas` pasa la sesión de la cuenta a `alertasVisibles`
+  (`src/lib/alertas/visibles.ts`), el **único** que llama a `repo.publicas({ ejemplo })`: sin sesión, solo ejemplos; con sesión, solo
+  `es_ejemplo = false`. Nada real en metadatos, mapa del sitio, imagen OG ni feeds (no hay). El panel avisa quién verá lo publicado según
+  `CUENTAS_MODO` (`AvisoAccesoPrivado`).
 - **Panel `/admin`** (`src/app/admin/`, `src/lib/admin/`): sin `ADMIN_*` y `DATABASE_URL` responde 404.
   Acceso con frase (PBKDF2) y código TOTP; la sesión es una cookie `__Host-` firmada **y registrada en
   la base** (`admin_sesiones`), así que «Salir» la revoca de verdad. Toda página privada llama a
@@ -482,7 +491,8 @@ npm test             # Vitest (una pasada); npm run test:watch para modo observa
 npm run build && npm start   # `output: "standalone"`: start corre `node .next/standalone/server.js`
 npm run test:e2e     # Playwright sobre el build (servidor en el 3200, con las cuentas abiertas si hay DATABASE_URL y el correo
                      # yendo a un servidor que imita a Resend en el 3298: `scripts/resend-falso.mjs`; el modo IA del asistente,
-                     # en el 3201 contra un servidor que imita a Anthropic en el 3299: `scripts/anthropic-falso.mjs`)
+                     # en el 3201 contra un servidor que imita a Anthropic en el 3299: `scripts/anthropic-falso.mjs`; con base, las
+                     # cuentas por invitación en el 3202. Libera antes 3200, 3201, 3202, 3298 y 3299)
 npm run db:migrar    # DATABASE_URL_ADMIN (rol dueño): aplica db/migraciones y la semilla de fuentes
 npm run db:rol-app   # crea el usuario de la aplicación e imprime su URL una sola vez
 npm run admin:credenciales   # frase, TOTP y secretos de sesión del panel
@@ -559,12 +569,12 @@ src/
                        almacén Postgres y turno; agrupación en eventos candidatos (léxico) y cola del panel
     tareas/            puerta de las tareas programadas (`exigirTarea`)
     db/                cliente de Postgres (pool, transacciones) y ayudante de pruebas
-  app/admin/           panel interno (acceso y tablero, cola de eventos, listado, alta, detalle y acciones)
+  app/admin/           panel interno (acceso y tablero, cola de eventos, invitaciones, listado, alta, detalle y acciones)
   app/alertas/         alertas publicadas; app/api/salud: sonda de Cloud Run
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
 db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados, 0005 gasto del asistente,
-                       0006 cuentas, 0007 ingesta, 0008 eventos candidatos)
+                       0006 cuentas, 0007 ingesta, 0008 eventos candidatos, 0009 invitaciones)
 scripts/               migrar, rol de la aplicación, credenciales del panel, preparar standalone, lista de espera
                        (secreto, exportar, recifrar), escáner de secretos, canarios, auditoría de dependencias
 seguridad/             avisos de npm aceptados (con motivo y fecha de revisión)
@@ -914,8 +924,19 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **Una fuente de prueba con `verificado` posterior al `ahora` de la corrida no es elegible**: la corrida no lee nada y no avisa.
 - **Lo que se inserta en una transacción comparte `now()`**: los enlaces de `crearConFuentes` empatan en `agregada` y su orden cae
   en el id (al azar); las pruebas no deben depender de él. `funcionesExportadas` (`arquitectura.test.ts`) entrega el cuerpo con su `{`.
-- **El CSS del panel viaja con la portada** (29,95 KB gzip tras F3, tope 30): las páginas nuevas del panel solo reutilizan
+- **El CSS del panel viaja con la portada** (29,96 KB gzip tras F4, tope 30): las páginas nuevas del panel solo reutilizan
   utilidades que ya existen.
+
+## Lo aprendido (acceso privado por invitación)
+
+- **Un campo controlado sobrevive al reinicio del formulario de React 19** (la acción termina y `form.reset()` vuelve al valor de
+  la propiedad): el código de invitación se conserva en el navegador sin que el servidor lo devuelva. La e2e lo comprueba.
+- **Las cookies no separan puertos**: `__Host-otea_sesion` y la del panel valen para 3200, 3201 y 3202 a la vez (misma base). Las
+  pruebas que necesitan un navegador sin sesión abren un contexto con `storageState` vacío.
+- **Deshacer una transacción a propósito**: `db.transaccion` confirma lo que devuelve; para revertir (la invitación ya no vale) se
+  lanza un error propio dentro y se traduce fuera (`InvitacionNoVale` en `almacen-postgres.ts`).
+- **Un `on delete set null` también dispara los `before update`** de la tabla que apunta: el disparador de `invitaciones` deja pasar
+  `cuenta_id` a nulo sin tocar nada más.
 
 ## Notas de Next.js
 

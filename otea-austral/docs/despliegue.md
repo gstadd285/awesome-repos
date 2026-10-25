@@ -362,12 +362,12 @@ abren con el lanzamiento y **no guardan nada**, y el sitio no ofrece entrar. Abr
    ```
 
    **No lo rotes**: hoy no existe un script de recifrado y cambiarlo deja ilegibles los correos y los secretos de dos pasos.
-3. **Aplica la migración `0006`** (tablas de cuentas, sesiones, códigos y actividad, con permisos por columna y seguridad por fila)
-   **antes** de desplegar: `npm run db:migrar` con el rol dueño.
+3. **Aplica las migraciones `0006` y `0009`** (tablas de cuentas, sesiones, códigos, actividad e invitaciones, con permisos por
+   columna y seguridad por fila) **antes** de desplegar: `npm run db:migrar` con el rol dueño.
 4. **Reparte la cuota de correo.** El plan gratuito de Resend permite 100 correos al día **en total**; la lista de espera usa hasta
    `WAITLIST_ENVIOS_DIARIOS` (80) y las cuentas hasta `CUENTAS_ENVIOS_DIARIOS` (20 por omisión: confirmaciones, restablecimientos y
    avisos de seguridad; las altas pueden usar como mucho el 60 % de ese cupo y el resto queda para restablecer contraseñas y avisos). Que la suma no pase de 100; si el tráfico lo pide, subir de plan es una decisión de gasto (regla 1).
-5. **Descomenta el bloque «Cuentas»** de `despliegue/cloud-run.yaml` (`CUENTAS_MODO=abiertas`, `CUENTAS_ENVIOS_DIARIOS`,
+5. **Descomenta el bloque «Cuentas»** de `despliegue/cloud-run.yaml` (`CUENTAS_MODO`, `CUENTAS_ENVIOS_DIARIOS`,
    `CUENTAS_SECRETO`) y despliega como en el paso 7: una revisión con etiqueta y sin tráfico. Si falta algo (base, clave de Resend o
    secreto) la sonda `/api/salud` falla y la revisión no recibe tráfico.
 6. **Prueba en esa dirección con un correo real**: crear la cuenta (el correo debe llegar y el enlace abrir el sitio **de verdad**,
@@ -375,6 +375,20 @@ abren con el lanzamiento y **no guardan nada**, y el sitio no ofrece entrar. Abr
    descargar los datos y eliminar la cuenta. Después dale tráfico.
 7. **Vigila los primeros días** en Cloud Logging los eventos `"tipo":"acceso_cuenta"` y `"tipo":"cuenta"`, y los
    `"resultado":"limite"` (intentos repetidos) y `limite_excedido` con `cuentas_envios_diarios` (se agotó la cuota de correos).
+
+### Lanzamiento privado por invitación (`CUENTAS_MODO=invitacion`)
+
+Es el modo previsto para el acceso anticipado ([`alertas-reales.md`](alertas-reales.md) §6, [`cuentas.md`](cuentas.md) §13): exige
+lo mismo que `abiertas` y además solo se crea una cuenta con un código de `/admin/invitaciones`. Las alertas reales publicadas se ven
+en `/alertas` **solo con sesión** (sin sesión, ejemplos), sea cual sea el modo.
+
+1. Con el secreto y la migración `0009` ya aplicados, entra al panel y **emite los códigos** (alias interno sin datos personales,
+   vigencia de 1 a 30 días). Cada código se muestra una vez: cópialo y envíalo por un canal privado. Se pueden emitir antes de
+   cambiar el modo (con cualquier modo, siempre que la revisión tenga `CUENTAS_SECRETO` y la base).
+2. Despliega con `CUENTAS_MODO=invitacion` (revisión con etiqueta y sin tráfico, como siempre) y prueba en esa dirección: crear una
+   cuenta con un código (el correo llega), que el mismo código ya no sirva, y `/alertas` con y sin sesión.
+3. Vigila `"tipo":"invitacion"` (`rechazada` en ráfagas = alguien prueba códigos) y `limite_excedido` con `cuentas_invitacion` o
+   `cuentas_invitacion_codigo`. Un código filtrado se **revoca** en el panel.
 
 **Cerrarlas de inmediato** (las páginas siguen, sin guardar ni enviar nada; las sesiones abiertas dejan de servir):
 

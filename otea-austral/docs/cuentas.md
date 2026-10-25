@@ -9,6 +9,9 @@ y las [decisiones pendientes](#decisiones-y-límites) son las que piden una acci
 - **Implementado y probado, pero cerrado por omisión.** Con `CUENTAS_MODO=cerradas` (el valor por omisión) las páginas
   existen, explican que «las cuentas abren junto con el lanzamiento» y **no guardan nada**; la cabecera y el pie no
   ofrecen entrar. Hasta que la persona responsable las abra (ver abajo) no hay cuentas, secretos nuevos ni correos.
+- **Acceso anticipado por invitación** (fase F4 de [`alertas-reales.md`](alertas-reales.md) §6): con `CUENTAS_MODO=invitacion`
+  (apagado por omisión; exige lo mismo que `abiertas`) solo se crea una cuenta con un **código de invitación de un solo uso**
+  que la persona responsable emite en `/admin/invitaciones` (§13). Todo lo demás funciona igual que con `abiertas`.
 - Los textos legales que las acompañan (privacidad y condiciones de uso) son **provisionales**, pendientes de revisión
   legal. La versión que acepta la persona se guarda con su cuenta (`VERSION_TEXTOS`).
 - No se probó con el Resend real (solo contra un servidor que imita su API) ni con una persona experta externa. Hubo una
@@ -24,7 +27,7 @@ cuentas de equipo, y avisos personalizados (las alertas por tema llegan cuando s
 
 | Ruta | Qué hace | Sesión |
 |---|---|---|
-| `/cuenta/crear` | Paso 1: correo y dos casillas (condiciones y privacidad). Envía el enlace de confirmación | No |
+| `/cuenta/crear` | Paso 1: correo y dos casillas (condiciones y privacidad); con `invitacion`, además el código. Envía el enlace de confirmación | No |
 | `/cuenta/activar?token=` | Paso 2: con el enlace del correo se elige la contraseña, se crea la cuenta y se entra | No (token) |
 | `/cuenta/entrar` | Correo y contraseña | No |
 | `/cuenta/verificar` | Segundo paso al entrar (código de la app o de recuperación) | Sesión «a medias» |
@@ -79,6 +82,8 @@ las demás». **Descargar mis datos** entrega todo lo que se guarda (sin la cont
 | `cuenta_codigos` | hash de cada código de recuperación y si se usó | |
 | `cuenta_eventos` | tipo y fecha (alta, acceso, cambios de contraseña, dos pasos, códigos…) | Solo agregar (disparador); se conserva 90 días |
 | `cuentas_envios_diarios` | cuántos correos de cuentas se enviaron cada día (hora de Chile) | Solo crece (disparador `OT010`); sin borrado |
+| `invitaciones` (`0009`) | HMAC del código, alias interno, emisión, vencimiento, correos de alta provocados, `usada` (y la cuenta), `revocada` | Sin borrado; `usada` y `revocada` se fijan una vez (`OT013`); al eliminar la cuenta, `cuenta_id` queda nulo |
+| `invitacion_auditoria` (`0009`) | emitida, revocada o usada, fecha y alias del panel (nadie cuando la usa la persona invitada) | Solo agregar |
 
 El usuario de la aplicación (`otea_app`) tiene permisos **por columna** y seguridad por fila con una política por operación
 (`src/lib/db/rls.test.ts` falla si falta alguna). Las consultas son siempre parametrizadas.
@@ -87,7 +92,8 @@ El usuario de la aplicación (`otea_app`) tiene permisos **por columna** y segur
 
 - **`CUENTAS_SECRETO`** (256 bits, `npm run cuentas:secreto`, en Secret Manager; distinto de `WAITLIST_SECRETO` y del secreto de la
   sesión del panel: `env.ts` lo exige). De él salen, con HKDF-SHA256 y un propósito distinto cada vez, cinco claves
-  independientes: `correo-cifrado`, `correo-indice`, `totp`, `csrf` y `tiempo` (la marca de tiempo del formulario).
+  independientes: `correo-cifrado`, `correo-indice`, `totp`, `csrf`, `tiempo` (la marca de tiempo del formulario) e
+  `invitaciones` (la huella HMAC-SHA256 de los códigos de invitación: de un código solo se guarda eso).
 - **Correo**: AES-256-GCM (IV aleatorio de 96 bits; dato asociado = índice del correo) y búsqueda por **índice ciego** (HMAC-SHA256
   del correo normalizado). A diferencia de la lista de espera, aquí la aplicación **sí** puede descifrarlo: envía avisos de
   seguridad y lo muestra en el perfil.
@@ -137,6 +143,10 @@ por el token anti-CSRF del formulario.
   un solo enlace pendiente por correo. De ese tope diario, **las altas (y el aviso a quien ya tiene la cuenta) pueden usar el 60 %**;
   el resto queda para restablecer contraseñas y avisos de seguridad: llenar el cupo desde fuera no deja a nadie sin su correo de
   recuperación.
+- **Cuota agotada, respuesta pareja**: con el cupo de altas del día agotado, crear la cuenta responde «saturada» **antes** de mirar
+  el correo o el código (exista o no la cuenta, sirva o no el código): ese mensaje tampoco distingue a nadie.
+- **Invitaciones** (§13): todos los pedidos de alta con código cuentan, sirva o no el código: 10 por hora y 30 por día por IP, 5 por
+  hora por código (su huella) desde todas las IP, y **5 correos de alta por invitación en la base** (común a todas las instancias).
 - **Acciones delicadas** (cambiar la contraseña, dos pasos, códigos, eliminar) piden la contraseña de nuevo y el código si hay dos
   pasos, aunque la sesión sea válida.
 - **Lo que no se registra**: ningún token, contraseña, código ni correo llega a un registro (`logSecurityEvent` solo recibe
@@ -166,6 +176,11 @@ por el token anti-CSRF del formulario.
 | Agotar memoria o CPU con contraseñas | Largo máximo, semáforo de scrypt con cola acotada | — |
 | Inyección SQL / acceso indebido en la base | Consultas parametrizadas, permisos por columna, RLS por operación, eventos de solo agregar | — |
 | Restaurar una copia vieja de la base | — | Pueden reaparecer sesiones ya revocadas: tras restaurar, cerrar todas (ver §11) |
+| Adivinar un código de invitación | 100 bits al azar; límites por IP, por código y en la base; la misma respuesta sirva o no | — |
+| Saber si un código existe o si un correo tiene cuenta con un código bueno | El formulario responde igual en todos los casos (solo valida la forma del código) y un código que no sirve no envía nada | Quien tiene un código y un buzón propio sabe si sirve: llega o no el correo. Es inevitable (el código está para eso) |
+| Un código filtrado | Un solo alta; vence (14 días por omisión, 30 como máximo); se revoca en el panel; como mucho 5 correos de alta por código | Hasta que se revoque, la primera persona que lo use crea una cuenta |
+| Dos altas a la vez con el mismo código | Se gasta en una sola sentencia, en la transacción que crea la cuenta: la segunda se deshace entera | — |
+| Copia de la base con las invitaciones | Solo la huella HMAC con una clave derivada de `CUENTAS_SECRETO` | Quien robe la base **y** el secreto puede probar códigos sin límite (y ya lee los correos) |
 
 ## 10. Privacidad
 
@@ -199,10 +214,11 @@ los dos tipos de código en un solo campo). Falta probar con un lector de pantal
 
 1. `npm run cuentas:secreto` y guardar el valor como secreto `cuentas-secreto` en Secret Manager. **Es un secreto más:** Secret Manager
    incluye 6 versiones activas gratis al mes; a partir de la séptima cuesta unos US$0,06 por versión al mes (consultar antes).
-2. `npm run db:migrar` con el rol dueño (aplica `0006_cuentas.sql`).
+2. `npm run db:migrar` con el rol dueño (aplica `0006_cuentas.sql` y `0009_invitaciones.sql`).
 3. En Resend, el dominio ya verificado para la lista de espera sirve. La cuota gratuita (100 correos al día) se **reparte**:
    `WAITLIST_ENVIOS_DIARIOS` + `CUENTAS_ENVIOS_DIARIOS` ≤ 100 (por omisión, 80 + 20).
-4. En la revisión de Cloud Run (`despliegue/cloud-run.yaml`, bloque comentado): `CUENTAS_MODO=abiertas`, `CUENTAS_SECRETO` desde Secret Manager.
+4. En la revisión de Cloud Run (`despliegue/cloud-run.yaml`, bloque comentado): `CUENTAS_MODO=invitacion` (lanzamiento privado, §13) o
+   `abiertas`, y `CUENTAS_SECRETO` desde Secret Manager.
    Si falta algo, la configuración es inválida y la revisión no recibe tráfico (`/api/salud`).
 5. Antes, la revisión legal de la privacidad y las condiciones de uso; después, probar con un correo real: crear cuenta, dos pasos,
    «olvidé mi contraseña», descargar y eliminar.
@@ -226,3 +242,26 @@ incidente (`docs/seguridad/respuesta-incidentes.md`): cerrar las cuentas (`CUENT
 - **Bloqueo dirigido** (§9), **sin recuperación asistida** y el resto de los riesgos que quedan en la tabla de §9 son riesgos
   aceptados de esta versión.
 - Los textos legales son provisionales; **no abrir las cuentas sin revisión legal** (regla 7 de `CLAUDE.md`).
+
+## 13. Acceso anticipado por invitación (`CUENTAS_MODO=invitacion`)
+
+Diseño y decisiones en [`alertas-reales.md`](alertas-reales.md) §6. Código en `src/lib/cuentas/invitaciones.ts`, el servicio y los
+almacenes de siempre, `src/app/admin/invitaciones/` y `db/migraciones/0009_invitaciones.sql`.
+
+- **Emitir** (`/admin/invitaciones`, con la sesión del panel y su token CSRF): alias interno (la forma del actor, sin datos personales)
+  y vigencia (1 a 30 días, 14 por omisión); hasta 50 vigentes. El código (20 caracteres base32, 100 bits, `XXXXX-XXXXX-XXXXX-XXXXX`)
+  se muestra **una sola vez** en la respuesta; la base guarda solo su HMAC. Se puede emitir con cualquier modo siempre que haya base y
+  `CUENTAS_SECRETO` (así se preparan antes de pasar a `invitacion`). La lista muestra alias, fechas, estado y correos provocados; una
+  vigente se **revoca** con un botón. Cada emisión, revocación y uso queda en `invitacion_auditoria` (solo agregar).
+- **Crear la cuenta**: `/cuenta/crear` pide el código. Solo se valida su **forma**; un código que no existe, venció, se usó, se revocó o
+  agotó sus correos responde **lo mismo** que uno bueno y no envía nada. Con un código bueno el alta sigue igual que siempre (el
+  enlace del correo recuerda la invitación; si el correo ya tiene cuenta, el aviso de siempre y la invitación no se gasta). La
+  invitación se gasta al **enviar la contraseña**, en la misma transacción que crea la cuenta; si para entonces ya no vale, el enlace
+  lo dice («Tu invitación ya no vale…»: solo lo ve quien abrió su correo) y se borra para poder pedir otro de inmediato.
+- **Lo que vuelve al navegador** nunca trae el código (como las contraseñas): el campo lo conserva en el propio navegador si el envío
+  falla por otra cosa. Los registros solo dicen `"tipo":"invitacion"` con `emitida`, `revocada`, `usada` o `rechazada`.
+- **«Descargar mis datos»** incluye con qué invitación se creó la cuenta (alias, emisión y uso); la política de privacidad lo
+  menciona (versión `2026-10-borrador-4`).
+- **Pasar a invitación** (decisión de la persona responsable, con la revisión legal): aplicar `0009`, emitir los códigos y desplegar
+  con `CUENTAS_MODO=invitacion` (`despliegue.md` §12). Volver a `abiertas` deja de pedir el código; a `cerradas`, cierra todo.
+

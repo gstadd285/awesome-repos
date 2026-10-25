@@ -3,7 +3,8 @@
 Fase **F1** (2026-10-25): verificación de fuentes y este diseño. Fase **F2** (2026-10-25): la ingesta de metadatos (§2) está
 implementada, probada contra fuentes falsas y **apagada por omisión** (§2.4); hoy no tiene nada que leer. Fase **F3**
 (2026-10-25): la agrupación en eventos candidatos y la cola manual sin IA de `/admin` (§3.1); sin datos reales que agrupar
-todavía. F4 a F6 siguen sin implementar. El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
+todavía. Fase **F4** (2026-10-25): el acceso privado por invitación (§6.1), **apagado por omisión** (`CUENTAS_MODO=cerradas`); desde
+ya, `/alertas` muestra lo real solo con sesión. F5 y F6 siguen sin implementar. El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
 
 Encargo de la dueña: un sistema lee las fuentes oficiales del registro y arma borradores; Claude redacta **un borrador por
 evento** con un tope duro de **US$ 5 al mes** (autorizado solo para esto); ella aprueba o descarta cada uno en `/admin` y
@@ -21,7 +22,7 @@ textos legales. Presupuesto del proyecto: unos US$ 40, solo planes gratuitos sal
 | D5 | El borrador vive en su **propia tabla**; la alerta nace cuando la dueña lo **acepta**, con `rules.ts` (`crearAlerta` y después revisión, aprobación y publicación) | La IA nunca escribe en `alertas`; la auditoría muestra a la dueña como autora y el origen del borrador en la nota |
 | D6 | La IA lee el texto **solo de fuentes con `lectura_ia: true`** (campo nuevo, por omisión `false`), que exige condiciones «Verificadas» que lo permitan | El FMI prohíbe usar su contenido con modelos de lenguaje sin permiso; la OPEP y el BIS restringen copiar y traducir (`docs/fuentes-pendientes.md`). Por omisión, no se lee |
 | D7 | `CUENTAS_MODO=invitacion`: códigos de un solo uso emitidos desde `/admin`, guardados con HMAC. `/alertas` muestra lo real **solo con sesión**; sin sesión, los ejemplos | Lanzamiento privado sin otra infraestructura |
-| D8 | **Ninguna alerta real se publica antes de cerrar F4** (puerta de `/alertas`) | Hoy `/alertas` muestra en público todo lo publicado |
+| D8 | **Ninguna alerta real se publica antes de cerrar F4** (puerta de `/alertas`). **Cerrada el 2026-10-25**: sin sesión, `/alertas` muestra solo ejemplos | Antes de F4, `/alertas` mostraba en público todo lo publicado |
 
 **Punto de partida (2026-10-25): 0 de 17 fuentes con feed verificado** (`docs/fuentes-pendientes.md`). La ingesta no
 tiene nada que leer hasta que la dueña permita los dominios o compruebe los feeds a mano (criterio de entrada de F2).
@@ -408,6 +409,42 @@ inserta todo salvo `estado`, `alert_id`, `resuelto`; actualiza solo esos tres) y
   **Sin sesión**: las alertas de `src/data/ejemplo.ts` con «Datos de ejemplo» y un enlace para entrar. La respuesta con sesión
   lleva `Cache-Control: private, no-store`. Solo `alertasVisibles(sesion)` llama a `repo.publicas()` (prueba de arquitectura).
 
+### 6.1 Implementado en F4 (lo que se precisó al construirlo)
+
+Código en `src/lib/cuentas/{invitaciones,servicio,almacen,almacen-memoria,almacen-postgres,cifrado}.ts`, `src/app/admin/invitaciones/`,
+`src/components/admin/{FormularioInvitacion,AvisoAccesoPrivado}.tsx`, `src/lib/alertas/visibles.ts`, `src/app/alertas/page.tsx` y
+`db/migraciones/0009_invitaciones.sql`; operación en `cuentas.md` §13 y `despliegue.md` §12. Sobre lo escrito arriba:
+
+- **Cambió una decisión: un código que no sirve ya no se dice.** El formulario solo valida la **forma** del código; uno que no existe,
+  venció, se usó, se revocó o agotó sus correos responde lo mismo que uno bueno y no envía nada (encargo de F4: sin oráculos). Lo
+  mismo con un código bueno y un correo que ya tiene cuenta (el aviso de siempre a su dueña; la invitación no se gasta). Quien tenga
+  un código y un buzón propio sabe si sirve (llega o no el correo): inevitable.
+- **Límites** (todos los pedidos cuentan, sirva o no el código): 10 por hora y 30 por día por IP, 5 por hora por código (su huella) en
+  memoria y **5 correos de alta por invitación en la base** (`envios`, común a todas las instancias). Con el cupo diario de altas
+  agotado, el alta responde «saturada» antes de mirar el correo o el código (también con `abiertas`): no distingue a nadie.
+- **Código**: 20 caracteres del alfabeto base32 de RFC 4648 (100 bits); al comparar, sin espacios ni guiones, en mayúsculas y con 0, 1
+  y 8 leídos como O, I y B. HMAC-SHA256 con la clave HKDF `otea:cuentas:invitaciones:v1` de `CUENTAS_SECRETO`.
+- **Se gasta al enviar la contraseña**, en la transacción de `activarAlta` (enlace usado, cuenta, `update … usada … where usada is null
+  and revocada is null and vence > ahora`, fila `usada` en la auditoría); dos altas a la vez con el mismo código dan una sola cuenta
+  (probado con Postgres). Si ya no vale, el enlace lo dice y se borra. El enlace de alta guarda `invitacion_id` y, al renovarse, toma
+  la del pedido nuevo. Con `abiertas` las invitaciones no cuentan.
+- **Base** (`0009`): `invitaciones` (sin borrado; `usada` y `revocada` una vez, `envios` solo sube, `OT013`; vigencia ≤ 30 días; nace
+  vigente por RLS), `invitacion_auditoria` (solo agregar; actor nulo solo en `usada`) y `cuenta_tokens.invitacion_id`. `cuenta_id` →
+  `cuentas` con `on delete set null`: por eso la privacidad y «Descargar mis datos» mencionan la invitación (`VERSION_TEXTOS` y
+  `VERSION_CONSENTIMIENTO` pasan a `2026-10-borrador-4`).
+- **Panel**: `/admin/invitaciones` (emitir con alias y vigencia, el código una sola vez; lista con estado y correos; revocar;
+  auditoría). Se puede emitir con cualquier modo si hay base y `CUENTAS_SECRETO` (sin el secreto fijo un código no serviría en otra
+  instancia). El aviso de F3 pasa a `AvisoAccesoPrivado`: dice quién verá lo real publicado según `CUENTAS_MODO` (con `cerradas`,
+  nadie; con `abiertas`, cualquiera con cuenta; con `invitacion`, las cuentas invitadas).
+- **`/alertas`**: no hizo falta `sesionCuentaOpcional`: `sesionCuenta()` ya existía y no redirige. `alertasVisibles(sesion, repo)`
+  (`src/lib/alertas/visibles.ts`) es el único que llama a `repo.publicas({ ejemplo })`, que ya no puede pedir las dos clases a la vez.
+  Sin sesión: los publicados de ejemplo de la base o, si no hay, los de `src/data/ejemplo.ts`, con un aviso según el modo (por
+  invitación, con cuentas o lista de espera); con sesión: solo `es_ejemplo = false` y «Acceso anticipado privado · textos legales en
+  revisión». Metadatos fijos; mapa del sitio, `robots.txt`, manifiesto e imagen OG no leen alertas; no hay RSS (lo vigilan
+  `arquitectura.test.ts` y la e2e). La página lee la cookie: Next.js la sirve con `Cache-Control: private, no-store`.
+- **Pruebas**: e2e `invitaciones.spec.ts` contra una tercera instancia (3202) con `CUENTAS_MODO=invitacion`, misma base y mismo secreto
+  que la del 3200, cuyo panel emite los códigos.
+
 ## 7. Preferencias y aviso (F6)
 
 - Los temas seguidos y «Resumen pre-apertura» ya existen en la cuenta (`temas`, `resumen_previo`, `guardarPerfilAccion`).
@@ -558,7 +595,7 @@ se publica antes de cerrar F4.
 - **Aceptación**: con los fixtures, los ítems de una misma decisión de tasas forman un evento; la dueña crea una alerta
   borrador con sus fuentes desde la cola; nada llama a la IA.
 
-### F4 · Acceso privado por invitación
+### F4 · Acceso privado por invitación (hecha el 2026-10-25, apagada; ver §6.1)
 
 - **Archivos**: `db/migraciones/0009_invitaciones.sql`, `src/lib/cuentas/{invitaciones,acceso}.ts`, `servicio.ts`,
   `almacen-*.ts`, `src/app/cuenta/crear/page.tsx` y su formulario, `src/app/admin/invitaciones/{page,acciones}.ts(x)`,
@@ -603,3 +640,4 @@ se publica antes de cerrar F4.
 4. Crear el espacio de trabajo y la clave de Anthropic para borradores, con límite mensual de US$ 5 y dos pasos en la cuenta.
 5. Correo de rol para `INGESTA_CONTACTO` (aparece en las solicitudes a las fuentes).
 6. Reparto de la cuota de Resend (§7).
+7. Pasar a `CUENTAS_MODO=invitacion` en producción (con la revisión legal de los textos) y emitir los códigos del acceso anticipado.
