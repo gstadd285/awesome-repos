@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { CLAVE_FALSA } from "./scripts/lib/anthropic-falso.mjs";
 import { base32 } from "./scripts/lib/credenciales.mjs";
 import { CLAVE_RESEND_FALSA } from "./scripts/lib/resend-falso.mjs";
-import { PUERTO_API_FALSA, PUERTO_CORREO, PUERTO_IA, URL_CORREO } from "./e2e/puertos";
+import { PUERTO_API_FALSA, PUERTO_CORREO, PUERTO_IA, PUERTO_INVITACION, URL_CORREO } from "./e2e/puertos";
 
 const PUERTO = 3200;
 const chromium = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
@@ -87,7 +87,7 @@ export default defineConfig({
     },
     // El panel es una herramienta interna de escritorio: se prueba una vez. Las pruebas de movimiento abren
     // sus propias ventanas (estrecha, teléfono, sin soporte…): tampoco se repiten en el móvil.
-    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec|tareas\.spec/ },
+    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec|tareas\.spec|invitaciones\.spec/ },
   ],
   webServer: [
     {
@@ -138,5 +138,18 @@ export default defineConfig({
         ...tareas,
       },
     },
+    // Con base de datos, una tercera instancia con las cuentas por invitación (acceso anticipado privado). Sin panel: los
+    // códigos se emiten en el del 3200, que comparte la base y el secreto de las cuentas.
+    ...(hayBase
+      ? [
+          {
+            command: "npm run start",
+            url: `http://localhost:${PUERTO_INVITACION}`,
+            reuseExistingServer: !process.env.CI,
+            timeout: 60_000,
+            env: { PORT: String(PUERTO_INVITACION), HOSTNAME: "127.0.0.1", WAITLIST_MODE: "memoria", OTEA_E2E: "1", ...cuentas, CUENTAS_MODO: "invitacion" },
+          },
+        ]
+      : []),
   ],
 });

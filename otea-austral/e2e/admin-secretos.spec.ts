@@ -20,6 +20,7 @@ test.describe("ninguna respuesta del servidor contiene secretos", () => {
       process.env.E2E_ADMIN_TOTP,
       process.env.E2E_ADMIN_SESION,
       process.env.E2E_ADMIN_FRASE,
+      process.env.E2E_CUENTAS_SECRETO,
       process.env.DATABASE_URL,
       decodeURIComponent(url.password),
     ].filter((s): s is string => Boolean(s) && (s as string).length >= 8);
@@ -46,6 +47,7 @@ test.describe("ninguna respuesta del servidor contiene secretos", () => {
     "/admin/alertas",
     "/admin/alertas/nueva",
     "/admin/eventos",
+    "/admin/invitaciones",
   ];
 
   for (const ruta of RUTAS) {
@@ -62,7 +64,7 @@ test.describe("ninguna respuesta del servidor contiene secretos", () => {
   }
 
   test("las páginas del panel no se guardan en ninguna caché", async ({ request }) => {
-    for (const ruta of ["/admin", "/admin/alertas", "/admin/alertas/nueva", "/admin/eventos"]) {
+    for (const ruta of ["/admin", "/admin/alertas", "/admin/alertas/nueva", "/admin/eventos", "/admin/invitaciones"]) {
       const r = await request.get(ruta, { maxRedirects: 0 });
       expect(r.headers()["cache-control"] ?? "", ruta).toMatch(/no-store/);
       expect(r.headers()["x-robots-tag"] ?? "", ruta).toContain("noindex");

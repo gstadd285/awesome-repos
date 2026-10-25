@@ -265,16 +265,16 @@ test.describe("panel interno con sesión", () => {
     ]);
     await eventoDePrueba("energia", [{ fuente: "opep", titulo: otroTitulo }]);
 
-    await test.step("el tablero avisa que no hay acceso privado y lleva a la cola", async () => {
+    await test.step("el tablero avisa quién ve lo real publicado (aquí, cuentas abiertas) y lleva a la cola", async () => {
       await page.goto("/admin");
       await expect(page.getByRole("heading", { level: 1, name: "Tablero" })).toBeVisible();
-      await expect(page.getByRole("note", { name: "Sin acceso privado" })).toContainText("no publiques alertas reales");
+      await expect(page.getByRole("note", { name: "Quién ve las alertas reales" })).toContainText("cualquiera que cree una cuenta");
       await page.getByRole("link", { name: "Revisar la cola de eventos" }).click();
       await expect(page).toHaveURL(/\/admin\/eventos$/);
     });
 
     await test.step("la cola muestra el evento con sus fuentes, enlazadas al documento en otra pestaña", async () => {
-      await expect(page.getByRole("note", { name: "Sin acceso privado" })).toBeVisible();
+      await expect(page.getByRole("note", { name: "Quién ve las alertas reales" })).toBeVisible();
       const tarjeta = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: titulo }) });
       await expect(tarjeta).toContainText("Cobre");
       await expect(tarjeta).toContainText("Puntaje 60");
@@ -304,7 +304,7 @@ test.describe("panel interno con sesión", () => {
       await expect(page.getByText("Borrador creado desde el evento candidato, con sus fuentes enlazadas.")).toBeVisible();
       await expect(page.getByText("Borrador", { exact: true }).first()).toBeVisible();
       await expect(page.getByText("Datos de ejemplo")).toHaveCount(0);
-      await expect(page.getByRole("note", { name: "Sin acceso privado" })).toContainText("no publiques alertas reales");
+      await expect(page.getByRole("note", { name: "Quién ve las alertas reales" })).toContainText("CUENTAS_MODO=invitacion");
       const fuente = page.getByRole("link", { name: new RegExp(`^${titulo.replace(/[()]/g, "\\$&")}`) }).first();
       await expect(fuente).toHaveAttribute("rel", "noopener noreferrer");
       await expect(page.locator("[data-confianza]").first()).toHaveAttribute("data-confianza", "alta");
