@@ -4,12 +4,14 @@ import { env } from "@/lib/env";
 import { REGISTRO_FUENTES } from "@/lib/sources/registry";
 import { crearAlmacenIngestaPostgres } from "./almacen-postgres";
 import { agenteIngesta, crearDescargador } from "./descarga";
+import { agruparPendientes } from "./eventos-postgres";
 import { correrIngesta, type ResumenCorrida } from "./servicio";
 import { crearTurnoPostgres } from "./turno";
 
 /**
- * La ingesta con su configuración real: el registro de fuentes validado, la base y la identidad declarada. Solo la
- * llama `POST /api/tareas/ingesta` después de `exigirTarea`, así que aquí `TAREAS_MODO=activo` ya está comprobado.
+ * La ingesta con su configuración real: el registro de fuentes validado, la base y la identidad declarada; al final de
+ * cada corrida, la agrupación en eventos candidatos (sin red ni IA). Solo la llama `POST /api/tareas/ingesta` después de
+ * `exigirTarea`, así que aquí `TAREAS_MODO=activo` ya está comprobado.
  */
 export async function ejecutarIngesta(): Promise<ResumenCorrida> {
   const db = baseDeDatos();
@@ -22,5 +24,6 @@ export async function ejecutarIngesta(): Promise<ResumenCorrida> {
       agente: agenteIngesta(env.NEXT_PUBLIC_SITE_URL, env.INGESTA_CONTACTO),
       origenPrueba: env.OTEA_E2E === "1" ? env.INGESTA_URL_PRUEBA : undefined,
     }),
+    agrupar: (ahora) => agruparPendientes(db, { fuentes: REGISTRO_FUENTES, ahora }),
   });
 }

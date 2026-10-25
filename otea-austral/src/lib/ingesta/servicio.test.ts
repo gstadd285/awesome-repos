@@ -9,6 +9,7 @@ import {
   feedsElegibles,
   type AlmacenIngesta,
   type Corrida,
+  type DependenciasIngesta,
   type EstadoFeed,
   type ItemParaGuardar,
   type Turno,
@@ -105,7 +106,7 @@ function preparar(guion: Guion, fuentes: Source[] = [fuente("prueba", [feed(FEED
     solicitudes.push(s);
     return guion(s);
   });
-  const correr = (extra: { presupuestoMs?: number } = {}) =>
+  const correr = (extra: Pick<DependenciasIngesta, "presupuestoMs" | "agrupar"> = {}) =>
     correrIngesta({ fuentes, almacen: memoria.almacen, turno, descargar, reloj: () => ahora, registrar: (e) => eventos.push(e), ...extra });
   return {
     ...memoria,
@@ -258,6 +259,47 @@ describe("una corrida", () => {
     expect(p.turno.ocupado).toBe(false);
     expect(p.eventos).toContainEqual({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: "ingesta" });
     expect(p.eventos.at(-1)).toMatchObject({ tipo: "tarea", resultado: "fallida" });
+  });
+
+  it("al final agrupa en eventos candidatos con el turno todavía tomado, también sin feeds, y lo cuenta", async () => {
+    const p = preparar(() => {
+      throw new Error("no debería pedir nada");
+    }, []);
+    const vistos: { ahora: Date; ocupado: boolean }[] = [];
+    const r = await p.correr({
+      agrupar: async (ahora) => {
+        vistos.push({ ahora, ocupado: p.turno.ocupado });
+        return { asignados: 3, eventosNuevos: 2 };
+      },
+    });
+    expect(r).toMatchObject({ resultado: "ok", sinFeeds: true, agrupacion: { asignados: 3, eventosNuevos: 2 } });
+    expect(vistos).toEqual([{ ahora: p.ahora(), ocupado: true }]);
+    expect(p.turno.ocupado).toBe(false);
+    expect(p.eventos.at(-1)).toEqual({ tipo: "tarea", tarea: "ingesta", resultado: "sin_feeds", feeds: 0, nuevos: 0, fallos: 0, agrupados: 3 });
+  });
+
+  it("si la agrupación falla, la corrida queda parcial, lo registra y los ítems esperan a la siguiente", async () => {
+    const p = preparar(() => {
+      throw new Error("no debería pedir nada");
+    }, []);
+    const r = await p.correr({
+      agrupar: async () => {
+        throw new Error("conexión perdida");
+      },
+    });
+    expect(r.resultado).toBe("parcial");
+    expect(r.agrupacion).toBeUndefined();
+    expect(p.eventos).toContainEqual({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: "ingesta_agrupar" });
+    expect(p.corridas).toMatchObject([{ resultado: "parcial" }]);
+    expect(p.turno.ocupado).toBe(false);
+  });
+
+  it("con el turno tomado por otra corrida tampoco agrupa", async () => {
+    const p = preparar(() => ok(RSS));
+    p.turno.ocupado = true;
+    const agrupar = vi.fn(async () => ({ asignados: 0, eventosNuevos: 0 }));
+    expect(await p.correr({ agrupar })).toMatchObject({ resultado: "omitida" });
+    expect(agrupar).not.toHaveBeenCalled();
   });
 
   it("los registros llevan solo conteos y códigos: ni URLs, ni títulos, ni texto", async () => {

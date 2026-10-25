@@ -53,6 +53,8 @@ export type SecurityEvent =
       feeds?: number;
       nuevos?: number;
       fallos?: number;
+      /** Ítems que la corrida agrupó en eventos candidatos. */
+      agrupados?: number;
     }
   /** Un feed que la ingesta deja en pausa: el id de la fuente en el registro y un código, nunca la URL ni el texto. */
   | { tipo: "ingesta_feed"; fuente: string; evento: "pausa" | "robots_prohibido"; codigo: string };

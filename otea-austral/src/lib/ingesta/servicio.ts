@@ -83,11 +83,16 @@ export function feedsElegibles(fuentes: readonly Source[], hoy: string): FeedEle
     .flatMap((fuente) => fuente.feeds.filter((feed) => feed.verificado <= hoy).map((feed) => ({ fuente, feed })));
 }
 
+/** Lo que deja la agrupación en eventos candidatos (`agrupar.ts`, §3). */
+export type ResumenAgrupacion = { asignados: number; eventosNuevos: number };
+
 export type DependenciasIngesta = {
   fuentes: readonly Source[];
   almacen: AlmacenIngesta;
   turno: Turno;
   descargar: Descargador;
+  /** Agrupa los ítems sin evento (con el turno todavía tomado). Sin ella, la corrida solo ingiere. */
+  agrupar?: (ahora: Date) => Promise<ResumenAgrupacion>;
   reloj?: () => Date;
   presupuestoMs?: number;
   registrar?: (evento: SecurityEvent) => void;
@@ -102,6 +107,8 @@ export type ResumenCorrida = {
   pausados: number;
   /** Ningún feed elegible en el registro. */
   sinFeeds: boolean;
+  /** Solo si la corrida agrupó (la agrupación también corre sin feeds: puede haber ítems pendientes). */
+  agrupacion?: ResumenAgrupacion;
 };
 
 type Veredicto = { estado: "permitido" | "prohibido" | "no_disponible" };
@@ -121,6 +128,7 @@ export async function correrIngesta(deps: DependenciasIngesta): Promise<ResumenC
       feeds: resumen.feeds,
       nuevos: resumen.nuevos,
       fallos: resumen.fallos,
+      ...(resumen.agrupacion ? { agrupados: resumen.agrupacion.asignados } : {}),
     });
   const corrida = (): Corrida => ({
     tarea: "ingesta",
@@ -297,6 +305,16 @@ export async function correrIngesta(deps: DependenciasIngesta): Promise<ResumenC
     resumen.resultado = "fallida";
   } finally {
     clearTimeout(reloj4);
+  }
+
+  if (deps.agrupar) {
+    // Los ítems que no se agrupen quedan sin evento y la siguiente corrida los vuelve a intentar.
+    try {
+      resumen.agrupacion = await deps.agrupar(reloj());
+    } catch {
+      registrar({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: "ingesta_agrupar" });
+      if (resumen.resultado === "ok") resumen.resultado = "parcial";
+    }
   }
 
   await deps.almacen.registrarCorrida(corrida()).catch(() => {
