@@ -47,7 +47,9 @@ export default function PrivacidadPage() {
             apertura; si activas la verificación en dos pasos, el secreto de tu app (cifrado) y el hash de tus códigos
             de recuperación; tus sesiones abiertas (un identificador que no sirve para entrar, el navegador y el
             sistema aproximados, por ejemplo «Chrome en Windows», y las fechas de uso); tu actividad de seguridad
-            (entrar, cambiar la contraseña…) durante 90 días; y la versión de los textos que aceptaste, con su fecha.
+            (entrar, cambiar la contraseña…) durante 90 días; si la creaste con una invitación del acceso anticipado,
+            cuál fue (su etiqueta interna, sin datos de nadie) y cuándo la usaste; y la versión de los textos que
+            aceptaste, con su fecha.
             Otea no guarda tu IP en tu cuenta. Todo esto lo ves, lo descargas y lo borras desde tu perfil.
           </li>
           <li>

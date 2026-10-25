@@ -19,6 +19,7 @@ const GUARDAMOS: { dato: string; detalle: string }[] = [
   { dato: "La verificación en dos pasos", detalle: "Si la activas: el secreto de tu app (cifrado) y el hash de tus códigos de recuperación." },
   { dato: "Tus sesiones", detalle: "Un identificador que no sirve para entrar, el navegador y el sistema aproximados (por ejemplo «Chrome en Windows») y las fechas de uso." },
   { dato: "Tu actividad de seguridad", detalle: "Qué pasó y cuándo (entrar, cambiar la contraseña…), durante 90 días. Sin dirección IP." },
+  { dato: "Tu invitación", detalle: "Si creaste la cuenta con una invitación del acceso anticipado: cuál fue (su etiqueta interna) y cuándo la usaste." },
   { dato: "Qué aceptaste", detalle: "La versión de las condiciones de uso y de la política de privacidad, y la fecha en que las aceptaste." },
 ];
 
