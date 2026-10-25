@@ -1,7 +1,8 @@
 # Alertas reales · diseño técnico
 
-Fase **F1** (2026-10-25): verificación de fuentes y este diseño. **Nada de esto está implementado.** El plan de F2 a F6 está
-en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
+Fase **F1** (2026-10-25): verificación de fuentes y este diseño. Fase **F2** (2026-10-25): la ingesta de metadatos (§2) está
+implementada, probada contra fuentes falsas y **apagada por omisión** (§2.4); hoy no tiene nada que leer. F3 a F6 siguen sin
+implementar. El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
 
 Encargo de la dueña: un sistema lee las fuentes oficiales del registro y arma borradores; Claude redacta **un borrador por
 evento** con un tope duro de **US$ 5 al mes** (autorizado solo para esto); ella aprueba o descarta cada uno en `/admin` y
@@ -147,6 +148,37 @@ create policy tareas_turnos_cambio on tareas_turnos for update to otea_app using
 ```
 
 Volumen: ~50 ítems al día ≈ 10 MB al año; cabe de sobra en el plan gratuito de Neon.
+
+### 2.4 Implementado en F2 (lo que se precisó al construirlo)
+
+Código en `src/lib/ingesta/` (`descarga`, `robots`, `feeds`, `canonica`, `servicio`, `almacen-postgres`, `turno`, `instancia`),
+`src/lib/tareas/exigir.ts`, `src/app/api/tareas/ingesta/route.ts` y `db/migraciones/0007_ingesta.sql`; operación en
+`docs/despliegue.md` §13. Sobre lo escrito arriba:
+
+- **La ruta responde 404 a los siete métodos** (todos pasan por `exigirTarea`, que llama `notFound()`): sin eso Next.js contestaría
+  405 u `OPTIONS` con `Allow` y delataría la ruta. El 404 va sin cuerpo (el de una ruta inexistente trae la página de error): la ruta
+  no es secreta (está en el repositorio); lo que importa es que no hace nada ni revela configuración. Un rechazo con
+  `TAREAS_MODO=activo` deja el evento `tarea` · `rechazada`; en el sitio público no se anota nada (sería ruido de escáneres).
+- **`robots.txt`**: 404 y 410 = permitido; cualquier otra respuesta, sin respuesta o un tipo distinto de `text/plain` ⇒ no se lee el
+  feed y cuenta como fallo (`robots_no_disponible`). Se lee una vez por host y corrida, y el veredicto de cada feed vale 24 h.
+- **Formato `api`**: el lector genérico es **JSON Feed 1.x** (`application/json` o `application/feed+json`). Una API oficial con otra
+  forma (BCCh, CMF, EIA) necesitará su adaptador en `feeds.ts` al verificarse.
+- **Codificación**: solo UTF-8 y Latin-1 (del `charset` o de la declaración XML); otra ⇒ `codificacion`, sin adivinar.
+- **Títulos**: además de lo de §2.2 se quitan los caracteres invisibles y de dirección (suplantación); 300 puntos de código, como
+  `char_length`. Un enlace relativo se resuelve contra el feed y luego se valida; un ítem sin título o con enlace fuera del dominio
+  se descarta; una fecha inválida, anterior a 1995 o más de un día en el futuro queda nula (el ítem se guarda).
+- **Turno**: se toma con la «ficha» (`ocupado_hasta` como texto) y se suelta solo si sigue siendo la propia; la política de RLS no
+  deja reservarlo por más de 15 minutos. `ingesta_feeds` nace sin historia (`fallos_seguidos = 0`, sin pausa, robots `sin_revisar`)
+  y sus altas y cambios son por columna.
+- **User-Agent**: `OteaAustral/1.0 (+⟨NEXT_PUBLIC_SITE_URL⟩/fuentes; ⟨INGESTA_CONTACTO⟩)`. El contacto se valida como `mailto:` sin
+  espacios ni paréntesis.
+- **Pruebas sin red**: `INGESTA_URL_PRUEBA` (solo con `OTEA_E2E=1`) reescribe cada solicitud ya validada a `/<host>/<ruta>` del
+  servidor de fuentes falsas (`scripts/lib/fuentes-falsas.mjs`, fixtures en `e2e/fixtures/fuentes/`). En la e2e, la instancia 3201
+  hace de `otea-tareas`.
+- **Cloud Scheduler** necesita `--attempt-deadline=300s` (por omisión espera 3 minutos y la corrida puede durar 4). El encabezado con
+  el secreto queda en la configuración del trabajo: por eso IAM es la primera barrera.
+- **Perfil NIST**: PR-19 queda «parcial» (implementada, apagada); PR-20, PR-21 y DE-05, «objetivo». ID-02 ya nombra la salida a los
+  feeds.
 
 ## 3. Agrupación en eventos candidatos (F3)
 
@@ -463,9 +495,10 @@ Si un día no hay tiempo, no pasa nada: los borradores esperan (se marcan «viej
 Cada fase: commits pequeños, `npm run lint`, `npm run typecheck`, `npm test` y la e2e que toque, en verde. Ninguna alerta real
 se publica antes de cerrar F4.
 
-### F2 · Ingesta de metadatos
+### F2 · Ingesta de metadatos (hecha el 2026-10-25, apagada; ver §2.4)
 
-- **Entrada**: al menos una fuente con feed verificado y condiciones «Verificadas» (`docs/fuentes-pendientes.md`).
+- **Entrada**: al menos una fuente con feed verificado y condiciones «Verificadas» (`docs/fuentes-pendientes.md`). **Sigue
+  pendiente**: el código quedó listo antes, apagado y sin feeds que leer (una corrida responde `sin_feeds`).
 - **Archivos**: `src/lib/ingesta/{descarga,robots,feeds,canonica,servicio,almacen-postgres,turno}.ts`,
   `src/app/api/tareas/ingesta/route.ts`, `src/lib/tareas/exigir.ts`, `db/migraciones/0007_ingesta.sql`, `env.ts`
   (`TAREAS_*`, `INGESTA_*`), `.env.example`, `scripts/lib/canarios.mjs`, `scripts/fuentes-falsas.mjs` (servidor de pruebas),

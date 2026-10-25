@@ -107,7 +107,8 @@ y en reposo, condiciones de tratamiento de datos legibles y posibilidad de expor
 
 Conexiones permitidas: el navegador solo habla con el propio sitio (`connect-src 'self'`). El servidor
 solo hace dos peticiones salientes automáticas, ambas a direcciones fijas: `https://api.resend.com/emails` y, solo
-si se activa la IA del asistente, `https://api.anthropic.com`. Durante el build se
+si se activa la IA del asistente, `https://api.anthropic.com`. El servicio privado de tareas (`otea-tareas`, apagado por
+omisión) lee además los feeds **verificados** del registro de fuentes, y solo esos (`docs/alertas-reales.md` §2). Durante el build se
 contacta npm y Google Fonts; la CI corre en GitHub.
 
 ## 7. Registro de riesgos (ID.RA-03, ID.RA-04, ID.RA-06)

@@ -361,8 +361,8 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
 - Cabeceras estáticas en `src/lib/security/headers.ts` (aplicadas desde `next.config.ts`).
 - Enlaces externos: solo `https`, validados con Zod (`httpsUrl`) y otra vez al renderizar
   (`safeHref`); `target="_blank"` siempre con `rel="noopener noreferrer"`.
-- **No hacer peticiones salientes automáticas.** Si algún día se hace `fetch` de URLs: solo a
-  dominios del registro de fuentes, con tiempo límite y tamaño máximo.
+- **No hacer peticiones salientes automáticas**, salvo la ingesta (abajo): solo a los feeds verificados del registro, con
+  tiempo límite y tamaño máximo, desde `src/lib/ingesta/descarga.ts` y nada más.
 - Registros sin datos personales: usar siempre `logSecurityEvent` (`src/lib/security/log.ts`),
   nunca `console.log` con datos de entrada. Auditoría de solo agregar.
 - Puntos que reciben datos: tipo de contenido, tamaño y volumen limitados
@@ -418,6 +418,18 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
     (si la migración ya se aplicó en algún lugar, en una migración nueva).
   - Los componentes de cliente de `components/cuenta/` solo importan `@/lib/cuentas/formato-secreto` (el resto de `lib/cuentas` y
     `lib/correo` es del servidor).
+- **Ingesta de metadatos** (`src/lib/ingesta/`, `src/lib/tareas/`, `POST /api/tareas/ingesta`, migración `0007`; diseño en
+  `docs/alertas-reales.md` §2 y §2.4, operación en `docs/despliegue.md` §13). Reglas:
+  - **Apagada por omisión** (`TAREAS_MODO=inactivo`: la ruta da 404 a los siete métodos). Solo la activa el servicio privado
+    `otea-tareas` (Cloud Scheduler con OIDC + `X-Otea-Tarea`); nunca el sitio público. Hoy ningún feed está verificado.
+  - `descarga.ts` es el **único** `fetch` de la ingesta: valida contra el feed verificado del registro **antes de conectar** y en
+    cada redirección (https, 443, sin IP, dominio de la fuente), corta a los 10 s y a 1 MB en flujo, exige el tipo y declara
+    `INGESTA_CONTACTO` en el User-Agent; `robots.txt` se respeta (`robots.ts`). No agregues otra salida ni la saltes.
+  - **Solo metadatos** (título, enlace, fecha, organismo, identificador): ninguna columna para el texto de la fuente (una prueba compara
+    las columnas). `fuente_items` e `ingesta_corridas` son de solo agregar. El lector (`feeds.ts`) rechaza DTD y entidades **antes**
+    de analizar y no lee `description`: no lo cambies por un analizador con DTD.
+  - Un feed entra al registro solo con `verificado`, en el dominio de `url_base` y con condiciones «Verificadas el …»
+    (`registry.test.ts`). Los fixtures de prueba son sintéticos y marcados (`e2e/fixtures/fuentes/`, example.org, «(ejemplo)»).
 - **Panel `/admin`** (`src/app/admin/`, `src/lib/admin/`): sin `ADMIN_*` y `DATABASE_URL` responde 404.
   Acceso con frase (PBKDF2) y código TOTP; la sesión es una cookie `__Host-` firmada **y registrada en
   la base** (`admin_sesiones`), así que «Salir» la revoca de verdad. Toda página privada llama a
@@ -473,6 +485,7 @@ npm run lista:secreto        # WAITLIST_SECRETO (marca de tiempo del formulario 
 npm run lista:exportar       # DATABASE_URL_ADMIN + WAITLIST_SECRETO: correos confirmados, descifrados (-- --csv)
 npm run lista:recifrar       # rotar WAITLIST_SECRETO (ensayo; -- --aplicar para rotar de verdad)
 npm run cuentas:secreto      # CUENTAS_SECRETO (cifrado del correo y de los dos pasos de las cuentas; hoy no se puede rotar)
+node scripts/fuentes-falsas.mjs   # fuentes falsas (fixtures sintéticos) en el 3297, para la ingesta con INGESTA_URL_PRUEBA
 npm run asistente:probar     # GASTA DINERO: prueba el asistente con la API real (ASISTENTE_PRUEBA_REAL=1 + clave en el entorno)
 npm run seguridad:secretos   # escáner de secretos en archivos e historial (lo corre la CI)
 npm run seguridad:canarios   # build con secretos falsos: ninguno debe quedar en .next/ (lo corre la CI)
@@ -537,19 +550,22 @@ src/
                        TOTP, código QR propio, correos, acceso (cookie y CSRF)
     correo/            envío con Resend y plantilla de los correos (compartidos por la lista de espera y las cuentas)
     alertas/           repositorio Postgres de alertas, fuentes, correcciones y auditoría; formularios
+    ingesta/           ingesta de metadatos: descarga (único fetch), robots.txt, lector de feeds, deduplicación, servicio,
+                       almacén Postgres y turno
+    tareas/            puerta de las tareas programadas (`exigirTarea`)
     db/                cliente de Postgres (pool, transacciones) y ayudante de pruebas
   app/admin/           panel interno (acceso, listado, alta, detalle y acciones)
   app/alertas/         alertas publicadas; app/api/salud: sonda de Cloud Run
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
 db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados, 0005 gasto del asistente,
-                       0006 cuentas)
+                       0006 cuentas, 0007 ingesta)
 scripts/               migrar, rol de la aplicación, credenciales del panel, preparar standalone, lista de espera
                        (secreto, exportar, recifrar), escáner de secretos, canarios, auditoría de dependencias
 seguridad/             avisos de npm aceptados (con motivo y fecha de revisión)
 despliegue/            plantilla del servicio de Cloud Run
 Dockerfile             imagen multi-etapa sin privilegios
-e2e/                   pruebas de navegador (Playwright)
+e2e/                   pruebas de navegador (Playwright); fixtures/fuentes/: feeds y robots.txt sintéticos de prueba
 docs/                  plan, despliegue, fuentes pendientes, seguridad/ (programa, incidentes,
                        auditoría OWASP), referencia de estilo anterior
 ```
@@ -877,6 +893,19 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   `reuseExistingServer`: si cambias su puerto o sus variables, mata los servidores viejos (`ss -ltnp`).
 - **Una migración sin aplicar todavía se puede editar** (la `0006` mientras no se haya aplicado en ningún entorno); después, solo
   una migración nueva.
+
+## Lo aprendido (ingesta de metadatos)
+
+- **Un Route Handler delata la ruta** si solo exporta `POST`: Next.js responde 405 al resto y arma `OPTIONS` con `Allow`. Para un
+  404 parejo, los siete métodos van a un mismo manejador que llama `notFound()` (404 sin cuerpo).
+- **`new Request(url, { body })` no agrega `Content-Length`** (una solicitud HTTP real sí): las pruebas de «sin cuerpo» pasan la
+  cabecera a mano y la e2e lo prueba contra el servidor.
+- **`fetch` de Node con `redirect: "manual"`** entrega el 3xx con su `Location` legible (en el navegador sería opaco), y descomprime
+  gzip/br: el tope de tamaño cuenta los bytes ya descomprimidos.
+- **Playwright mezcla el `env` de cada `webServer` con `process.env`**: la instancia 3201 recibe `DATABASE_URL` sin declararla.
+- **Un `.next/dev/` viejo (de `next dev`) hace fallar `seguridad:canarios`** con sus mapas de código: bórralo antes (es un artefacto).
+- **Un U+2028 literal dentro de una expresión regular es un fin de línea** en JS y rompe el literal: escribe siempre los escapes `\u…`
+  (algunas herramientas los convierten en el carácter al guardar).
 
 ## Notas de Next.js
 

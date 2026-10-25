@@ -49,7 +49,7 @@ configuración llega como variables de entorno al ejecutar y los secretos, desde
    la lista de espera admite `DELETE`, y únicamente de inscripciones pendientes. El usuario tiene además
    límite de conexiones y de tiempo por consulta. `db:rol-app` rechaza un usuario existente con
    superusuario, `BYPASSRLS` u otros atributos de más.
-5. **Seguridad por fila (migración `0003`).** Las diez tablas activan RLS (la décima, `asistente_uso`, con la migración `0005`) y el usuario de la aplicación
+5. **Seguridad por fila (migración `0003`).** Todas las tablas activan RLS (las nuevas, en su propia migración: `0005`, `0006`, `0007`…) y el usuario de la aplicación
    solo puede lo que una política le permite. El dueño de la base no está sujeto a RLS (por eso nunca se
    usa en la aplicación). Una tabla nueva debe activar RLS y declarar sus políticas en su propia
    migración: una prueba lo exige.
@@ -385,3 +385,140 @@ gcloud run services update otea-austral --region $REGION --update-env-vars CUENT
 **Después de restaurar la base desde una copia**, cierra todas las sesiones, porque pueden reaparecer sesiones ya revocadas
 (con el rol dueño): `update cuenta_sesiones set revocada = now() where revocada is null;`
 
+## 13. Ingesta de metadatos (servicio privado `otea-tareas`, apagada por omisión)
+
+La ingesta lee los feeds **verificados** del registro de fuentes y guarda **solo metadatos** (título, enlace, fecha, organismo e
+identificador; nunca el texto) en `fuente_items`. Diseño, límites y decisiones: [`alertas-reales.md`](alertas-reales.md) §2. Corre en
+un **segundo servicio de Cloud Run, privado**, con la misma imagen; el sitio público no la tiene (sin `TAREAS_MODO`,
+`/api/tareas/ingesta` responde 404 a cualquier método) y nunca sale a las fuentes.
+
+> **Hoy no hay nada que leer.** Ninguna de las 17 fuentes tiene un feed verificado (`docs/fuentes-pendientes.md`): una corrida toma el
+> turno, no pide nada a internet, registra la corrida con 0 feeds y deja el evento `"resultado":"sin_feeds"`. Desplegarla tiene sentido
+> cuando la dueña verifique al menos un feed y lea completas sus condiciones (`alertas-reales.md` §11, decisiones 1 y 5).
+
+**Qué protege a quién:**
+
+| Barrera | Dónde |
+|---|---|
+| Solo quien tiene `roles/run.invoker` llega al código (Cloud Scheduler con OIDC) | Cloud Run (`--no-allow-unauthenticated`) |
+| `TAREAS_MODO=activo`, `POST` sin cuerpo y encabezado `X-Otea-Tarea` = `TAREAS_SECRETO` (tiempo constante); si no, 404 | `src/lib/tareas/exigir.ts` |
+| Solo las URL exactas de `feeds` del registro; https, 443, sin IP ni credenciales; cada redirección (máx. 3) en el dominio de la fuente | `src/lib/ingesta/descarga.ts` (único archivo que hace `fetch`) |
+| 10 s por solicitud, 4 min por corrida, 1 MB por feed (en flujo), tipo de contenido, ≥ 2 s por host, `Retry-After` (≤ 24 h) | `descarga.ts`, `servicio.ts` |
+| `robots.txt` por host cada 24 h (404 = permitido; 5xx, sin respuesta u otro tipo ⇒ no se lee el feed; `Disallow` ⇒ pausa 24 h) | `robots.ts` |
+| XML sin DTD ni entidades (XXE, bomba de entidades), profundidad ≤ 32, ≤ 50.000 elementos, ≤ 200 ítems; JSON con profundidad medida antes de analizar | `feeds.ts` |
+| Solo metadatos, solo agregar (`otea_rechazar`), grants por columna y RLS; turno en la base | `db/migraciones/0007_ingesta.sql` |
+
+### Activarla
+
+1. **Verifica el feed** en `data/sources.seed.json`: `acceso` `rss` o `api`, el feed en `feeds` con su fecha `verificado` y en el
+   dominio de `url_base`, y `condiciones_reutilizacion` «Verificadas el AAAA-MM-DD: …» (`registry.test.ts` lo exige). El registro
+   viaja en la imagen: un feed nuevo es un commit, una imagen y un despliegue de **los dos** servicios.
+2. **Migra** con el rol dueño (`npm run db:migrar`): la `0007` crea `fuente_items`, `ingesta_feeds`, `ingesta_corridas` y
+   `tareas_turnos`, con grants por columna, RLS y disparadores de solo agregar.
+3. **Secretos y cuentas de servicio.** El secreto del encabezado (256 bits) y dos cuentas: `sa-tareas` (ejecuta `otea-tareas` y solo
+   lee sus dos secretos) y `sa-programador` (solo invoca `otea-tareas`). Secret Manager incluye 6 versiones activas gratis al mes:
+   revisa cuántas usas.
+
+   ```bash
+   gcloud services enable cloudscheduler.googleapis.com
+   gcloud iam service-accounts create sa-tareas --display-name="Otea Austral (tareas)"
+   gcloud iam service-accounts create sa-programador --display-name="Otea Austral (Cloud Scheduler)"
+   gcloud secrets create otea-tareas-secreto --replication-policy=automatic
+   node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url'))" \
+     | gcloud secrets versions add otea-tareas-secreto --data-file=-
+   for s in otea-tareas-secreto otea-database-url; do
+     gcloud secrets add-iam-policy-binding $s --role=roles/secretmanager.secretAccessor \
+       --member="serviceAccount:sa-tareas@$PROYECTO.iam.gserviceaccount.com"
+   done
+   ```
+
+4. **Despliega `otea-tareas`** con la misma imagen del sitio. No recibe la clave de Anthropic, ni las del panel, ni las de correo:
+
+   ```bash
+   gcloud run deploy otea-tareas --region $REGION \
+     --image $REGION-docker.pkg.dev/$PROYECTO/otea/otea-austral:$ETIQUETA \
+     --service-account sa-tareas@$PROYECTO.iam.gserviceaccount.com \
+     --no-allow-unauthenticated --ingress=all --max-instances=1 --concurrency=1 --timeout=300 --min-instances=0 \
+     --set-env-vars "TAREAS_MODO=activo,NEXT_PUBLIC_SITE_URL=https://oteaustral.com,INGESTA_CONTACTO=mailto:ingesta@oteaustral.com" \
+     --set-secrets "DATABASE_URL=otea-database-url:latest,TAREAS_SECRETO=otea-tareas-secreto:latest"
+   URL_TAREAS=$(gcloud run services describe otea-tareas --region $REGION --format='value(status.url)')
+   gcloud run services add-iam-policy-binding otea-tareas --region $REGION --role=roles/run.invoker \
+     --member="serviceAccount:sa-programador@$PROYECTO.iam.gserviceaccount.com"
+   ```
+
+   `INGESTA_CONTACTO` aparece en cada solicitud a las fuentes (la SEC exige organización y contacto): un correo **de rol**, nunca
+   personal. Si falta algo (`DATABASE_URL`, el secreto o el contacto), `/api/salud` falla y la revisión no recibe tráfico.
+5. **Programa la corrida** (cada hora, a los :17, hora de Chile). El tiempo de intento debe cubrir los 4 minutos de la corrida (el valor
+   por omisión de Cloud Scheduler es 3):
+
+   ```bash
+   printf 'TAREAS_SECRETO: '; read -rs SECRETO; echo
+   gcloud scheduler jobs create http otea-ingesta --location $REGION \
+     --schedule="17 * * * *" --time-zone="America/Santiago" --attempt-deadline=300s \
+     --http-method=POST --uri="$URL_TAREAS/api/tareas/ingesta" \
+     --oidc-service-account-email="sa-programador@$PROYECTO.iam.gserviceaccount.com" --oidc-token-audience="$URL_TAREAS" \
+     --headers="X-Otea-Tarea=$SECRETO"
+   unset SECRETO
+   ```
+
+   El encabezado queda guardado en la configuración del trabajo: quien pueda ver los trabajos de Cloud Scheduler lo ve. Por eso es la
+   **segunda** barrera; la primera es IAM. Al rotarlo, actualiza a la vez el secreto (y despliega) y el trabajo
+   (`gcloud scheduler jobs update http otea-ingesta --update-headers=X-Otea-Tarea=…`).
+6. **Comprueba** que el servicio público no la tiene, que la plataforma rechaza a quien no es invocador y que una corrida responde
+   solo conteos:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST https://oteaustral.com/api/tareas/ingesta        # 404
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST "$URL_TAREAS/api/tareas/ingesta"                 # 403 (IAM)
+   gcloud scheduler jobs run otea-ingesta --location $REGION                                          # una corrida ahora
+   gcloud logging read 'resource.labels.service_name="otea-tareas" AND jsonPayload.tipo="tarea"' --limit 3 --format json
+   ```
+
+   La respuesta y el registro llevan solo conteos y códigos: `{"resultado":"ok","feeds":1,"nuevos":12,"fallos":0,…}`. Un
+   `"resultado":"rechazada"` significa que alguien con `run.invoker` llamó sin el secreto, con otro método o con cuerpo: revisa quién.
+
+### Vigilarla
+
+- **Sin corridas en 3 h** (`alertas-reales.md` §8.3): una métrica de registros y una alerta por ausencia.
+
+  ```bash
+  gcloud logging metrics create otea_ingesta_corridas \
+    --description="Corridas de la ingesta (una por hora)" \
+    --log-filter='resource.type="cloud_run_revision" AND resource.labels.service_name="otea-tareas" AND jsonPayload.tipo="tarea" AND jsonPayload.tarea="ingesta"'
+  ```
+
+  En *Monitoring → Alertas → Crear política*: la métrica `logging.googleapis.com/user/otea_ingesta_corridas`, condición «ausencia de
+  datos» durante 3 horas, y el mismo canal de notificación que la alerta del panel (§9).
+- **Feeds en pausa** (`"tipo":"ingesta_feed"` con `"evento":"pausa"` tras 3 fallos seguidos, o `"robots_prohibido"`). Hasta que el
+  tablero de `/admin` los muestre (F3), consúltalos con el rol dueño:
+
+  ```sql
+  select feed_url, fallos_seguidos, ultimo_error, pausado_hasta, robots, robots_revisado, ultimo_ok
+    from ingesta_feeds order by pausado_hasta desc nulls last;
+  select * from ingesta_corridas order by orden desc limit 24;
+  ```
+
+  Una pausa por `robots_prohibido` dura 24 h y después se vuelve a leer `robots.txt`: no la levantes a mano (el sitio pidió que no lo
+  leamos). Una pausa por fallos también vence a las 24 h; para reanudar antes, con el rol dueño:
+  `update ingesta_feeds set pausado_hasta = null, fallos_seguidos = 0 where feed_url = '…';`.
+- **Ítems**: `fuente_items` es de solo agregar (ni el dueño la cambia o borra sin desactivar el disparador): ~50 ítems al día son
+  ~10 MB al año.
+
+### Apagarla de inmediato
+
+```bash
+gcloud scheduler jobs pause otea-ingesta --location $REGION                                   # deja de llamarla
+gcloud run services update otea-tareas --region $REGION --update-env-vars TAREAS_MODO=inactivo   # la ruta vuelve a dar 404
+```
+
+### Probarla sin salir a internet
+
+`npm test` con `PRUEBAS_DATABASE_URL` corre la ingesta completa contra un servidor de **fuentes falsas** (`scripts/lib/fuentes-falsas.mjs`)
+con fixtures sintéticos marcados como de prueba (`e2e/fixtures/fuentes/`: RSS, Atom, JSON, `robots.txt` y casos malignos):
+`src/lib/ingesta/almacen-postgres.test.ts` comprueba que guarda solo metadatos, que la segunda corrida no duplica y que un `Disallow`, un
+`robots.txt` caído o una redirección fuera del dominio no se leen. A mano: `PORT=3297 node scripts/fuentes-falsas.mjs` y la aplicación
+con `OTEA_E2E=1 INGESTA_URL_PRUEBA=http://127.0.0.1:3297` (cada solicitud ya validada se reescribe a `/<host>/<ruta>` de ese servidor).
+La e2e `e2e/tareas.spec.ts` prueba las puertas en el sitio público (3200) y en una instancia con `TAREAS_MODO=activo` (3201).
+
+**Costo:** US$ 0 dentro de las capas gratuitas (Cloud Scheduler incluye 3 trabajos por cuenta de facturación; ~720 corridas cortas al mes
+en Cloud Run con mínimo 0 instancias). Confírmalo en las páginas de precios antes de crear el trabajo.

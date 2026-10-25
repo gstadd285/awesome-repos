@@ -182,10 +182,10 @@ export const CONTROLES: Control[] = [
     id: "ID-02",
     titulo: "Inventario de datos y conexiones",
     descripcion:
-      "Sabemos qué datos tratamos y a dónde van: el navegador solo habla con el propio sitio; el servidor, con la base de datos, el envío de correo y, solo si se activa la IA del asistente, con Anthropic.",
+      "Sabemos qué datos tratamos y a dónde van: el navegador solo habla con el propio sitio; el servidor, con la base, el correo y, si se activa la IA del asistente, Anthropic; el servicio privado de tareas, solo con los feeds verificados del registro de fuentes.",
     estado: "implementado",
     subcategorias: ["ID.AM-03", "ID.AM-07"],
-    evidencia: [PROGRAMA, "src/lib/security/csp.ts"],
+    evidencia: [PROGRAMA, "src/lib/security/csp.ts", "src/lib/ingesta/descarga.ts"],
   },
   {
     id: "ID-03",
@@ -431,6 +431,40 @@ export const CONTROLES: Control[] = [
     ],
   },
   {
+    id: "PR-19",
+    titulo: "Ingesta limitada al registro de fuentes",
+    descripcion:
+      "Solo el servicio privado de tareas lee feeds, y solo los verificados del registro: https y el dominio de la fuente en cada redirección, 10 s, 1 MB, robots.txt, XML sin DTD y User-Agent con contacto. Guarda solo metadatos. Apagada por omisión.",
+    estado: "parcial",
+    subcategorias: ["PR.IR-01", "PR.DS-02"],
+    evidencia: [
+      "src/lib/ingesta/descarga.ts",
+      "src/lib/ingesta/feeds.ts",
+      "src/lib/ingesta/robots.ts",
+      "src/lib/tareas/exigir.ts",
+      "db/migraciones/0007_ingesta.sql",
+      "docs/alertas-reales.md",
+    ],
+  },
+  {
+    id: "PR-20",
+    titulo: "Borradores con IA revisados y gasto mensual acotado",
+    descripcion:
+      "Claude redactará borradores sin herramientas, con tope mensual en la base y en la consola de Anthropic; la salida se revisará (anticopia, cifras, lenguaje) y nada se publicará sin la aprobación de la dueña.",
+    estado: "objetivo",
+    subcategorias: ["PR.PS-01", "PR.DS-10"],
+    evidencia: [],
+  },
+  {
+    id: "PR-21",
+    titulo: "Acceso anticipado por invitación",
+    descripcion:
+      "Las alertas reales se verán solo con sesión, y las cuentas se crearán con códigos de invitación de un solo uso emitidos desde el panel y guardados con HMAC.",
+    estado: "objetivo",
+    subcategorias: ["PR.AA-01", "PR.AA-05"],
+    evidencia: [],
+  },
+  {
     id: "PR-14",
     titulo: "Reglas de seguridad que se comprueban solas",
     descripcion:
@@ -474,6 +508,15 @@ export const CONTROLES: Control[] = [
       "Cada intento fallido o bloqueado queda en el registro como evento de seguridad. La alerta sobre esos eventos está descrita en la guía de despliegue; falta crearla en el proyecto real.",
     estado: "objetivo",
     subcategorias: ["DE.CM-01", "DE.AE-06"],
+    evidencia: [],
+  },
+  {
+    id: "DE-05",
+    titulo: "Vigilancia de la ingesta y del gasto",
+    descripcion:
+      "Cada corrida de la ingesta deja un evento sin datos personales; una alerta avisará si pasan 3 horas sin corridas, y el panel mostrará los feeds en pausa y el gasto contra el tope.",
+    estado: "objetivo",
+    subcategorias: ["DE.CM-01", "DE.CM-09"],
     evidencia: [],
   },
   {
