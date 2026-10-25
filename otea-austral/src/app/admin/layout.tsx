@@ -37,8 +37,11 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
               <Link href="/admin/alertas" className={ENLACE}>
                 Alertas
               </Link>
+              <Link href="/admin/invitaciones" className={ENLACE}>
+                Invitaciones
+              </Link>
               <Link href="/alertas" className={ENLACE}>
-                Ver públicas
+                Ver /alertas
               </Link>
               <form action={cerrarSesion}>
                 <input type="hidden" name="csrf" value={sesion.csrf} />

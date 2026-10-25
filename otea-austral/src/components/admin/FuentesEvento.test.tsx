@@ -2,7 +2,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { FuenteDeEvento } from "@/lib/ingesta/cola-postgres";
-import { AvisoSinAccesoPrivado } from "./AvisoSinAccesoPrivado";
+import { AvisoAccesoPrivado } from "./AvisoAccesoPrivado";
 import { FuentesEvento } from "./FuentesEvento";
 
 // DATOS DE PRUEBA: organismos «(ejemplo)» y enlaces de example.org.
@@ -45,11 +45,23 @@ describe("FuentesEvento", () => {
   });
 });
 
-describe("AvisoSinAccesoPrivado", () => {
-  it("dice con claridad que no se publiquen alertas reales hasta el acceso privado", () => {
-    render(<AvisoSinAccesoPrivado />);
-    const aviso = screen.getByRole("note", { name: "Sin acceso privado" });
-    expect(aviso).toHaveTextContent("Sin acceso privado, no publiques alertas reales.");
-    expect(aviso).toHaveTextContent(/F4/);
+describe("AvisoAccesoPrivado", () => {
+  const aviso = () => screen.getByRole("note", { name: "Quién ve las alertas reales" });
+
+  it("con invitación: lo real publicado solo lo ven las cuentas con sesión; sin sesión, ejemplos", () => {
+    render(<AvisoAccesoPrivado modo="invitacion" />);
+    expect(aviso()).toHaveTextContent("solo lo ven las cuentas con sesión");
+    expect(aviso()).toHaveTextContent("solo ejemplos");
+  });
+
+  it("con las cuentas abiertas avisa que cualquiera con cuenta lo ve, y cómo pasar a invitación", () => {
+    render(<AvisoAccesoPrivado modo="abiertas" />);
+    expect(aviso()).toHaveTextContent("cualquiera que cree una cuenta");
+    expect(aviso()).toHaveTextContent("CUENTAS_MODO=invitacion");
+  });
+
+  it("con las cuentas cerradas avisa que nadie lo verá todavía", () => {
+    render(<AvisoAccesoPrivado modo="cerradas" />);
+    expect(aviso()).toHaveTextContent("no la verá nadie todavía");
   });
 });

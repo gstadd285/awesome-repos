@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { crearAlertaDesdeEventoAccion, descartarEventoAccion } from "@/app/admin/eventos/acciones";
-import { AvisoSinAccesoPrivado } from "@/components/admin/AvisoSinAccesoPrivado";
+import { AvisoAccesoPrivado } from "@/components/admin/AvisoAccesoPrivado";
 import { CamposAlerta } from "@/components/admin/CamposAlerta";
 import { AYUDA, CAMPO, ENLACE, ETIQUETA, TARJETA } from "@/components/admin/estilos";
 import {
@@ -20,6 +20,7 @@ import { exigirSesion } from "@/lib/admin/acceso";
 import { colaEventos } from "@/lib/ingesta/cola";
 import { MAX_FUENTES_POR_ALERTA } from "@/lib/ingesta/cola-postgres";
 import { formatearFechaHora } from "@/lib/format";
+import { env } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Evento candidato" };
 
@@ -69,7 +70,7 @@ export default async function EventoPage({ params }: PageProps<"/admin/eventos/[
           </Link>
         </p>
       ) : null}
-      <AvisoSinAccesoPrivado className="mt-6 max-w-[680px]" />
+      <AvisoAccesoPrivado modo={env.CUENTAS_MODO} className="mt-6 max-w-[680px]" />
 
       <section aria-labelledby="fuentes-titulo" className="mt-16">
         <h2 id="fuentes-titulo" className="titular text-2xl text-texto">
@@ -137,8 +138,8 @@ export default async function EventoPage({ params }: PageProps<"/admin/eventos/[
               <p className={AYUDA}>Nombre público del equipo o un alias. Nunca un correo.</p>
             </div>
             <p className="mt-5 text-sm leading-relaxed text-texto-suave">
-              Alerta real, no de ejemplo: nace como borrador. Después la envías a revisión, la apruebas y, cuando exista el
-              acceso privado, la publicas.
+              Alerta real, no de ejemplo: nace como borrador. Después la envías a revisión, la apruebas y la publicas; en
+              /alertas solo la verán las cuentas con sesión.
             </p>
           </FormularioPanel>
 

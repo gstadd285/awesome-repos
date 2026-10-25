@@ -459,10 +459,16 @@ export const CONTROLES: Control[] = [
     id: "PR-21",
     titulo: "Acceso anticipado por invitación",
     descripcion:
-      "Las alertas reales se verán solo con sesión, y las cuentas se crearán con códigos de invitación de un solo uso emitidos desde el panel y guardados con HMAC.",
-    estado: "objetivo",
+      "Las alertas reales se ven solo con sesión (sin sesión, ejemplos). Con CUENTAS_MODO=invitacion, una cuenta exige un código de un solo uso del panel: guardado con HMAC, con vencimiento, revocable, auditado y sin delatar si existe. Apagado por omisión.",
+    estado: "parcial",
     subcategorias: ["PR.AA-01", "PR.AA-05"],
-    evidencia: [],
+    evidencia: [
+      "src/lib/cuentas/invitaciones.ts",
+      "src/lib/alertas/visibles.ts",
+      "src/app/admin/invitaciones/acciones.ts",
+      "db/migraciones/0009_invitaciones.sql",
+      "docs/alertas-reales.md",
+    ],
   },
   {
     id: "PR-14",

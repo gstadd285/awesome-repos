@@ -11,7 +11,7 @@ import {
   retractarAccion,
   type Hecho,
 } from "@/app/admin/alertas/acciones";
-import { AvisoSinAccesoPrivado } from "@/components/admin/AvisoSinAccesoPrivado";
+import { AvisoAccesoPrivado } from "@/components/admin/AvisoAccesoPrivado";
 import { AlertCard } from "@/components/alert-card/AlertCard";
 import { TIPO_FUENTE_ETIQUETA } from "@/components/alert-card/labels";
 import { CamposAlerta } from "@/components/admin/CamposAlerta";
@@ -23,6 +23,7 @@ import { exigirSesion } from "@/lib/admin/acceso";
 import { repositorioAlertas } from "@/lib/alertas/instancia";
 import { safeHref } from "@/lib/domain/url";
 import { formatearFecha, formatearFechaHora, hoyEnChile } from "@/lib/format";
+import { env } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Alerta" };
 
@@ -116,7 +117,7 @@ export default async function DetalleAlertaPage({ params, searchParams }: PagePr
             )
           ) : null}
 
-          {enEdicion && !alerta.es_ejemplo ? <AvisoSinAccesoPrivado className="mt-4" /> : null}
+          {enEdicion && !alerta.es_ejemplo ? <AvisoAccesoPrivado modo={env.CUENTAS_MODO} className="mt-4" /> : null}
 
           {alerta.estado === "borrador" ? (
             <FormularioPanel accion={enviarARevisionAccion} boton="Enviar a revisión" variante="outline" titulo="Enviar a revisión">

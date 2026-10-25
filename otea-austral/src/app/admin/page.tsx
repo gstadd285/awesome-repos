@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AvisoSinAccesoPrivado } from "@/components/admin/AvisoSinAccesoPrivado";
+import { AvisoAccesoPrivado } from "@/components/admin/AvisoAccesoPrivado";
 import { FormularioAcceso } from "@/components/admin/FormularioAcceso";
 import { ENLACE, TARJETA } from "@/components/admin/estilos";
 import { sesionActual } from "@/lib/admin/acceso";
 import { colaEventos } from "@/lib/ingesta/cola";
 import { formatearFechaHora } from "@/lib/format";
+import { env } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Inicio" };
 
@@ -43,7 +44,7 @@ export default async function PanelPage() {
     <>
       <p className="micro text-apoyo">Panel interno</p>
       <h1 className="titular mt-3 text-titulo text-texto">Tablero</h1>
-      <AvisoSinAccesoPrivado className="mt-6 max-w-[680px]" />
+      <AvisoAccesoPrivado modo={env.CUENTAS_MODO} className="mt-6 max-w-[680px]" />
 
       <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:items-start">
         <section aria-labelledby="ingesta-titulo" className={TARJETA}>

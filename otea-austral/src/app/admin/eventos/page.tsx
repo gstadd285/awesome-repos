@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { descartarEventoAccion } from "@/app/admin/eventos/acciones";
-import { AvisoSinAccesoPrivado } from "@/components/admin/AvisoSinAccesoPrivado";
+import { AvisoAccesoPrivado } from "@/components/admin/AvisoAccesoPrivado";
 import { CAMPO, ENLACE, ETIQUETA, TARJETA } from "@/components/admin/estilos";
 import {
   CONFIANZA_POSIBLE_ETIQUETA,
@@ -18,6 +18,7 @@ import { exigirSesion } from "@/lib/admin/acceso";
 import { UMBRAL_BORRADOR } from "@/lib/ingesta/agrupar";
 import { colaEventos } from "@/lib/ingesta/cola";
 import { formatearFechaHora } from "@/lib/format";
+import { env } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Eventos candidatos" };
 
@@ -40,7 +41,7 @@ export default async function EventosPage({ searchParams }: PageProps<"/admin/ev
         La ingesta agrupa los títulos de las fuentes oficiales por tema y fecha. Revisa las fuentes, descarta lo que no
         sirva o crea a mano una alerta en borrador con ellas. Nada se publica solo y aquí no interviene ninguna IA.
       </p>
-      <AvisoSinAccesoPrivado className="mt-6 max-w-[680px]" />
+      <AvisoAccesoPrivado modo={env.CUENTAS_MODO} className="mt-6 max-w-[680px]" />
       <p role="status" className="mt-4 min-h-[1.25rem] text-sm font-medium text-texto">
         {hecho === "descartado" ? "Evento descartado. Queda en la auditoría." : null}
       </p>

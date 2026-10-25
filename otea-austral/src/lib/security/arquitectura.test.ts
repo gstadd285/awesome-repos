@@ -92,7 +92,7 @@ describe("consultas SQL (control 13: parametrizar)", () => {
 
 describe("frontera entre el servidor y el navegador (controles 1 y 3)", () => {
   const PROHIBIDO_EN_CLIENTE =
-    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+|@\/lib\/cuentas\/(?!formato-secreto$).+|@\/lib\/correo\/.+|@\/lib\/ingesta\/.+|@\/lib\/tareas\/.+)$/;
+    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario|visibles)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+|@\/lib\/cuentas\/(?!formato-secreto$).+|@\/lib\/correo\/.+|@\/lib\/ingesta\/.+|@\/lib\/tareas\/.+)$/;
 
   const clientes = fuentes.filter((r) => /^\s*["']use client["'];?/.test(leer(r)));
 
@@ -223,11 +223,11 @@ describe("autenticación del panel (control 6)", () => {
   });
 
   it("las páginas privadas del panel usan `exigirSesion` (redirige al acceso), no solo `sesionActual`", () => {
-    const privadas = paginas.filter((r) => /^src\/app\/admin\/(alertas|eventos)\//.test(relativa(r)) && r.endsWith("page.tsx"));
+    const privadas = paginas.filter((r) => /^src\/app\/admin\/(alertas|eventos|invitaciones)\//.test(relativa(r)) && r.endsWith("page.tsx"));
     expect(privadas.map(relativa)).toEqual(
-      expect.arrayContaining(["src/app/admin/eventos/page.tsx", "src/app/admin/eventos/[id]/page.tsx"]),
+      expect.arrayContaining(["src/app/admin/eventos/page.tsx", "src/app/admin/eventos/[id]/page.tsx", "src/app/admin/invitaciones/page.tsx"]),
     );
-    expect(privadas.length).toBeGreaterThanOrEqual(5);
+    expect(privadas.length).toBeGreaterThanOrEqual(6);
     for (const ruta of privadas) expect(leer(ruta), relativa(ruta)).toMatch(/\bexigirSesion\(/);
   });
 
@@ -277,6 +277,49 @@ describe("cola de eventos candidatos (docs/alertas-reales.md §3 y §5)", () => 
       }
     }
     expect(enlaces).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("acceso privado por invitación (docs/alertas-reales.md §6 y §8.4)", () => {
+  const acciones = leer(path.join(SRC, "app/admin/invitaciones/acciones.ts"));
+  const servicio = leer(path.join(SRC, "lib/cuentas/invitaciones.ts"));
+  const paginaAlertas = leer(path.join(SRC, "app/alertas/page.tsx"));
+
+  it("las acciones de invitaciones exigen sesión del panel y CSRF antes de leer el formulario o tocar la base", () => {
+    const exportadas = funcionesExportadas(acciones);
+    expect(exportadas.map((f) => f.nombre).sort()).toEqual(["emitirInvitacionAccion", "revocarInvitacionAccion"]);
+    for (const { nombre, cuerpo } of exportadas) {
+      expect(cuerpo.replace(/^\{/, "").trim().split("\n")[0], nombre).toBe("const sesion = await exigirAccionAdmin(datos);");
+    }
+  });
+
+  it("del código de una invitación solo llega al almacén su HMAC; el almacén no tiene dónde guardarlo en claro", () => {
+    expect(servicio).toMatch(/codigoHash: cifrador\.hashInvitacion\(normalizarCodigoInvitacion\(codigo\)\)/);
+    const almacen = leer(path.join(SRC, "lib/cuentas/almacen.ts"));
+    const emitir = /emitirInvitacion\(e: \{([\s\S]*?)\}\)/.exec(almacen)?.[1] ?? "";
+    expect(emitir).toMatch(/codigoHash: string/);
+    expect(emitir).not.toMatch(/\bcodigo:/);
+    const sql = leer(path.join(RAIZ, "db/migraciones/0009_invitaciones.sql"));
+    expect(sql).not.toMatch(/^\s+codigo\s/m);
+  });
+
+  it("solo `alertasVisibles` pide lo publicado al repositorio, y /alertas decide con la sesión de la cuenta", () => {
+    const llamadas = fuentes.filter((r) => /\.publicas\(/.test(leer(r))).map(relativa);
+    expect(llamadas).toEqual(["src/lib/alertas/visibles.ts"]);
+    expect(paginaAlertas).toMatch(/const sesion = await sesionCuenta\(\);\n\s*const visibles = await alertasVisibles\(sesion, repositorioAlertas\(\)\);/);
+    expect(paginaAlertas).not.toMatch(/repositorioAlertas\(\)\.|repo\.publicas/);
+  });
+
+  it("sin sesión nada real se filtra por los costados: metadatos fijos, mapa del sitio fijo, imagen OG estática y sin RSS", () => {
+    expect(paginaAlertas).toMatch(/export const metadata: Metadata = \{/);
+    expect(paginaAlertas).not.toMatch(/generateMetadata|generateStaticParams|revalidate\s*=/);
+    for (const archivo of ["app/sitemap.ts", "app/robots.ts", "app/manifest.ts"]) {
+      expect(leer(path.join(SRC, archivo)), archivo).not.toMatch(/@\/lib\/(alertas|db|cuentas)|@\/data\/ejemplo/);
+    }
+    const app = archivos(path.join(SRC, "app"), () => true).map(relativa);
+    // La imagen OG es un archivo fijo, no una ruta que arme la imagen con datos; no hay feeds RSS ni Atom.
+    expect(app.filter((r) => /opengraph-image|twitter-image/.test(r))).toEqual(["src/app/opengraph-image.alt.txt", "src/app/opengraph-image.jpg"]);
+    expect(app.filter((r) => /\b(rss|atom|feed)\b/i.test(r))).toEqual([]);
   });
 });
 
@@ -343,7 +386,7 @@ describe("cuentas de personas usuarias", () => {
 
   it("ningún valor secreto vuelve al navegador: las acciones solo devuelven lo que no es secreto", () => {
     const infractores = [...acciones.matchAll(/\bvalores\s*=\s*\{([^}]*)\}/g)]
-      .filter((m) => /\b(clave|actual|nueva|repetir|codigo|token)\b/.test(m[1]))
+      .filter((m) => /\b(clave|actual|nueva|repetir|codigo|token|invitacion)\b/.test(m[1]))
       .map((m) => m[0]);
     expect(infractores).toEqual([]);
   });
@@ -402,6 +445,7 @@ describe("inventario de la superficie expuesta", () => {
       "src/app/admin/acciones.ts",
       "src/app/admin/alertas/acciones.ts",
       "src/app/admin/eventos/acciones.ts",
+      "src/app/admin/invitaciones/acciones.ts",
     ]);
   });
 
