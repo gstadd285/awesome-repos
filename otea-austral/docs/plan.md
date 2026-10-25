@@ -184,6 +184,18 @@ Diseño, modelo de amenazas, recorridos y operación en [`cuentas.md`](cuentas.m
 - [ ] Mejoras posibles: cambio de correo, script de recifrado para rotar `CUENTAS_SECRETO`, consulta de contraseñas filtradas
       (Pwned Passwords, k-anonimato: es una llamada saliente) y alertas personalizadas por tema cuando haya alertas reales.
 
+## Incremento · Alertas reales (lanzamiento privado) · F1 ✅
+
+Diseño, costos, cumplimiento y plan en [`alertas-reales.md`](alertas-reales.md); fuentes en
+[`fuentes-pendientes.md`](fuentes-pendientes.md).
+
+- [x] **F1**: verificación de las 17 fuentes (2026-10-25: sin red hacia sus sitios, ningún feed verificado; candidatos
+      localizados y condiciones resumidas «por confirmar»), campo `feeds` en el registro con sus reglas y el diseño técnico.
+- [ ] **F2** Ingesta de metadatos · **F3** eventos candidatos y cola manual · **F4** acceso privado por invitación (antes de
+      publicar nada real) · **F5** borradores con IA (`claude-haiku-5-5`, tope de US$ 5 al mes) y su revisión · **F6**
+      preferencias, resumen diario y operación.
+- [ ] Decisiones de la dueña: `alertas-reales.md` §11.
+
 ## Falta para abrir al público (no es código)
 
 - [ ] Crear los proyectos en Google Cloud, Neon y Resend y desplegar siguiendo `docs/despliegue.md`.

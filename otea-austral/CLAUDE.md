@@ -14,7 +14,8 @@ fuentes. El usuario elige los temas que sigue.
 - Público inicial: inversionistas minoristas y traders de Chile y Latinoamérica.
 - Dominio previsto: oteaustral.com (no comprado). La URL base sale de `NEXT_PUBLIC_SITE_URL`.
 
-Estado y próximos pasos: [`docs/plan.md`](docs/plan.md). Despliegue: [`docs/despliegue.md`](docs/despliegue.md).
+Estado y próximos pasos: [`docs/plan.md`](docs/plan.md). Despliegue: [`docs/despliegue.md`](docs/despliegue.md). Alertas
+reales (ingesta, borradores con IA, acceso privado; plan F2–F6): [`docs/alertas-reales.md`](docs/alertas-reales.md).
 
 ## Reglas que no se negocian
 
