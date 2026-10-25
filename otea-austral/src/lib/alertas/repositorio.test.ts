@@ -102,7 +102,7 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("repositorio de alertas (Postgres)", () =>
     expect(d?.alerta.fecha).toBe(instante);
     expect(d?.alerta.fecha).not.toBe(antes);
     expect(d?.auditoria.map((a) => a.accion)).toEqual(["creada", "editada", "editada", "editada", "aprobada", "publicada"]);
-    expect((await repo.publicas()).some((a) => a.id === id)).toBe(true);
+    expect((await repo.publicas({ ejemplo: true })).some((a) => a.id === id)).toBe(true);
   });
 
   it("una alerta publicada solo cambia con corrección pública (regla 4)", async () => {
@@ -121,7 +121,7 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("repositorio de alertas (Postgres)", () =>
     const sinTexto = await repo.agregarFuente(id, v2, enlace("ine", "x"), ctx());
     expect(sinTexto.ok).toBe(false);
     ok(await repo.agregarFuente(id, v2, enlace("ine", "x"), ctx(), "Se agregó un dato del INE."));
-    const publica = (await repo.publicas()).find((a) => a.id === id);
+    const publica = (await repo.publicas({ ejemplo: true })).find((a) => a.id === id);
     expect(publica?.correcciones).toHaveLength(2);
     expect(publica?.fuentes).toHaveLength(2);
   });
@@ -153,7 +153,7 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("repositorio de alertas (Postgres)", () =>
     expect(d?.alerta.estado).toBe("retractada");
     expect(d?.correcciones.at(-1)?.tipo).toBe("retractacion");
     expect((await repo.editar(id, v2, { evento: "Otro" }, ctx(), "x")).ok).toBe(false);
-    expect((await repo.publicas()).find((a) => a.id === id)?.estado).toBe("retractada");
+    expect((await repo.publicas({ ejemplo: true })).find((a) => a.id === id)?.estado).toBe("retractada");
   });
 
   it("rechaza documentos duplicados, fuentes fuera del registro y enlaces no https", async () => {
@@ -182,7 +182,7 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("repositorio de alertas (Postgres)", () =>
     ok(await repo.publicar(id, version, ctx()));
     await base.propietario.consulta("update fuentes set tipo = 'prensa' where id = 'cochilco'");
     try {
-      expect((await repo.publicas()).find((a) => a.id === id)?.confianza).toBe("alta");
+      expect((await repo.publicas({ ejemplo: true })).find((a) => a.id === id)?.confianza).toBe("alta");
     } finally {
       await base.propietario.consulta("update fuentes set tipo = 'primaria' where id = 'cochilco'");
     }
@@ -216,17 +216,33 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("repositorio de alertas (Postgres)", () =>
     const publicada = await borradorConFuente();
     ok(await repo.publicar(publicada.id, publicada.version, ctx()));
 
-    const ids = (await repo.publicas(500)).map((a) => a.id);
+    const ids = (await repo.publicas({ ejemplo: true, limite: 500 })).map((a) => a.id);
     expect(ids).toContain(publicada.id);
     expect(ids).not.toContain(borrador.id);
     expect(ids).not.toContain(enRevision.id);
-    expect((await repo.publicas(500)).every((a) => ["publicada", "corregida", "retractada"].includes(a.estado))).toBe(true);
+    expect((await repo.publicas({ ejemplo: true, limite: 500 })).every((a) => ["publicada", "corregida", "retractada"].includes(a.estado))).toBe(true);
+  });
+
+  it("lo de ejemplo y lo real nunca salen juntos: cada lista pide uno de los dos (acceso privado, F4)", async () => {
+    const ejemplo = await borradorConFuente();
+    ok(await repo.publicar(ejemplo.id, ejemplo.version, ctx()));
+    // DATOS DE PRUEBA: una alerta «real» ficticia, solo para comprobar el filtro.
+    const real = await borradorConFuente({ es_ejemplo: false, evento: "Evento de prueba real del cobre" });
+    ok(await repo.publicar(real.id, real.version, ctx()));
+
+    const deEjemplo = await repo.publicas({ ejemplo: true, limite: 500 });
+    const reales = await repo.publicas({ ejemplo: false, limite: 500 });
+    expect(deEjemplo.map((a) => a.id)).toContain(ejemplo.id);
+    expect(deEjemplo.map((a) => a.id)).not.toContain(real.id);
+    expect(deEjemplo.every((a) => a.es_ejemplo)).toBe(true);
+    expect(reales.map((a) => a.id)).toEqual([real.id]);
+    expect(reales.every((a) => !a.es_ejemplo)).toBe(true);
   });
 
   it("la vista pública solo lleva los campos pensados para el público (control 17)", async () => {
     const { id, version } = await borradorConFuente();
     ok(await repo.publicar(id, version, ctx()));
-    const publica = (await repo.publicas(500)).find((a) => a.id === id);
+    const publica = (await repo.publicas({ ejemplo: true, limite: 500 })).find((a) => a.id === id);
     expect(Object.keys(publica ?? {}).sort()).toEqual([
       "confianza",
       "correcciones",

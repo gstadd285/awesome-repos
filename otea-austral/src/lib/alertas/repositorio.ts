@@ -434,11 +434,15 @@ export function crearRepositorioAlertas(db: BaseDeDatos) {
       };
     },
 
-    /** Alertas visibles para el público: publicadas, corregidas y retractadas. */
-    async publicas(limite = 50): Promise<AlertView[]> {
+    /**
+     * Alertas que salieron a la vista: publicadas, corregidas y retractadas, **solo de ejemplo o solo reales** (no hay
+     * forma de pedir las dos a la vez). Las reales se ven solo con sesión: el único que llama aquí es `alertasVisibles`
+     * (`visibles.ts`, lo vigila `arquitectura.test.ts`).
+     */
+    async publicas({ ejemplo, limite = 50 }: { ejemplo: boolean; limite?: number }): Promise<AlertView[]> {
       const filas = await db.consulta<FilaAlerta>(
-        `${SQL_ALERTA} where estado in ('publicada', 'corregida', 'retractada') order by fecha desc, id limit $1`,
-        [limite],
+        `${SQL_ALERTA} where estado in ('publicada', 'corregida', 'retractada') and es_ejemplo = $2 order by fecha desc, id limit $1`,
+        [limite, ejemplo],
       );
       if (filas.length === 0) return [];
       const ids = filas.map((f) => f.id);
