@@ -44,9 +44,13 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("Row-Level Security (Postgres)", () => {
           "cuenta_tokens",
           "cuentas",
           "cuentas_envios_diarios",
+          "fuente_items",
           "fuentes",
+          "ingesta_corridas",
+          "ingesta_feeds",
           "lista_espera",
           "otea_migraciones",
+          "tareas_turnos",
         ]),
       );
       expect(filas.filter((f) => !f.rls).map((f) => f.tabla)).toEqual([]);
