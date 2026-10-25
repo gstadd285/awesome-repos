@@ -92,7 +92,7 @@ describe("consultas SQL (control 13: parametrizar)", () => {
 
 describe("frontera entre el servidor y el navegador (controles 1 y 3)", () => {
   const PROHIBIDO_EN_CLIENTE =
-    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+|@\/lib\/cuentas\/(?!formato-secreto$).+|@\/lib\/correo\/.+)$/;
+    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+|@\/lib\/cuentas\/(?!formato-secreto$).+|@\/lib\/correo\/.+|@\/lib\/ingesta\/.+|@\/lib\/tareas\/.+)$/;
 
   const clientes = fuentes.filter((r) => /^\s*["']use client["'];?/.test(leer(r)));
 
@@ -112,7 +112,15 @@ describe("frontera entre el servidor y el navegador (controles 1 y 3)", () => {
   });
 
   it("los módulos con secretos o conexiones dicen `server-only`", () => {
-    for (const modulo of ["lib/env.ts", "lib/db/cliente.ts", "lib/db/instancia.ts", "lib/admin/acceso.ts"]) {
+    for (const modulo of [
+      "lib/env.ts",
+      "lib/db/cliente.ts",
+      "lib/db/instancia.ts",
+      "lib/admin/acceso.ts",
+      "lib/ingesta/descarga.ts",
+      "lib/ingesta/instancia.ts",
+      "lib/tareas/exigir.ts",
+    ]) {
       expect(leer(path.join(SRC, modulo)), modulo).toMatch(/^import "server-only";/m);
     }
   });
@@ -352,8 +360,81 @@ describe("inventario de la superficie expuesta", () => {
       "src/app/api/asistente/route.ts",
       "src/app/api/csp-report/route.ts",
       "src/app/api/salud/route.ts",
+      "src/app/api/tareas/ingesta/route.ts",
       "src/app/cuenta/exportar/route.ts",
     ]);
+  });
+});
+
+describe("ingesta y tareas programadas (salidas a internet, docs/alertas-reales.md §2 y §8.4)", () => {
+  const deLaIngesta = fuentes.filter((r) => /^src\/lib\/(ingesta|borradores|tareas)\//.test(relativa(r)));
+  const descarga = leer(path.join(SRC, "lib/ingesta/descarga.ts"));
+  const ruta = leer(path.join(SRC, "app/api/tareas/ingesta/route.ts"));
+  const exigir = leer(path.join(SRC, "lib/tareas/exigir.ts"));
+
+  it("hay código de la ingesta (la prueba vigila algo)", () => {
+    expect(deLaIngesta.map(relativa)).toEqual(expect.arrayContaining(["src/lib/ingesta/descarga.ts", "src/lib/tareas/exigir.ts"]));
+    expect(deLaIngesta.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("solo descarga.ts sale a internet; nada de la ingesta lee el entorno (salvo la instancia, vía env.ts) ni usa la consola", () => {
+    const infractores: string[] = [];
+    for (const archivo of deLaIngesta) {
+      const texto = leer(archivo);
+      const rel = relativa(archivo);
+      if (/\bfetch\(/.test(texto) && rel !== "src/lib/ingesta/descarga.ts") infractores.push(`${rel}: fetch`);
+      if (/XMLHttpRequest|\bWebSocket\b|node:(http|https|net|tls|dgram|child_process)|from ["'](undici|axios|got)/.test(texto)) {
+        infractores.push(`${rel}: red`);
+      }
+      if (/process\.env/.test(texto)) infractores.push(`${rel}: process.env`);
+      if (/\bconsole\./.test(texto)) infractores.push(`${rel}: console`);
+    }
+    expect(infractores).toEqual([]);
+    expect([...descarga.matchAll(/\bfetch\(/g)]).toHaveLength(1);
+  });
+
+  it("descarga.ts valida antes de conectar, sigue las redirecciones a mano y corta por tiempo y por tamaño", () => {
+    const cuerpo = /return async function descargar[\s\S]*$/.exec(descarga)?.[0] ?? "";
+    // La validación contra el registro va antes de la única llamada a `fetch`.
+    expect(cuerpo.indexOf("destinoPermitido(")).toBeGreaterThan(-1);
+    expect(cuerpo.indexOf("destinoPermitido(")).toBeLessThan(cuerpo.indexOf("fetch("));
+    expect(cuerpo).toMatch(/redirect: "manual"/);
+    expect(cuerpo).toMatch(/destinoSeguro\(siguiente\.href, solicitud\.fuente\.url_base\)/);
+    expect(cuerpo).toMatch(/AbortSignal\.timeout\(tiempoMs\)/);
+    expect(cuerpo).toMatch(/leerLimitado\(respuesta, MAX_BYTES\[clase\]\)/);
+    expect(descarga).not.toMatch(/\.(text|json|blob|formData)\(\)/);
+    expect(descarga).toMatch(/"User-Agent": config\.agente/);
+  });
+
+  it("el lector de feeds rechaza DTD y entidades antes de analizar, y no usa analizadores con expansión de entidades", () => {
+    const feeds = leer(path.join(SRC, "lib/ingesta/feeds.ts"));
+    expect(feeds).toMatch(/<!\\s\*\(DOCTYPE\|ENTITY/);
+    expect(feeds).not.toMatch(/DOMParser|xml2js|fast-xml-parser|libxml|sax/i);
+  });
+
+  it("la ruta de la ingesta: todos los métodos pasan primero por exigirTarea y no lee cuerpo, cookies ni cabeceras", () => {
+    const metodos = [...ruta.matchAll(/^export const ([A-Z]+) = manejar;$/gm)].map((m) => m[1]);
+    expect(metodos).toEqual(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
+    expect(ruta).not.toMatch(/export (async )?function [A-Z]+/);
+    const manejar = /async function manejar\(request: Request\): Promise<Response> \{\n([\s\S]*?)\n\}/.exec(ruta)?.[1] ?? "";
+    expect(manejar.trim().split("\n")[0]).toBe("if (!exigirTarea(request)) notFound();");
+    expect(ruta).not.toMatch(/request\.(json|text|formData|arrayBuffer|blob|body)\b|cookies\(|headers\(\)/);
+    expect(ruta).toMatch(/"Cache-Control": "no-store"/);
+  });
+
+  it("exigirTarea: modo activo, POST, sin cuerpo y secreto comparado en tiempo constante", () => {
+    expect(exigir).toMatch(/tareasActivas\(configuracion\)/);
+    expect(exigir).toMatch(/request\.method !== "POST"/);
+    expect(exigir).toMatch(/content-length/);
+    expect(exigir).toMatch(/transfer-encoding/);
+    expect(exigir).toMatch(/timingSafeEqual\(resumen\(enviado\), resumen\(configuracion\.TAREAS_SECRETO\)\)/);
+  });
+
+  it("las tareas nacen apagadas: TAREAS_MODO es inactivo por omisión y la dirección de pruebas exige OTEA_E2E=1", () => {
+    const configuracion = leer(path.join(SRC, "lib/env.ts"));
+    expect(configuracion).toMatch(/TAREAS_MODO: z\.enum\(\["inactivo", "activo"\]\)\.default\("inactivo"\)/);
+    expect(configuracion).toMatch(/e\.INGESTA_URL_PRUEBA && e\.OTEA_E2E !== "1"/);
+    expect(leer(path.join(SRC, "lib/ingesta/instancia.ts"))).toMatch(/env\.OTEA_E2E === "1" \? env\.INGESTA_URL_PRUEBA : undefined/);
   });
 });
 

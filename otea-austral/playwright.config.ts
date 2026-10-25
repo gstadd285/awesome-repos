@@ -44,6 +44,16 @@ const cuentas: Record<string, string> = hayBase
     }
   : {};
 
+/**
+ * Con base de datos, la segunda instancia (3201) hace además de servicio de tareas (`TAREAS_MODO=activo`, como
+ * `otea-tareas`): la ingesta corre de verdad contra el registro, que hoy no tiene feeds verificados, así que no sale a
+ * internet. El secreto del encabezado `X-Otea-Tarea` se genera al azar en cada corrida.
+ */
+if (hayBase && !process.env.E2E_TAREAS_SECRETO) process.env.E2E_TAREAS_SECRETO = randomBytes(32).toString("base64url");
+const tareas: Record<string, string> = hayBase
+  ? { TAREAS_MODO: "activo", TAREAS_SECRETO: process.env.E2E_TAREAS_SECRETO!, INGESTA_CONTACTO: "mailto:ingesta@example.org" }
+  : {};
+
 const panel: Record<string, string> = hayBase
   ? {
       ADMIN_CLAVE_HASH: process.env.E2E_ADMIN_HASH!,
@@ -77,7 +87,7 @@ export default defineConfig({
     },
     // El panel es una herramienta interna de escritorio: se prueba una vez. Las pruebas de movimiento abren
     // sus propias ventanas (estrecha, teléfono, sin soporte…): tampoco se repiten en el móvil.
-    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec/ },
+    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec|tareas\.spec/ },
   ],
   webServer: [
     {
@@ -105,7 +115,8 @@ export default defineConfig({
       env: { PORT: String(PUERTO_API_FALSA) },
     },
     {
-      // Segunda instancia, con el asistente en modo IA apuntando al servidor falso (solo se admite con OTEA_E2E=1).
+      // Segunda instancia, con el asistente en modo IA apuntando al servidor falso (solo se admite con OTEA_E2E=1) y, con
+      // base de datos, las tareas activas.
       // Cada día de tope y de llamadas se deja muy por encima de lo que gastan las pruebas, incluso repetidas.
       command: "npm run start",
       url: `http://localhost:${PUERTO_IA}`,
@@ -124,6 +135,7 @@ export default defineConfig({
         ASISTENTE_TOPE_DIARIO_USD: "10",
         ASISTENTE_LLAMADAS_DIARIAS: "10000",
         ASISTENTE_URL_API_PRUEBA: `http://127.0.0.1:${PUERTO_API_FALSA}`,
+        ...tareas,
       },
     },
   ],
