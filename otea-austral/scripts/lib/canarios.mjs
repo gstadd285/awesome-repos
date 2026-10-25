@@ -23,11 +23,12 @@ export const CANARIOS = {
   ADMIN_TOTP_SECRETO: "CANARIO".repeat(5).slice(0, 32),
   ADMIN_SESION_SECRETO: "CANARIO_sesion_".padEnd(48, "z"),
   ANTHROPIC_API_KEY: "sk-ant-api03-CANARIO-clave-del-build-0123456789", // escaner:ignorar valor falso a propósito (canario)
+  TAREAS_SECRETO: "CANARIO_tareas_".padEnd(48, "t"),
 };
 
 /**
  * Ajustes que no son secretos, pero que el build necesita junto a los canarios para recorrer el camino de la IA
- * (el asistente en modo `ia` y las cuentas abiertas): así las claves pasan por el mismo código que usan en producción.
+ * (el asistente en modo `ia`, las cuentas abiertas y las tareas activas): así las claves pasan por el mismo código que usan en producción.
  */
 export const AJUSTES = {
   CUENTAS_MODO: "abiertas",
@@ -36,6 +37,9 @@ export const AJUSTES = {
   ASISTENTE_PRECIO_ENTRADA: "0.1",
   ASISTENTE_PRECIO_SALIDA: "0.5",
   ASISTENTE_TOPE_DIARIO_USD: "1",
+  // La ingesta (servicio privado `otea-tareas`): así TAREAS_SECRETO recorre el mismo camino que en producción.
+  TAREAS_MODO: "activo",
+  INGESTA_CONTACTO: "mailto:ingesta@example.org",
 };
 
 const MAX_BYTES = 100_000_000;

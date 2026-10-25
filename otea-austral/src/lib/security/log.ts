@@ -41,7 +41,21 @@ export type SecurityEvent =
         | "datos_exportados";
     }
   /** Una pregunta al asistente: solo la categoría del resultado, nunca el texto ni quién preguntó. */
-  | { tipo: "asistente"; resultado: "ia" | "sin_respuesta" | "negativa" | "degradada"; motivo?: string };
+  | { tipo: "asistente"; resultado: "ia" | "sin_respuesta" | "negativa" | "degradada"; motivo?: string }
+  /**
+   * Una corrida de una tarea programada (`otea-tareas`): resultado y conteos, nunca URLs, títulos ni textos. Cada
+   * corrida deja uno; sin eventos de ingesta en 3 h, la alerta de Cloud Monitoring avisa (`docs/despliegue.md` §13).
+   */
+  | {
+      tipo: "tarea";
+      tarea: "ingesta";
+      resultado: "ok" | "parcial" | "fallida" | "omitida" | "sin_feeds" | "rechazada";
+      feeds?: number;
+      nuevos?: number;
+      fallos?: number;
+    }
+  /** Un feed que la ingesta deja en pausa: el id de la fuente en el registro y un código, nunca la URL ni el texto. */
+  | { tipo: "ingesta_feed"; fuente: string; evento: "pausa" | "robots_prohibido"; codigo: string };
 
 const MAX_LARGO = 300;
 

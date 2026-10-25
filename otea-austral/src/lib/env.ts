@@ -47,6 +47,16 @@ const remitente = z
     "Usa el formato «Nombre <correo@dominio>»",
   );
 
+/**
+ * Contacto que la ingesta declara en su User-Agent (la SEC exige organización y contacto): un `mailto:` de **rol**
+ * (p. ej. ingesta@…), nunca personal. Sin espacios ni paréntesis: viaja dentro de una cabecera.
+ */
+const contactoIngesta = z
+  .string()
+  .regex(/^mailto:[a-z0-9._%+-]{1,64}@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i, "Debe ser mailto:correo-de-rol@dominio");
+
+const secreto256 = (mensaje: string) => z.string().regex(/^[A-Za-z0-9_-]{43,}$/, mensaje);
+
 /** `pbkdf2-sha256$iteraciones$sal$hash` (lo genera `npm run admin:credenciales`). */
 const hashClave = z
   .string()
@@ -140,6 +150,17 @@ export const EnvSchema = z
     ASISTENTE_IA_POR_PERSONA_DIA: z.coerce.number().int().min(1).max(500).default(30),
     /** Solo pruebas e2e: dirección de un servidor que imita la API de Anthropic. */
     ASISTENTE_URL_API_PRUEBA: z.string().url().optional(),
+    /**
+     * Tareas programadas (`POST /api/tareas/*`, `docs/alertas-reales.md` §2.1). `inactivo` (por omisión): las rutas
+     * responden 404 y nada sale a internet. `activo`: solo en el servicio privado `otea-tareas`, que llama Cloud
+     * Scheduler con OIDC y el encabezado `X-Otea-Tarea`; exige DATABASE_URL, TAREAS_SECRETO e INGESTA_CONTACTO.
+     */
+    TAREAS_MODO: z.enum(["inactivo", "activo"]).default("inactivo"),
+    /** Secreto del encabezado `X-Otea-Tarea`: 256 bits en base64url, distinto de los demás secretos. */
+    TAREAS_SECRETO: secreto256("Secreto de las tareas demasiado corto (256 bits en base64url)").optional(),
+    INGESTA_CONTACTO: contactoIngesta.optional(),
+    /** Solo pruebas e2e: reescribe el origen de cada solicitud de la ingesta hacia un servidor de fuentes falsas. */
+    INGESTA_URL_PRUEBA: z.string().url().optional(),
   })
   .superRefine((e, ctx) => {
     // `next build` también corre con NODE_ENV=production, pero la configuración del servidor llega al
@@ -209,6 +230,25 @@ export const EnvSchema = z
         );
       }
     }
+    if (e.TAREAS_MODO === "activo") {
+      if (!e.DATABASE_URL) problema("DATABASE_URL", "TAREAS_MODO=activo necesita DATABASE_URL (turno, estado de los feeds y corridas).");
+      if (!e.TAREAS_SECRETO) problema("TAREAS_SECRETO", "TAREAS_MODO=activo necesita TAREAS_SECRETO (encabezado X-Otea-Tarea).");
+      if (!e.INGESTA_CONTACTO) {
+        problema("INGESTA_CONTACTO", "TAREAS_MODO=activo necesita INGESTA_CONTACTO: un mailto: de rol para el User-Agent.");
+      }
+    }
+    if (
+      e.TAREAS_SECRETO &&
+      [e.WAITLIST_SECRETO, e.CUENTAS_SECRETO, e.ADMIN_SESION_SECRETO].includes(e.TAREAS_SECRETO)
+    ) {
+      problema("TAREAS_SECRETO", "Debe ser distinto de los demás secretos: cada secreto protege una sola cosa.");
+    }
+    if (e.INGESTA_URL_PRUEBA && e.OTEA_E2E !== "1") {
+      problema(
+        "INGESTA_URL_PRUEBA",
+        "Solo se admite con OTEA_E2E=1: en cualquier otro caso la ingesta saldría hacia un servidor fuera del registro de fuentes.",
+      );
+    }
     if (e.ASISTENTE_URL_API_PRUEBA && e.OTEA_E2E !== "1") {
       problema(
         "ASISTENTE_URL_API_PRUEBA",
@@ -251,11 +291,22 @@ export const env: Env = EnvSchema.parse({
   ASISTENTE_LLAMADAS_DIARIAS: leer("ASISTENTE_LLAMADAS_DIARIAS"),
   ASISTENTE_IA_POR_PERSONA_DIA: leer("ASISTENTE_IA_POR_PERSONA_DIA"),
   ASISTENTE_URL_API_PRUEBA: leer("ASISTENTE_URL_API_PRUEBA"),
+  TAREAS_MODO: leer("TAREAS_MODO"),
+  TAREAS_SECRETO: leer("TAREAS_SECRETO"),
+  INGESTA_CONTACTO: leer("INGESTA_CONTACTO"),
+  INGESTA_URL_PRUEBA: leer("INGESTA_URL_PRUEBA"),
 });
 
 /** El panel interno existe solo si está configurado por completo; si no, responde 404. */
 export function panelActivo(e: Env = env): boolean {
   return Boolean(e.ADMIN_CLAVE_HASH && e.ADMIN_TOTP_SECRETO && e.ADMIN_SESION_SECRETO && e.DATABASE_URL);
+}
+
+/** Las tareas programadas existen solo en el servicio privado y configurado por completo; si no, sus rutas responden 404. */
+export function tareasActivas(
+  e: Pick<Env, "TAREAS_MODO" | "TAREAS_SECRETO" | "INGESTA_CONTACTO" | "DATABASE_URL"> = env,
+): boolean {
+  return e.TAREAS_MODO === "activo" && Boolean(e.TAREAS_SECRETO && e.INGESTA_CONTACTO && e.DATABASE_URL);
 }
 
 /** Las cuentas guardan datos solo si no están cerradas. */

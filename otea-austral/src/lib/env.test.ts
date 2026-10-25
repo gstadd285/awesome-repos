@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { EnvSchema, MODELOS_ASISTENTE } from "./env";
+import { EnvSchema, MODELOS_ASISTENTE, tareasActivas } from "./env";
 
 describe("EnvSchema", () => {
   it("por defecto la lista de espera está cerrada", () => {
@@ -266,5 +266,61 @@ describe("EnvSchema · cuentas de personas usuarias", () => {
     expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "http://127.0.0.1:3298/emails" }).success).toBe(false);
     expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "http://127.0.0.1:3298/emails", OTEA_E2E: "1" }).success).toBe(true);
     expect(EnvSchema.safeParse({ RESEND_URL_API_PRUEBA: "no es una url", OTEA_E2E: "1" }).success).toBe(false);
+  });
+});
+
+describe("EnvSchema · tareas programadas (ingesta)", () => {
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const SECRETO = "t".repeat(43);
+  const activas = { TAREAS_MODO: "activo", DATABASE_URL: DB, TAREAS_SECRETO: SECRETO, INGESTA_CONTACTO: "mailto:ingesta@oteaustral.com" };
+
+  it("por omisión están inactivas: nada sale a internet y las rutas responden 404", () => {
+    const e = EnvSchema.parse({});
+    expect(e.TAREAS_MODO).toBe("inactivo");
+    expect(tareasActivas(e)).toBe(false);
+  });
+
+  it("activo exige base de datos, secreto y contacto", () => {
+    expect(EnvSchema.safeParse({ TAREAS_MODO: "activo" }).success).toBe(false);
+    const completa = EnvSchema.safeParse(activas);
+    expect(completa.success).toBe(true);
+    expect(tareasActivas(completa.data!)).toBe(true);
+    for (const falta of ["DATABASE_URL", "TAREAS_SECRETO", "INGESTA_CONTACTO"] as const) {
+      const { [falta]: _omitida, ...incompleta } = activas;
+      void _omitida;
+      const r = EnvSchema.safeParse(incompleta);
+      expect(r.success, falta).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0]), falta).toContain(falta);
+    }
+    for (const malo of ["activa", "on", "1", ""]) expect(EnvSchema.safeParse({ ...activas, TAREAS_MODO: malo }).success, malo).toBe(false);
+  });
+
+  it("el secreto tiene 256 bits en base64url y no repite otro secreto", () => {
+    expect(EnvSchema.safeParse({ ...activas, TAREAS_SECRETO: "t".repeat(42) }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...activas, TAREAS_SECRETO: `${"t".repeat(42)}+` }).success).toBe(false);
+    for (const otro of ["WAITLIST_SECRETO", "CUENTAS_SECRETO", "ADMIN_SESION_SECRETO"]) {
+      expect(EnvSchema.safeParse({ ...activas, [otro]: SECRETO }).success, otro).toBe(false);
+    }
+  });
+
+  it("el contacto es un mailto: sin espacios, paréntesis ni saltos de línea (viaja en el User-Agent)", () => {
+    for (const bueno of ["mailto:ingesta@oteaustral.com", "mailto:datos.ingesta@sub.oteaustral.cl"]) {
+      expect(EnvSchema.safeParse({ INGESTA_CONTACTO: bueno }).success, bueno).toBe(true);
+    }
+    for (const malo of [
+      "ingesta@oteaustral.com",
+      "https://oteaustral.com/contacto",
+      "mailto:ingesta@oteaustral.com)",
+      "mailto:ingesta@oteaustral.com; X",
+      "mailto:ingesta@oteaustral.com\r\nX-Inyectada: 1",
+      "mailto:in gesta@oteaustral.com",
+    ]) {
+      expect(EnvSchema.safeParse({ INGESTA_CONTACTO: malo }).success, malo).toBe(false);
+    }
+  });
+
+  it("la dirección de las fuentes falsas solo existe con OTEA_E2E=1", () => {
+    expect(EnvSchema.safeParse({ INGESTA_URL_PRUEBA: "http://127.0.0.1:3297" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ INGESTA_URL_PRUEBA: "http://127.0.0.1:3297", OTEA_E2E: "1" }).success).toBe(true);
   });
 });
