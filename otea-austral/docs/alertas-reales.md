@@ -1,8 +1,9 @@
 # Alertas reales · diseño técnico
 
 Fase **F1** (2026-10-25): verificación de fuentes y este diseño. Fase **F2** (2026-10-25): la ingesta de metadatos (§2) está
-implementada, probada contra fuentes falsas y **apagada por omisión** (§2.4); hoy no tiene nada que leer. F3 a F6 siguen sin
-implementar. El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
+implementada, probada contra fuentes falsas y **apagada por omisión** (§2.4); hoy no tiene nada que leer. Fase **F3**
+(2026-10-25): la agrupación en eventos candidatos y la cola manual sin IA de `/admin` (§3.1); sin datos reales que agrupar
+todavía. F4 a F6 siguen sin implementar. El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
 
 Encargo de la dueña: un sistema lee las fuentes oficiales del registro y arma borradores; Claude redacta **un borrador por
 evento** con un tope duro de **US$ 5 al mes** (autorizado solo para esto); ella aprueba o descarta cada uno en `/admin` y
@@ -202,6 +203,42 @@ pruebas de tabla.
   disparador que solo deja avanzar el `estado`. Grants por columna y RLS con una política por operación.
 - `/admin/eventos`: la cola **sin IA** ya sirve: la dueña puede crear una alerta a mano desde un evento con sus fuentes
   precargadas.
+
+### 3.1 Implementado en F3 (lo que se precisó al construirlo)
+
+Código en `src/lib/ingesta/{lexico,agrupar,eventos-postgres,cola-postgres,cola}.ts`, `src/app/admin/eventos/` (cola, detalle y
+`acciones.ts`), el tablero en `src/app/admin/page.tsx` y `db/migraciones/0008_eventos.sql`. Sobre lo escrito arriba:
+
+- **Cuándo agrupa**: al final de cada corrida de la ingesta, con el turno todavía tomado y también sin feeds
+  (`agruparPendientes`: hasta 500 ítems por corrida, en una transacción; si otra corrida asignó un ítem entretanto se revierte
+  y la siguiente lo reintenta). La ruta suma `agrupados` y `eventos_nuevos` a su respuesta; si la agrupación falla, la corrida
+  queda `parcial` con el evento `fallo_servicio` · `ingesta_agrupar` y los ítems esperan sin evento.
+- **Fechas**: la de un ítem es `publicado` o, si falta, `visto`. Todos los ítems de un evento caben en **48 h** (la ventana se
+  ensancha hacia ambos lados). Un evento guardado deja de recibir ítems **72 h** después de su primer ítem (respecto de la
+  corrida): un ítem que llega tarde abre otro.
+- **Tema**: cada acierto del léxico vale 2 y ser tema de la fuente, 1; gana el máximo si es único (empate ⇒ `sin_tema`).
+  Normalización: sin tildes, minúsculas, `OPEP+` entero y una raíz mínima para el plural (tasa/tasas, arancel/aranceles); no
+  cuentan las palabras vacías, las de menos de 3 letras, las cifras sueltas ni la marca «(ejemplo)» de los datos de prueba.
+- **Agenda**: IPC (Chile) y CPI (EE. UU.) son claves distintas, y **dos claves distintas nunca se unen** aunque los títulos se
+  parezcan (un comunicado del FOMC y uno de la RPM con el mismo texto). Entre varios candidatos gana la misma clave y después
+  la similitud más alta.
+- **Puntaje**: se calcula cuando el evento cambia («últimas 6 h» es respecto de esa corrida). Un evento descartado o convertido
+  sigue recibiendo los ítems de su ventana, sin volver a la cola.
+- **Base**: `fuente_items.evento_id` pasa de nulo a un valor una vez (disparador, política `using (evento_id is null)` y
+  `grant update (evento_id)`); ni el dueño cambia otra columna (`OT001`). En `eventos_candidatos` el estado solo avanza
+  (`OT012`), tema, título de referencia y alerta no cambian y la ventana solo se ensancha (`OT011`); nace `abierto` (RLS) y
+  `convertido` ⇔ `alert_id`. `evento_auditoria` (solo agregar) guarda `descartado` y `convertido` con el alias del panel.
+- **Cola**: `/admin/eventos` (por puntaje y hora, hasta 100), `/admin/eventos/[id]` (señales, confianza posible con
+  `calcularConfianza`, fuentes, crear, descartar y auditoría) y el tablero de `/admin` (última corrida, feeds en pausa o con
+  fallos, pendientes). Cada fuente enlaza su documento oficial con `safeHref` y `rel="noopener noreferrer"`.
+  `crearAlertaDesdeEventoAccion` usa `crearConFuentes` del repositorio de alertas: `crearAlerta` (nota «Desde el evento
+  candidato ⟨id⟩ · N fuentes») y una fila `editada` por fuente, como `agregarFuente`; `es_ejemplo` siempre falso; hasta 12
+  fuentes cuyos datos salen de `fuente_items` (del formulario solo llegan ids); `fecha_publicacion` = día de Chile de la fecha
+  del ítem (nunca posterior a hoy) y `fecha_consulta` = hoy; el evento queda `convertido` en la misma transacción (dos
+  conversiones a la vez dan una sola alerta). El descarte admite un motivo opcional (≤ 500 caracteres) para calibrar.
+- **Sin acceso privado** (D8): el tablero, la cola, el evento y el detalle de una alerta real en edición avisan «Sin acceso
+  privado, no publiques alertas reales». La publicación no cambió.
+- **Umbral 50 sin calibrar**: no hay datos reales todavía (ningún feed verificado).
 
 ## 4. Borrador con IA (F5)
 
@@ -511,7 +548,7 @@ se publica antes de cerrar F4.
 - **Aceptación**: una corrida contra el servidor falso guarda solo metadatos, sin duplicados en la segunda corrida; un enlace
   fuera del dominio o un `Disallow` no se lee; el servicio público responde 404 en `/api/tareas/ingesta`; costo US$ 0.
 
-### F3 · Eventos candidatos y cola manual
+### F3 · Eventos candidatos y cola manual (hecha el 2026-10-25; ver §3.1)
 
 - **Archivos**: `src/lib/ingesta/{agrupar,lexico}.ts`, `db/migraciones/0008_eventos.sql`, `src/app/admin/eventos/page.tsx`,
   `[id]/page.tsx`, `acciones.ts` (`descartarEventoAccion`, `crearAlertaDesdeEventoAccion`), tablero en `src/app/admin/page.tsx`.

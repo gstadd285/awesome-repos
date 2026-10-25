@@ -474,7 +474,9 @@ un **segundo servicio de Cloud Run, privado**, con la misma imagen; el sitio pú
    gcloud logging read 'resource.labels.service_name="otea-tareas" AND jsonPayload.tipo="tarea"' --limit 3 --format json
    ```
 
-   La respuesta y el registro llevan solo conteos y códigos: `{"resultado":"ok","feeds":1,"nuevos":12,"fallos":0,…}`. Un
+   La respuesta y el registro llevan solo conteos y códigos: `{"resultado":"ok","feeds":1,"nuevos":12,"fallos":0,…,
+   "agrupados":12,"eventos_nuevos":3}` (cada corrida agrupa al final los ítems en eventos candidatos, sin red ni IA, con la
+   migración `0008`; la dueña los revisa en `/admin/eventos`). Un
    `"resultado":"rechazada"` significa que alguien con `run.invoker` llamó sin el secreto, con otro método o con cuerpo: revisa quién.
 
 ### Vigilarla

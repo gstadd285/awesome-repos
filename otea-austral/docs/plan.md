@@ -191,7 +191,8 @@ Diseño, costos, cumplimiento y plan en [`alertas-reales.md`](alertas-reales.md)
 
 - [x] **F1**: verificación de las 17 fuentes (2026-10-25: sin red hacia sus sitios, ningún feed verificado; candidatos
       localizados y condiciones resumidas «por confirmar»), campo `feeds` en el registro con sus reglas y el diseño técnico.
-- [ ] **F2** Ingesta de metadatos · **F3** eventos candidatos y cola manual · **F4** acceso privado por invitación (antes de
+- [ ] **F2** Ingesta de metadatos (hecha, apagada) · **F3** eventos candidatos y cola manual sin IA (hecha, sin datos reales
+      todavía) · **F4** acceso privado por invitación (antes de
       publicar nada real) · **F5** borradores con IA (`claude-haiku-5-5`, tope de US$ 5 al mes) y su revisión · **F6**
       preferencias, resumen diario y operación.
 - [ ] Decisiones de la dueña: `alertas-reales.md` §11.

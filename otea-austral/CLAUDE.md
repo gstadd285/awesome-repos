@@ -430,11 +430,16 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
     de analizar y no lee `description`: no lo cambies por un analizador con DTD.
   - Un feed entra al registro solo con `verificado`, en el dominio de `url_base` y con condiciones «Verificadas el …»
     (`registry.test.ts`). Los fixtures de prueba son sintéticos y marcados (`e2e/fixtures/fuentes/`, example.org, «(ejemplo)»).
+  - **Eventos candidatos y cola manual** (`agrupar.ts`, `lexico.ts`, `eventos-postgres.ts`, `cola-postgres.ts`, `/admin/eventos`,
+    migración `0008`; `docs/alertas-reales.md` §3.1): la agrupación es pura y determinista y corre al final de cada corrida, sin
+    red ni IA. Una alerta creada desde un evento nace en borrador, **nunca de ejemplo**, por `crearConFuentes` (reglas de
+    `rules.ts`, una transacción) y con sus fuentes leídas de `fuente_items` (del formulario solo llegan ids). `evento_auditoria`
+    es de solo agregar. **Hasta el acceso privado (F4) no se publica nada real**: el panel lo avisa; no quites el aviso.
 - **Panel `/admin`** (`src/app/admin/`, `src/lib/admin/`): sin `ADMIN_*` y `DATABASE_URL` responde 404.
   Acceso con frase (PBKDF2) y código TOTP; la sesión es una cookie `__Host-` firmada **y registrada en
   la base** (`admin_sesiones`), así que «Salir» la revoca de verdad. Toda página privada llama a
   `exigirSesion()` y toda Server Action a `exigirAccionAdmin(formData)` (sesión + token CSRF). Una
-  acción o página nueva del panel que no lo haga es un fallo de seguridad.
+  acción o página nueva del panel que no lo haga es un fallo de seguridad. `/admin` es el acceso sin sesión y el tablero con ella.
 - **Base de datos:** la aplicación entra con un usuario de mínimos privilegios (`otea_app`), nunca con
   el dueño. Cada tabla nueva necesita sus `grant` por columna, **RLS activada con una política por operación
   permitida** (`0003`; `rls.test.ts` falla si falta) y, si es de solo agregar, un disparador `otea_rechazar` (ver
@@ -551,15 +556,15 @@ src/
     correo/            envío con Resend y plantilla de los correos (compartidos por la lista de espera y las cuentas)
     alertas/           repositorio Postgres de alertas, fuentes, correcciones y auditoría; formularios
     ingesta/           ingesta de metadatos: descarga (único fetch), robots.txt, lector de feeds, deduplicación, servicio,
-                       almacén Postgres y turno
+                       almacén Postgres y turno; agrupación en eventos candidatos (léxico) y cola del panel
     tareas/            puerta de las tareas programadas (`exigirTarea`)
     db/                cliente de Postgres (pool, transacciones) y ayudante de pruebas
-  app/admin/           panel interno (acceso, listado, alta, detalle y acciones)
+  app/admin/           panel interno (acceso y tablero, cola de eventos, listado, alta, detalle y acciones)
   app/alertas/         alertas publicadas; app/api/salud: sonda de Cloud Run
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
 db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados, 0005 gasto del asistente,
-                       0006 cuentas, 0007 ingesta)
+                       0006 cuentas, 0007 ingesta, 0008 eventos candidatos)
 scripts/               migrar, rol de la aplicación, credenciales del panel, preparar standalone, lista de espera
                        (secreto, exportar, recifrar), escáner de secretos, canarios, auditoría de dependencias
 seguridad/             avisos de npm aceptados (con motivo y fecha de revisión)
@@ -906,6 +911,11 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **Un `.next/dev/` viejo (de `next dev`) hace fallar `seguridad:canarios`** con sus mapas de código: bórralo antes (es un artefacto).
 - **Un U+2028 literal dentro de una expresión regular es un fin de línea** en JS y rompe el literal: escribe siempre los escapes `\u…`
   (algunas herramientas los convierten en el carácter al guardar).
+- **Una fuente de prueba con `verificado` posterior al `ahora` de la corrida no es elegible**: la corrida no lee nada y no avisa.
+- **Lo que se inserta en una transacción comparte `now()`**: los enlaces de `crearConFuentes` empatan en `agregada` y su orden cae
+  en el id (al azar); las pruebas no deben depender de él. `funcionesExportadas` (`arquitectura.test.ts`) entrega el cuerpo con su `{`.
+- **El CSS del panel viaja con la portada** (29,95 KB gzip tras F3, tope 30): las páginas nuevas del panel solo reutilizan
+  utilidades que ya existen.
 
 ## Notas de Next.js
 

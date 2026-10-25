@@ -274,7 +274,7 @@ export const CONTROLES: Control[] = [
       "La confianza de cada alerta se calcula a partir de sus fuentes, la auditoría solo admite agregar filas y las correcciones son públicas.",
     estado: "implementado",
     subcategorias: ["PR.DS-01"],
-    evidencia: ["src/lib/domain/rules.ts", "src/lib/domain/audit-log.ts"],
+    evidencia: ["src/lib/domain/rules.ts", "src/lib/domain/audit-log.ts", "db/migraciones/0008_eventos.sql"],
   },
   {
     id: "PR-05",
