@@ -87,7 +87,10 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("ingesta en Postgres (migración 0007)", (
       );
 
     it("ninguna columna guarda texto de una fuente: lista cerrada", async () => {
-      expect(await columnas("fuente_items")).toEqual(["id", "source_id", "feed_url", "clave", "titulo", "url", "identificador", "publicado", "visto"]);
+      // `evento_id` llega con la 0008 (agrupación en eventos candidatos): es una referencia, no texto.
+      expect(await columnas("fuente_items")).toEqual([
+        "id", "source_id", "feed_url", "clave", "titulo", "url", "identificador", "publicado", "visto", "evento_id",
+      ]);
       expect(await columnas("ingesta_feeds")).toEqual([
         "feed_url", "source_id", "etag", "ultima_modificacion", "ultimo_intento", "ultimo_ok", "fallos_seguidos",
         "pausado_hasta", "robots", "robots_revisado", "ultimo_error",
