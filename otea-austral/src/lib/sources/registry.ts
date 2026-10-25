@@ -4,7 +4,8 @@ import { SourceSchema, type Source } from "@/lib/domain/schemas";
 /**
  * Registro de fuentes (semilla en `data/sources.seed.json`). Se valida al
  * cargar: una entrada inválida rompe el build en vez de publicarse.
- * Las direcciones de feeds no se incluyen hasta verificarlas
+ * Un feed (`feeds`) entra solo después de verlo responder, con la fecha de
+ * esa comprobación; mientras tanto el acceso es `manual`
  * (`docs/fuentes-pendientes.md`).
  */
 export const REGISTRO_FUENTES: readonly Source[] = Object.freeze(

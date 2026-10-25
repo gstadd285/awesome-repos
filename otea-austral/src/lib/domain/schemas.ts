@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TEMAS } from "./temas";
-import { httpsUrl } from "./url";
+import { dentroDelDominio, httpsUrl, parseHttpsUrl } from "./url";
 
 // Mensajes de validación en español (se leen en el panel interno).
 z.config(z.locales.es());
@@ -43,6 +43,8 @@ export type TipoFuente = z.infer<typeof TipoFuente>;
 
 export const AccesoFuente = z.enum(["rss", "api", "manual"]);
 export const PrioridadFuente = z.enum(["A", "B", "C"]);
+/** `rss` y `atom` cuentan como acceso `rss`; `api` como acceso `api`. */
+export const FormatoFeed = z.enum(["rss", "atom", "api"]);
 
 export const AccionAuditoria = z.enum([
   "creada",
@@ -76,19 +78,63 @@ export const FechaHora = z.iso.datetime({ offset: true });
 
 // ── Entidades ──────────────────────────────────────────────────────────────
 
-export const SourceSchema = z.strictObject({
-  id: Id,
-  nombre: texto(120),
-  organismo: texto(120),
-  /** Vacía si aún no se verificó la dirección oficial: nunca se inventa. */
-  url_base: z.union([httpsUrl, z.literal("")]),
-  tipo: TipoFuente,
-  temas: z.array(Tema).max(Tema.options.length),
-  acceso: AccesoFuente,
-  condiciones_reutilizacion: texto(500),
-  prioridad: PrioridadFuente,
-  activa: z.boolean(),
+/** Nombres de parámetro que delatan una credencial en una URL. */
+const PARAMETRO_SECRETO = /^(api[_-]?key|apikey|key|token|access[_-]?token|user(name)?|pass(word)?|secret|clave)$/i;
+
+/**
+ * Feed RSS/Atom o API oficial de una fuente. Solo entra al registro cuando se vio responder: `verificado` es la
+ * fecha de esa comprobación (método y detalle en `docs/fuentes-pendientes.md`). Nunca lleva claves: las que pida
+ * una API van en el entorno.
+ */
+export const FeedSchema = z.strictObject({
+  url: httpsUrl,
+  formato: FormatoFeed,
+  titulo: texto(120),
+  verificado: Fecha,
 });
+export type Feed = z.infer<typeof FeedSchema>;
+
+export const SourceSchema = z
+  .strictObject({
+    id: Id,
+    nombre: texto(120),
+    organismo: texto(120),
+    /** Vacía si aún no se verificó la dirección oficial: nunca se inventa. */
+    url_base: z.union([httpsUrl, z.literal("")]),
+    tipo: TipoFuente,
+    temas: z.array(Tema).max(Tema.options.length),
+    acceso: AccesoFuente,
+    /** Feeds y API verificados. Vacío mientras el acceso sea `manual`. */
+    feeds: z.array(FeedSchema).max(10).default([]),
+    condiciones_reutilizacion: texto(500),
+    prioridad: PrioridadFuente,
+    activa: z.boolean(),
+  })
+  .superRefine((f, ctx) => {
+    const problema = (path: (string | number)[], message: string) => ctx.addIssue({ code: "custom", path, message });
+    if (f.acceso === "manual" && f.feeds.length > 0) {
+      problema(["feeds"], "Una fuente de acceso manual no lleva feeds: cambia el acceso al verificar uno.");
+    }
+    if (f.acceso === "rss" && !f.feeds.some((x) => x.formato === "rss" || x.formato === "atom")) {
+      problema(["acceso"], "El acceso rss exige al menos un feed RSS o Atom verificado.");
+    }
+    if (f.acceso === "api" && !f.feeds.some((x) => x.formato === "api")) {
+      problema(["acceso"], "El acceso api exige al menos una API verificada.");
+    }
+    const vistas = new Set<string>();
+    f.feeds.forEach((feed, i) => {
+      if (!dentroDelDominio(feed.url, f.url_base)) {
+        problema(["feeds", i, "url"], "El feed debe estar en el dominio de url_base (o en un subdominio suyo).");
+      }
+      const url = parseHttpsUrl(feed.url);
+      if (!url) return;
+      if ([...url.searchParams.keys()].some((k) => PARAMETRO_SECRETO.test(k))) {
+        problema(["feeds", i, "url"], "La URL de un feed no lleva credenciales: van en el entorno, nunca en el registro.");
+      }
+      if (vistas.has(url.href)) problema(["feeds", i, "url"], "Feed repetido.");
+      vistas.add(url.href);
+    });
+  });
 export type Source = z.infer<typeof SourceSchema>;
 
 /**

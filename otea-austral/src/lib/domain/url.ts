@@ -22,6 +22,20 @@ export function parseHttpsUrl(value: string): URL | null {
   return url;
 }
 
+/**
+ * `true` si `url` es https y su host es el de `base` o un subdominio suyo (sin contar `www.` de la base):
+ * con base `https://www.bcentral.cl/`, valen `www.bcentral.cl`, `bcentral.cl` y `si3.bcentral.cl`, pero no
+ * `bcentral.cl.example.org`. Así se ata la dirección de un feed (y, más adelante, cada enlace que llegue en él)
+ * al dominio de su fuente en el registro.
+ */
+export function dentroDelDominio(url: string, base: string): boolean {
+  const destino = parseHttpsUrl(url);
+  const raiz = parseHttpsUrl(base);
+  if (!destino || !raiz) return false;
+  const dominio = raiz.hostname.replace(/^www\./, "");
+  return destino.hostname === dominio || destino.hostname.endsWith(`.${dominio}`);
+}
+
 /** Enlace seguro para usar en `href`; `undefined` si no pasa la validación. */
 export function safeHref(value: string): string | undefined {
   return parseHttpsUrl(value)?.href;

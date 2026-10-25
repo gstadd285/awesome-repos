@@ -315,7 +315,7 @@ Reglas (las vigila `src/lib/design/motion.test.ts`):
 
 | Entidad | Campos |
 |---|---|
-| `Source` | `id`, `nombre`, `organismo`, `url_base` (https o vacía si no está verificada), `tipo` (`primaria`·`secundaria`·`prensa`), `temas[]`, `acceso` (`rss`·`api`·`manual`), `condiciones_reutilizacion`, `prioridad` (`A`·`B`·`C`), `activa` |
+| `Source` | `id`, `nombre`, `organismo`, `url_base` (https o vacía si no está verificada), `tipo` (`primaria`·`secundaria`·`prensa`), `temas[]`, `acceso` (`rss`·`api`·`manual`), `feeds[]` (`url`, `formato` `rss`·`atom`·`api`, `titulo`, `verificado`: solo feeds vistos responder, en el dominio de `url_base` y sin credenciales; `rss`/`api` exigen uno, `manual` ninguno), `condiciones_reutilizacion` (`pendiente de verificar`, `Por confirmar en la página (…)` o `Verificadas el AAAA-MM-DD: …`), `prioridad` (`A`·`B`·`C`), `activa` |
 | `AlertSource` | `alert_id`, `source_id`, `titulo_documento`, `url` (solo https), `fecha_publicacion`, `fecha_consulta` (no anterior a la publicación), `identificador?` |
 | `Alert` | `id`, `tema`, `evento`, `resumen`, `filas[]` (`sector`, `direccion` `gana`·`condicionado`·`pierde`, `condicion`, `confianza` declarada), `fecha`, `revisor`, `impacto` (`bajo`·`medio`·`alto`), `estado` (`borrador`·`en_revision`·`publicada`·`corregida`·`retractada`), `es_ejemplo` |
 | `AlertAudit` | `id`, `alert_id`, `accion` (`creada`·`editada`·`aprobada`·`publicada`·`corregida`·`retractada`), `actor` (alias interno, **sin datos personales**), `fecha`, `nota` |

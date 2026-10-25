@@ -107,6 +107,75 @@ describe("SourceSchema", () => {
   it("rechaza una URL base que no sea https", () => {
     expect(SourceSchema.safeParse({ ...fuente, url_base: "http://example.org" }).success).toBe(false);
   });
+
+  describe("feeds", () => {
+    const conBase = { ...fuente, url_base: "https://www.bcentral.cl/" };
+    const feed = {
+      url: "https://www.bcentral.cl/rss/comunicados.xml",
+      formato: "rss",
+      titulo: "Comunicados",
+      verificado: "2026-10-25",
+    } as const;
+    const motivos = (valor: unknown) => {
+      const r = SourceSchema.safeParse(valor);
+      return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+    };
+
+    it("sin feeds, el acceso manual es válido y la lista queda vacía", () => {
+      const r = SourceSchema.safeParse(conBase);
+      expect(r.success && r.data.feeds).toEqual([]);
+    });
+
+    it("acepta acceso rss con un feed RSS o Atom verificado en el dominio (o un subdominio)", () => {
+      expect(motivos({ ...conBase, acceso: "rss", feeds: [feed] })).toEqual([]);
+      expect(motivos({ ...conBase, acceso: "rss", feeds: [{ ...feed, formato: "atom" }] })).toEqual([]);
+      const api = { ...feed, url: "https://si3.bcentral.cl/SieteRestWS/SieteRestWS.ashx", formato: "api" };
+      expect(motivos({ ...conBase, acceso: "api", feeds: [api] })).toEqual([]);
+    });
+
+    it("rss o api sin el feed que lo respalde se rechaza", () => {
+      expect(motivos({ ...conBase, acceso: "rss" })).toEqual(["acceso: El acceso rss exige al menos un feed RSS o Atom verificado."]);
+      expect(motivos({ ...conBase, acceso: "api", feeds: [feed] })[0]).toMatch(/^acceso: El acceso api exige/);
+    });
+
+    it("una fuente manual no lleva feeds (se cambia el acceso al verificar)", () => {
+      expect(motivos({ ...conBase, feeds: [feed] })[0]).toMatch(/^feeds: Una fuente de acceso manual/);
+    });
+
+    it("exige la fecha de verificación y rechaza campos de más", () => {
+      const sinFecha = { url: feed.url, formato: feed.formato, titulo: feed.titulo };
+      expect(motivos({ ...conBase, acceso: "rss", feeds: [sinFecha] }).length).toBeGreaterThan(0);
+      expect(motivos({ ...conBase, acceso: "rss", feeds: [{ ...feed, verificado: "25-10-2026" }] }).length).toBeGreaterThan(0);
+      expect(motivos({ ...conBase, acceso: "rss", feeds: [{ ...feed, texto: "copiado" }] }).length).toBeGreaterThan(0);
+    });
+
+    it.each([
+      ["otro dominio", "https://example.org/rss.xml"],
+      ["sufijo engañoso", "https://bcentral.cl.example.org/rss.xml"],
+    ])("rechaza un feed fuera del dominio de la fuente (%s)", (_, url) => {
+      expect(motivos({ ...conBase, acceso: "rss", feeds: [{ ...feed, url }] })).toEqual([
+        "feeds.0.url: El feed debe estar en el dominio de url_base (o en un subdominio suyo).",
+      ]);
+    });
+
+    it("rechaza un feed http y un feed sin url_base verificada", () => {
+      expect(motivos({ ...conBase, acceso: "rss", feeds: [{ ...feed, url: "http://www.bcentral.cl/rss.xml" }] }).length).toBeGreaterThan(0);
+      expect(motivos({ ...fuente, acceso: "rss", feeds: [feed] })).toEqual([
+        "feeds.0.url: El feed debe estar en el dominio de url_base (o en un subdominio suyo).",
+      ]);
+    });
+
+    it.each(["api_key", "apikey", "API-KEY", "token", "user", "pass"])("rechaza credenciales en la URL (%s)", (param) => {
+      const url = `https://api.bcentral.cl/datos?serie=F073&${param}=abc123`;
+      expect(motivos({ ...conBase, acceso: "api", feeds: [{ ...feed, url, formato: "api" }] })).toEqual([
+        "feeds.0.url: La URL de un feed no lleva credenciales: van en el entorno, nunca en el registro.",
+      ]);
+    });
+
+    it("rechaza un feed repetido", () => {
+      expect(motivos({ ...conBase, acceso: "rss", feeds: [feed, feed] })).toEqual(["feeds.1.url: Feed repetido."]);
+    });
+  });
 });
 
 describe("AlertAuditSchema", () => {
