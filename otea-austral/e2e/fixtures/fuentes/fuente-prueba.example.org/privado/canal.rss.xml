@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture sintético de prueba de Otea Austral. robots.txt lo prohíbe: la ingesta nunca debe pedirlo. -->
+<rss version="2.0"><channel><title>Privado (ejemplo)</title>
+  <item><title>No debe leerse (ejemplo)</title><link>https://fuente-prueba.example.org/privado/1</link></item>
+</channel></rss>

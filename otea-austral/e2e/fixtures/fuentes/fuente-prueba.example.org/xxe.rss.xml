@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture MALIGNO sintético de prueba: intenta leer un archivo local con una entidad externa (XXE).
+     La ingesta debe rechazarlo antes de analizarlo. -->
+<!DOCTYPE rss [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>
+<rss version="2.0"><channel><title>XXE (ejemplo)</title>
+  <item><title>&xxe;</title><link>https://fuente-prueba.example.org/xxe</link></item>
+</channel></rss>

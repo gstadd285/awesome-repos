@@ -1,0 +1,14 @@
+# Fixture sintético de prueba de Otea Austral: no es el robots.txt de ningún sitio real.
+# El grupo de OteaAustral manda sobre el de «*» (que lo prohíbe todo): así se prueba la elección de grupo.
+User-agent: *
+Disallow: /
+
+User-agent: OtroRobot
+Allow: /
+
+user-agent: oteaaustral
+Disallow: /privado/
+Allow: /privado/abierto
+Disallow: /*.pdf$
+
+Sitemap: https://fuente-prueba.example.org/sitemap.xml

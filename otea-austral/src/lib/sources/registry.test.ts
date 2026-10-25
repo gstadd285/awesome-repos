@@ -27,6 +27,13 @@ describe("registro de fuentes", () => {
     }
   });
 
+  it("rss o api solo con condiciones «Verificadas el …»: la ingesta no lee una fuente cuyas condiciones no se leyeron completas", () => {
+    // `docs/alertas-reales.md` §2.2: el feed se lee solo si las condiciones de reutilización ya se verificaron.
+    for (const f of REGISTRO_FUENTES.filter((x) => x.acceso !== "manual")) {
+      expect(f.condiciones_reutilizacion, f.id).toMatch(/^Verificadas el \d{4}-\d{2}-\d{2}: /);
+    }
+  });
+
   it("ningún feed se repite entre fuentes", () => {
     const urls = REGISTRO_FUENTES.flatMap((f) => f.feeds.map((x) => new URL(x.url).href));
     expect(new Set(urls).size).toBe(urls.length);

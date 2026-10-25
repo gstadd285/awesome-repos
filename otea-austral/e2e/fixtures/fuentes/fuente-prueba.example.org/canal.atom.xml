@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fixture sintético de prueba de Otea Austral: no es un feed real. Enlaces de ejemplo (example.org). -->
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Avisos de prueba (ejemplo)</title>
+  <id>urn:uuid:00000000-0000-4000-8000-000000000001</id>
+  <updated>2026-10-23T12:00:00Z</updated>
+  <link rel="self" href="https://fuente-prueba.example.org/canal.atom.xml"/>
+  <entry>
+    <title type="html">Aviso de prueba A (ejemplo) &amp;amp; mercado</title>
+    <link rel="enclosure" href="https://fuente-prueba.example.org/avisos/a.pdf"/>
+    <link rel="alternate" type="text/html" href="https://fuente-prueba.example.org/avisos/a"/>
+    <id>tag:fuente-prueba.example.org,2026:aviso-a</id>
+    <published>2026-10-23T10:15:00-03:00</published>
+    <updated>2026-10-23T11:00:00-03:00</updated>
+    <summary>TEXTO-DE-LA-FUENTE-NO-SE-GUARDA: resumen sintético.</summary>
+    <content type="html">&lt;p&gt;TEXTO-DE-LA-FUENTE-NO-SE-GUARDA&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <title type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">Aviso de prueba <em>B</em> (ejemplo)</div></title>
+    <link href="https://www.fuente-prueba.example.org/avisos/b"/>
+    <id>tag:fuente-prueba.example.org,2026:aviso-b</id>
+    <updated>2026-13-01T00:00:00Z</updated>
+  </entry>
+</feed>
