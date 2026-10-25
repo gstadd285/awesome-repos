@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type {
   AlmacenCuentas,
+  AuditoriaInvitacion,
   CuentaGuardada,
   EventoGuardado,
   SesionLeida,
   SesionListada,
   TipoEvento,
+  InvitacionGuardada,
 } from "./almacen";
 import { MAX_SESIONES_POR_CUENTA, PLAZO_ALTAS_SIN_CONFIRMAR_MS, RETENCION_EVENTOS_MS, SESION_INACTIVA_MS } from "./constantes";
 
@@ -22,7 +24,10 @@ type Token = {
   aceptado: string | null;
   emitido: string;
   usado: string | null;
+  invitacionId: string | null;
 };
+
+type Invitacion = InvitacionGuardada & { codigoHash: string; cuentaId: string | null };
 
 type Sesion = {
   id: string;
@@ -53,7 +58,19 @@ export function crearAlmacenMemoria(): AlmacenCuentas & { cuentasGuardadas(): re
   const codigos = new Map<string, Map<string, string | null>>();
   const eventos: { id: number; cuentaId: string; tipo: TipoEvento; fecha: string }[] = [];
   const cuota = new Map<string, number>();
+  const invitaciones = new Map<string, Invitacion>();
+  const auditoria: Omit<AuditoriaInvitacion, "alias">[] = [];
   let siguienteEvento = 1;
+  const vigente = (i: Invitacion, ahora: string) => i.usada === null && i.revocada === null && ms(i.vence) > ms(ahora);
+  const sinCodigo = (i: Invitacion): InvitacionGuardada => ({
+    id: i.id,
+    alias: i.alias,
+    emitida: i.emitida,
+    vence: i.vence,
+    envios: i.envios,
+    usada: i.usada,
+    revocada: i.revocada,
+  });
 
   const copia = (c: CuentaGuardada): CuentaGuardada => ({ ...c, temas: [...c.temas] });
   const evento = (cuentaId: string, tipo: TipoEvento, fecha: string) => {
@@ -127,6 +144,7 @@ export function crearAlmacenMemoria(): AlmacenCuentas & { cuentasGuardadas(): re
             aceptado: e.ahora,
             emitido: e.ahora,
             usado: null,
+            invitacionId: e.invitacionId ?? null,
           },
         },
         e.reenviarSiAnteriorA,
@@ -139,11 +157,20 @@ export function crearAlmacenMemoria(): AlmacenCuentas & { cuentasGuardadas(): re
       return { correoIndice: t.correoIndice!, correoCifrado: t.correoCifrado!, versionTextos: t.versionTextos!, aceptado: t.aceptado! };
     },
 
-    async activarAlta({ tokenHash, vigenteDesde, claveHash, ahora, sesion }) {
+    async activarAlta({ tokenHash, vigenteDesde, claveHash, ahora, sesion, exigirInvitacion = false }) {
       const t = tokens.get(tokenHash);
       if (!t || t.proposito !== "alta" || t.usado !== null || ms(t.emitido) < ms(vigenteDesde)) return "invalido";
+      // Todo lo que sigue es síncrono: comprobar y gastar la invitación no deja hueco para otra activación.
+      // Mismo orden que en la base: primero el correo repetido, después la invitación.
       if (porCorreo.has(t.correoIndice!)) return "duplicado";
+      const invitacion = exigirInvitacion ? (t.invitacionId ? invitaciones.get(t.invitacionId) : undefined) : undefined;
+      if (exigirInvitacion && (!invitacion || !vigente(invitacion, ahora))) return "invitacion";
       const id = randomUUID();
+      if (invitacion) {
+        invitacion.usada = ahora;
+        invitacion.cuentaId = id;
+        auditoria.push({ invitacionId: invitacion.id, accion: "usada", actor: null, fecha: ahora });
+      }
       cuentas.set(id, {
         id,
         correoIndice: t.correoIndice!,
@@ -240,6 +267,8 @@ export function crearAlmacenMemoria(): AlmacenCuentas & { cuentasGuardadas(): re
       for (const [hash, s] of sesiones) if (s.cuentaId === cuentaId) sesiones.delete(hash);
       codigos.delete(cuentaId);
       for (let i = eventos.length - 1; i >= 0; i--) if (eventos[i].cuentaId === cuentaId) eventos.splice(i, 1);
+      // Como `on delete set null` en la base: la invitación sigue en la auditoría, sin apuntar a la cuenta.
+      for (const inv of invitaciones.values()) if (inv.cuentaId === cuentaId) inv.cuentaId = null;
     },
 
     async emitirRestablecer(e) {
@@ -250,6 +279,7 @@ export function crearAlmacenMemoria(): AlmacenCuentas & { cuentasGuardadas(): re
           hash: e.tokenHash,
           datos: {
             proposito: "restablecer",
+            invitacionId: null,
             cuentaId: e.cuentaId,
             correoIndice: null,
             correoCifrado: null,
@@ -419,6 +449,64 @@ export function crearAlmacenMemoria(): AlmacenCuentas & { cuentasGuardadas(): re
       if (usados >= tope) return false;
       cuota.set(dia, usados + 1);
       return true;
+    },
+
+    async cuotaAgotada(tope, ahora) {
+      return (cuota.get(diaDeChile(ahora)) ?? 0) >= tope;
+    },
+
+    async emitirInvitacion(e) {
+      if ([...invitaciones.values()].filter((i) => vigente(i, e.ahora)).length >= e.maximoVigentes) return "tope";
+      if ([...invitaciones.values()].some((i) => i.codigoHash === e.codigoHash)) throw new Error("Código repetido.");
+      const id = randomUUID();
+      invitaciones.set(id, {
+        id,
+        codigoHash: e.codigoHash,
+        alias: e.alias,
+        emitida: e.ahora,
+        vence: e.vence,
+        envios: 0,
+        usada: null,
+        revocada: null,
+        cuentaId: null,
+      });
+      auditoria.push({ invitacionId: id, accion: "emitida", actor: e.actor, fecha: e.ahora });
+      return { id };
+    },
+
+    async reservarInvitacion(codigoHash, ahora, maximoEnvios) {
+      const i = [...invitaciones.values()].find((x) => x.codigoHash === codigoHash);
+      if (!i || !vigente(i, ahora) || i.envios >= maximoEnvios) return null;
+      i.envios += 1;
+      return i.id;
+    },
+
+    async revocarInvitacion(id, actor, ahora) {
+      const i = invitaciones.get(id);
+      if (!i || i.usada !== null || i.revocada !== null) return false;
+      i.revocada = ahora;
+      auditoria.push({ invitacionId: id, accion: "revocada", actor, fecha: ahora });
+      return true;
+    },
+
+    async listarInvitaciones(limite) {
+      return [...invitaciones.values()]
+        .sort((a, b) => ms(b.emitida) - ms(a.emitida))
+        .slice(0, limite)
+        .map(sinCodigo);
+    },
+
+    async auditoriaInvitaciones(limite) {
+      return auditoria
+        .slice()
+        .reverse()
+        .slice(0, limite)
+        .map((f) => ({ ...f, alias: invitaciones.get(f.invitacionId)?.alias ?? "" }));
+    },
+
+    async invitacionDeCuenta(cuentaId) {
+      const i = [...invitaciones.values()].find((x) => x.cuentaId === cuentaId);
+      return i && i.usada ? { alias: i.alias, emitida: i.emitida, usada: i.usada } : null;
     },
 
     async purgar(ahora) {

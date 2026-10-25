@@ -1,6 +1,7 @@
 import { codigoError, type BaseDeDatos, type Consultor } from "@/lib/db/cliente";
 import type {
   AlmacenCuentas,
+  AuditoriaInvitacion,
   CuentaGuardada,
   EventoGuardado,
   SesionLeida,
@@ -16,6 +17,19 @@ import { MAX_SESIONES_POR_CUENTA, PLAZO_ALTAS_SIN_CONFIRMAR_MS, RETENCION_EVENTO
  * instancias aplican la misma regla. El texto SQL no lleva datos: todo va en `$1`, `$2`…
  */
 const VIOLACION_UNICA = "23505";
+
+/** Para deshacer la transacción del alta cuando la invitación ya no vale (ver `activarAlta`). */
+class InvitacionNoVale extends Error {}
+
+type FilaInvitacion = {
+  id: string;
+  alias: string;
+  emitida: Date;
+  vence: Date;
+  envios: number;
+  usada: Date | null;
+  revocada: Date | null;
+};
 
 type FilaCuenta = {
   id: string;
@@ -127,15 +141,16 @@ export function crearAlmacenPostgres(db: BaseDeDatos): AlmacenCuentas {
               valor: e.correoIndice,
             },
             {
-              sql: `insert into cuenta_tokens (token_hash, proposito, correo_indice, correo_cifrado, version_textos, aceptado, emitido)
-                    values ($1, 'alta', $2, $3, $4, $5::timestamptz, $5::timestamptz)`,
-              parametros: [e.tokenHash, e.correoIndice, e.correoCifrado, e.versionTextos, e.ahora],
+              sql: `insert into cuenta_tokens (token_hash, proposito, correo_indice, correo_cifrado, version_textos, aceptado, emitido, invitacion_id)
+                    values ($1, 'alta', $2, $3, $4, $5::timestamptz, $5::timestamptz, $6::uuid)`,
+              parametros: [e.tokenHash, e.correoIndice, e.correoCifrado, e.versionTextos, e.ahora, e.invitacionId ?? null],
             },
             {
-              sql: `update cuenta_tokens set token_hash = $1, version_textos = $3, aceptado = $4::timestamptz, emitido = $4::timestamptz
+              sql: `update cuenta_tokens set token_hash = $1, version_textos = $3, aceptado = $4::timestamptz, emitido = $4::timestamptz,
+                           invitacion_id = $6::uuid
                      where proposito = 'alta' and correo_indice = $2 and usado is null and emitido < $5::timestamptz
                      returning 1 as ok`,
-              parametros: [e.tokenHash, e.correoIndice, e.versionTextos, e.ahora, e.reenviarSiAnteriorA],
+              parametros: [e.tokenHash, e.correoIndice, e.versionTextos, e.ahora, e.reenviarSiAnteriorA, e.invitacionId ?? null],
             },
           );
         });
@@ -157,26 +172,49 @@ export function crearAlmacenPostgres(db: BaseDeDatos): AlmacenCuentas {
         : null;
     },
 
-    async activarAlta({ tokenHash, vigenteDesde, claveHash, ahora, sesion }) {
+    async activarAlta({ tokenHash, vigenteDesde, claveHash, ahora, sesion, exigirInvitacion = false }) {
       try {
         return await db.transaccion(async (tx) => {
-          const [t] = await tx.consulta<{ correo_indice: string; correo_cifrado: string; version_textos: string; aceptado: Date }>(
+          const [t] = await tx.consulta<{
+            correo_indice: string;
+            correo_cifrado: string;
+            version_textos: string;
+            aceptado: Date;
+            invitacion_id: string | null;
+          }>(
             `update cuenta_tokens set usado = $2::timestamptz
               where token_hash = $1 and proposito = 'alta' and usado is null and emitido >= $3::timestamptz
-              returning correo_indice, correo_cifrado, version_textos, aceptado`,
+              returning correo_indice, correo_cifrado, version_textos, aceptado, invitacion_id`,
             [tokenHash, ahora, vigenteDesde],
           );
           if (!t) return "invalido" as const;
+          if (exigirInvitacion && !t.invitacion_id) throw new InvitacionNoVale();
           const [cuenta] = await tx.consulta<{ id: string }>(
             `insert into cuentas (correo_indice, correo_cifrado, clave_hash, clave_cambiada, version_textos, aceptado, creada)
              values ($1, $2, $3, $4::timestamptz, $5, $6::timestamptz, $4::timestamptz) returning id`,
             [t.correo_indice, t.correo_cifrado, claveHash, ahora, t.version_textos, iso(t.aceptado)],
           );
+          if (exigirInvitacion) {
+            // Una sola sentencia gasta la invitación si sigue valiendo. Con dos altas a la vez, la segunda espera el candado
+            // de la fila, vuelve a evaluar `usada is null` y no encuentra nada: se deshace entera.
+            const gastada = await tx.consulta(
+              `update invitaciones set usada = $2::timestamptz, cuenta_id = $3
+                where id = $1 and usada is null and revocada is null and vence > $2::timestamptz
+                returning 1 as ok`,
+              [t.invitacion_id, ahora, cuenta.id],
+            );
+            if (gastada.length !== 1) throw new InvitacionNoVale();
+            await tx.consulta(
+              "insert into invitacion_auditoria (invitacion_id, accion, actor, fecha) values ($1, 'usada', null, $2::timestamptz)",
+              [t.invitacion_id, ahora],
+            );
+          }
           await evento(tx, cuenta.id, "alta", ahora);
           const { id } = await abrirSesion(tx, cuenta.id, { ...sesion, fase: "activa", ahora }, MAX_SESIONES_POR_CUENTA);
           return { cuentaId: cuenta.id, sesionId: id };
         });
       } catch (error) {
+        if (error instanceof InvitacionNoVale) return "invitacion";
         if (codigoError(error) === VIOLACION_UNICA) return "duplicado";
         throw error;
       }
@@ -486,6 +524,15 @@ export function crearAlmacenPostgres(db: BaseDeDatos): AlmacenCuentas {
       return filas.length === 1;
     },
 
+    async cuotaAgotada(tope, ahora) {
+      const filas = await db.consulta(
+        `select 1 as ok from cuentas_envios_diarios
+          where dia = ($1::timestamptz at time zone 'America/Santiago')::date and cantidad >= $2::integer`,
+        [ahora, tope],
+      );
+      return filas.length === 1;
+    },
+
     async purgar(ahora) {
       await db.consulta(
         `delete from cuenta_tokens
@@ -498,6 +545,88 @@ export function crearAlmacenPostgres(db: BaseDeDatos): AlmacenCuentas {
         [antes(ahora, 24 * 60 * 60_000), antes(ahora, SESION_INACTIVA_MS + 24 * 60 * 60_000)],
       );
       await db.consulta("delete from cuenta_eventos where fecha < $1::timestamptz", [antes(ahora, RETENCION_EVENTOS_MS)]);
+    },
+
+    // ── Invitaciones ───────────────────────────────────────────────────────
+
+    async emitirInvitacion(e) {
+      return db.transaccion(async (tx) => {
+        // El tope y la inserción en una sola sentencia: si ya hay `maximoVigentes`, no inserta nada.
+        const [fila] = await tx.consulta<{ id: string }>(
+          `insert into invitaciones (codigo_hash, alias, emitida, vence)
+           select $1, $2, $3::timestamptz, $4::timestamptz
+            where (select count(*) from invitaciones
+                    where usada is null and revocada is null and vence > $3::timestamptz) < $5::integer
+           returning id`,
+          [e.codigoHash, e.alias, e.ahora, e.vence, e.maximoVigentes],
+        );
+        if (!fila) return "tope" as const;
+        await tx.consulta(
+          "insert into invitacion_auditoria (invitacion_id, accion, actor, fecha) values ($1, 'emitida', $2, $3::timestamptz)",
+          [fila.id, e.actor, e.ahora],
+        );
+        return { id: fila.id };
+      });
+    },
+
+    async reservarInvitacion(codigoHash, ahora, maximoEnvios) {
+      const [fila] = await db.consulta<{ id: string }>(
+        `update invitaciones set envios = envios + 1
+          where codigo_hash = $1 and usada is null and revocada is null and vence > $2::timestamptz and envios < $3::integer
+          returning id`,
+        [codigoHash, ahora, maximoEnvios],
+      );
+      return fila?.id ?? null;
+    },
+
+    async revocarInvitacion(id, actor, ahora) {
+      return db.transaccion(async (tx) => {
+        const filas = await tx.consulta(
+          "update invitaciones set revocada = $2::timestamptz where id = $1 and usada is null and revocada is null returning 1 as ok",
+          [id, ahora],
+        );
+        if (filas.length !== 1) return false;
+        await tx.consulta(
+          "insert into invitacion_auditoria (invitacion_id, accion, actor, fecha) values ($1, 'revocada', $2, $3::timestamptz)",
+          [id, actor, ahora],
+        );
+        return true;
+      });
+    },
+
+    async listarInvitaciones(limite) {
+      const filas = await db.consulta<FilaInvitacion>(
+        `select id, alias, emitida, vence, envios, usada, revocada from invitaciones
+          order by emitida desc, id limit $1::int`,
+        [limite],
+      );
+      return filas.map((f) => ({
+        id: f.id,
+        alias: f.alias,
+        emitida: iso(f.emitida),
+        vence: iso(f.vence),
+        envios: f.envios,
+        usada: f.usada ? iso(f.usada) : null,
+        revocada: f.revocada ? iso(f.revocada) : null,
+      }));
+    },
+
+    async auditoriaInvitaciones(limite) {
+      const filas = await db.consulta<{ invitacion_id: string; alias: string; accion: AuditoriaInvitacion["accion"]; actor: string | null; fecha: Date }>(
+        `select a.invitacion_id, i.alias, a.accion, a.actor, a.fecha
+           from invitacion_auditoria a join invitaciones i on i.id = a.invitacion_id
+          order by a.orden desc limit $1::int`,
+        [limite],
+      );
+      return filas.map((f) => ({ invitacionId: f.invitacion_id, alias: f.alias, accion: f.accion, actor: f.actor, fecha: iso(f.fecha) }));
+    },
+
+    async invitacionDeCuenta(cuentaId) {
+      const [f] = await db.consulta<{ alias: string; emitida: Date; usada: Date }>(
+        "select alias, emitida, usada from invitaciones where cuenta_id = $1 and usada is not null",
+        [cuentaId],
+      );
+      return f ? { alias: f.alias, emitida: iso(f.emitida), usada: iso(f.usada) } : null;
     },
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { EnvSchema, MODELOS_ASISTENTE, tareasActivas } from "./env";
+import { cuentasAbiertas, cuentasPorInvitacion, EnvSchema, MODELOS_ASISTENTE, tareasActivas } from "./env";
 
 describe("EnvSchema", () => {
   it("por defecto la lista de espera está cerrada", () => {
@@ -237,8 +237,27 @@ describe("EnvSchema · cuentas de personas usuarias", () => {
     }
   });
 
-  it("la modalidad solo admite cerradas, memoria o abiertas", () => {
-    for (const mala of ["abierta", "cerrada", "on", "1", ""]) expect(EnvSchema.safeParse({ CUENTAS_MODO: mala }).success, mala).toBe(false);
+  it("la modalidad solo admite cerradas, memoria, abiertas o invitacion", () => {
+    for (const mala of ["abierta", "cerrada", "invitación", "invitaciones", "on", "1", ""]) {
+      expect(EnvSchema.safeParse({ CUENTAS_MODO: mala }).success, mala).toBe(false);
+    }
+  });
+
+  it("invitacion (acceso anticipado privado) exige lo mismo que abiertas, y nace apagada", () => {
+    expect(EnvSchema.parse({}).CUENTAS_MODO).not.toBe("invitacion");
+    expect(cuentasPorInvitacion(EnvSchema.parse({}))).toBe(false);
+    expect(EnvSchema.safeParse({ CUENTAS_MODO: "invitacion" }).success).toBe(false);
+    const porInvitacion = { ...completas, CUENTAS_MODO: "invitacion" };
+    expect(EnvSchema.safeParse(porInvitacion).success).toBe(true);
+    expect(cuentasPorInvitacion(EnvSchema.parse(porInvitacion))).toBe(true);
+    expect(cuentasAbiertas(EnvSchema.parse(porInvitacion))).toBe(true);
+    for (const falta of ["DATABASE_URL", "RESEND_API_KEY", "CUENTAS_SECRETO"] as const) {
+      const { [falta]: _omitida, ...incompleta } = porInvitacion;
+      void _omitida;
+      const r = EnvSchema.safeParse(incompleta);
+      expect(r.success, falta).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0]), falta).toContain(falta);
+    }
   });
 
   it("memoria no se permite en producción, salvo para las pruebas e2e", () => {

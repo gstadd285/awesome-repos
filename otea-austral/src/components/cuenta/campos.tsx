@@ -193,6 +193,44 @@ export function CampoClave({
   );
 }
 
+/**
+ * Código de invitación (acceso anticipado). El servidor nunca lo devuelve (como las contraseñas): el campo lo guarda en su
+ * propio estado, así que no se vacía si el envío falla por otra cosa (una casilla sin marcar). Sin JavaScript, sí se vacía.
+ */
+export function CampoInvitacion({ error, className = "" }: { error?: string; className?: string }) {
+  const id = useId();
+  const idError = `${id}-error`;
+  const idAyuda = `${id}-ayuda`;
+  const [valor, setValor] = useState("");
+  return (
+    <div className={className}>
+      <label htmlFor={id} className={CLASE_ETIQUETA}>
+        Código de invitación
+      </label>
+      <input
+        id={id}
+        name="invitacion"
+        type="text"
+        autoComplete="off"
+        autoCapitalize="characters"
+        spellCheck={false}
+        required
+        maxLength={64}
+        placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={[idAyuda, error ? idError : null].filter(Boolean).join(" ")}
+        className={`${CLASE_CAMPO} font-mono`}
+      />
+      <p id={idAyuda} className="mt-2 text-sm leading-relaxed text-apoyo">
+        El que te enviamos con la invitación: 20 letras y números, en cuatro grupos de cinco. Sirve para una sola cuenta.
+      </p>
+      <ErrorDeCampo id={idError}>{error}</ErrorDeCampo>
+    </div>
+  );
+}
+
 export function Casilla({
   nombre,
   marcada,

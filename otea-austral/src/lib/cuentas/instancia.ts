@@ -8,9 +8,11 @@ import { crearAlmacenMemoria } from "./almacen-memoria";
 import { crearAlmacenPostgres } from "./almacen-postgres";
 import { hashearClave, necesitaRehash, verificarClave, verificarContraSenuelo } from "./clave";
 import { crearCifradorCuentas } from "./cifrado";
+import { crearServicioInvitaciones, type ServicioInvitaciones } from "./invitaciones";
 import { crearServicioCuentas, type ServicioCuentas } from "./servicio";
 
-type Instancia = { servicio: ServicioCuentas; marca: () => string };
+/** `invitaciones`: solo con la base y `CUENTAS_SECRETO` (de él sale la clave del HMAC de los códigos); si no, `null`. */
+type Instancia = { servicio: ServicioCuentas; marca: () => string; invitaciones: ServicioInvitaciones | null };
 const global = globalThis as typeof globalThis & { __oteaCuentas?: Instancia };
 
 /** Lo que se hace sin correo real (modo de prueba): el enlace queda en el registro del servidor, nunca el correo. */
@@ -28,10 +30,15 @@ function crear(): Instancia {
   const marcaValida = (valor: unknown, ahora: Date) => revisarMarcaDeTiempo(cifrador.claveTiempo, valor, ahora.getTime()) === "ok";
   const clave = { hashear: hashearClave, verificar: verificarClave, necesitaRehash, senuelo: verificarContraSenuelo };
 
-  if (env.CUENTAS_MODO === "abiertas" && db && env.RESEND_API_KEY && env.CUENTAS_SECRETO) {
+  // Emitir invitaciones no depende del modo: la dueña puede prepararlas antes de pasar a `invitacion`. Sin el secreto
+  // fijo, un código emitido no serviría en otra instancia ni tras reiniciar: no se ofrece.
+  const invitaciones = db && env.CUENTAS_SECRETO ? crearServicioInvitaciones({ almacen: crearAlmacenPostgres(db), cifrador }) : null;
+
+  if ((env.CUENTAS_MODO === "abiertas" || env.CUENTAS_MODO === "invitacion") && db && env.RESEND_API_KEY && env.CUENTAS_SECRETO) {
     return {
+      invitaciones,
       servicio: crearServicioCuentas({
-        modo: "abiertas",
+        modo: env.CUENTAS_MODO,
         almacen: crearAlmacenPostgres(db),
         cifrador,
         urlSitio: env.NEXT_PUBLIC_SITE_URL,
@@ -44,6 +51,7 @@ function crear(): Instancia {
     };
   }
   return {
+    invitaciones,
     servicio: crearServicioCuentas({
       modo: env.CUENTAS_MODO === "memoria" ? "memoria" : "cerradas",
       almacen: crearAlmacenMemoria(),
@@ -66,6 +74,11 @@ function instancia(): Instancia {
 /** Servicio único por proceso, según `CUENTAS_MODO` (validado en `env.ts`). */
 export function servicioCuentas(): ServicioCuentas {
   return instancia().servicio;
+}
+
+/** Invitaciones del panel (emitir, listar, revocar), o `null` si falta la base o `CUENTAS_SECRETO`. */
+export function servicioInvitaciones(): ServicioInvitaciones | null {
+  return instancia().invitaciones;
 }
 
 /** Marca de tiempo firmada para los formularios que envían correo (trampa contra bots, ver `waitlist/tiempo.ts`). */

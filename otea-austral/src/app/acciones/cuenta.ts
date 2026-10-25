@@ -44,6 +44,8 @@ const TEXTO = {
   saturada: "Hoy enviamos muchos correos y ya no podemos enviar más. Vuelve a intentarlo mañana.",
   espera: "Espera unos segundos y vuelve a enviar el formulario. Si sigue sin funcionar, recarga la página.",
   enlace: "El enlace venció, ya se usó o está incompleto. Pide uno nuevo.",
+  // Solo lo ve quien abrió el enlace de su correo (ya probó que es suya la dirección): decirlo no revela nada nuevo.
+  invitacion: "Tu invitación ya no vale: venció, se revocó o ya se usó para crear otra cuenta. Pide una nueva a quien te invitó.",
   csrf: "La página venció. Recárgala e inténtalo de nuevo.",
   rechazado: "El correo o la contraseña no son correctos.",
 } as const;
@@ -58,7 +60,7 @@ const campo = (f: FormData, nombre: string): string | undefined => {
 };
 
 /** Lo que no se puede resolver con el resultado del servicio. */
-function aviso(estado: "limite" | "reintentar" | "cerrada" | "saturada" | "espera" | "enlace"): EstadoFormulario {
+function aviso(estado: "limite" | "reintentar" | "cerrada" | "saturada" | "espera" | "enlace" | "invitacion"): EstadoFormulario {
   return error(TEXTO[estado]);
 }
 
@@ -75,23 +77,29 @@ function destino(valor: string | undefined): string {
 
 export async function crearCuentaAccion(_previo: EstadoFormulario, f: FormData): Promise<EstadoFormulario> {
   const { claveCliente } = await contextoCuenta();
-  const r = await servicioCuentas().solicitarAlta(
+  const servicio = servicioCuentas();
+  const r = await servicio.solicitarAlta(
     {
       correo: f.get("correo"),
       condiciones: f.get("condiciones"),
       privacidad: f.get("privacidad"),
       sitio_web: f.get("sitio_web"),
       tiempo: f.get("tiempo"),
+      invitacion: f.get("invitacion"),
     },
     claveCliente,
   );
   if (r.estado === "ok") {
+    // Con invitación, la misma respuesta sirva o no el código, y exista o no el correo (`docs/alertas-reales.md` §6).
     return enviado(
       r.prueba
         ? "Paso 1 de 2 listo. Modo de prueba: no enviamos correos; el enlace queda en el registro del servidor."
-        : "Paso 1 de 2 listo. Revisa tu correo: si es válido, te llegará un mensaje con un enlace para elegir tu contraseña (vence en 72 horas). Sin ese paso no se crea la cuenta.",
+        : servicio.modo === "invitacion"
+          ? "Paso 1 de 2 listo. Si el código de invitación y el correo son válidos, te llegará un mensaje con un enlace para elegir tu contraseña (vence en 72 horas). Si no llega, revisa el código con quien te invitó. Sin ese paso no se crea la cuenta."
+          : "Paso 1 de 2 listo. Revisa tu correo: si es válido, te llegará un mensaje con un enlace para elegir tu contraseña (vence en 72 horas). Sin ese paso no se crea la cuenta.",
     );
   }
+  // El código de invitación nunca vuelve al navegador (como las contraseñas): el formulario lo conserva por su cuenta.
   const correo = campo(f, "correo");
   const valores = { correo: (correo ?? "").slice(0, 254), condiciones: f.get("condiciones") === "on", privacidad: f.get("privacidad") === "on" };
   if (r.estado === "invalida") return error("Revisa los datos marcados.", { errores: r.errores, valores });

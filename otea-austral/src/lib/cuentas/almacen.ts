@@ -84,12 +84,34 @@ export type SesionListada = {
 
 export type EventoGuardado = { tipo: TipoEvento; fecha: string };
 
+/** Una invitación como la ve el panel. El código no está: no se guarda (solo su HMAC, que no sale del almacén). */
+export type InvitacionGuardada = {
+  id: string;
+  alias: string;
+  emitida: string;
+  vence: string;
+  /** Correos de alta que provocó (ver `ENVIOS_POR_INVITACION`). */
+  envios: number;
+  usada: string | null;
+  revocada: string | null;
+};
+
+/** Una fila de la auditoría de las invitaciones. `actor` es el alias del panel; nulo cuando la usa la persona invitada. */
+export type AuditoriaInvitacion = {
+  invitacionId: string;
+  alias: string;
+  accion: "emitida" | "revocada" | "usada";
+  actor: string | null;
+  fecha: string;
+};
+
 export interface AlmacenCuentas {
   // ── Crear la cuenta ────────────────────────────────────────────────────
   /**
    * Deja un enlace de alta pendiente para el correo. `existente`: ya hay una cuenta con ese correo (no se guarda nada).
    * `reciente`: ya hay un enlace emitido después de `reenviarSiAnteriorA` (no hay que enviar otro correo). `renovado`:
-   * había uno más viejo y se reemplazó. `nuevo`: no había.
+   * había uno más viejo y se reemplazó. `nuevo`: no había. `invitacionId`: la invitación con que se pidió (modo
+   * `invitacion`); el enlace la recuerda y al renovarlo se reemplaza.
    */
   emitirAlta(e: {
     correoIndice: string;
@@ -98,12 +120,17 @@ export interface AlmacenCuentas {
     versionTextos: string;
     ahora: string;
     reenviarSiAnteriorA: string;
+    invitacionId?: string | null;
   }): Promise<"nuevo" | "renovado" | "reciente" | "existente">;
   /** El alta pendiente de ese enlace, si no se usó y se emitió desde `vigenteDesde`. No lo gasta. */
   leerAlta(tokenHash: string, vigenteDesde: string): Promise<AltaPendiente | null>;
   /**
    * Gasta el enlace, crea la cuenta con esa contraseña y abre su primera sesión, todo o nada. `invalido`: el enlace no
    * existe, venció o ya se usó. `duplicado`: ya existe una cuenta con ese correo.
+   *
+   * Con `exigirInvitacion` (modo `invitacion`) además gasta la invitación del enlace en la misma transacción (`usada`, la
+   * cuenta y una fila `usada` en la auditoría). `invitacion`: el enlace no tiene invitación o ya no vale (se usó, se
+   * revocó o venció); entonces no cambia nada. Dos altas a la vez con la misma invitación: gana una sola.
    */
   activarAlta(a: {
     tokenHash: string;
@@ -111,7 +138,8 @@ export interface AlmacenCuentas {
     claveHash: string;
     ahora: string;
     sesion: Omit<SesionNueva, "fase" | "ahora">;
-  }): Promise<{ cuentaId: string; sesionId: string } | "invalido" | "duplicado">;
+    exigirInvitacion?: boolean;
+  }): Promise<{ cuentaId: string; sesionId: string } | "invalido" | "duplicado" | "invitacion">;
 
   /** Borra un enlace pendiente (el correo no pudo enviarse: se podrá pedir otro de inmediato). */
   descartarEnlace(tokenHash: string): Promise<void>;
@@ -193,6 +221,35 @@ export interface AlmacenCuentas {
   eventosRecientes(cuentaId: string, limite: number): Promise<EventoGuardado[]>;
   /** Reserva un correo de la cuota del día (hora de Chile): `false` si ya se llegó a `tope`. */
   reservarCorreo(tope: number, ahora: string): Promise<boolean>;
+  /** ¿El día (hora de Chile) ya llegó a `tope` correos? Solo lee: no reserva nada. */
+  cuotaAgotada(tope: number, ahora: string): Promise<boolean>;
   /** Borra enlaces vencidos, sesiones terminadas y eventos viejos. */
   purgar(ahora: string): Promise<void>;
+
+  // ── Invitaciones (migración 0009) ──────────────────────────────────────
+  /**
+   * Guarda una invitación nueva y su fila `emitida` en la auditoría, todo o nada. `tope`: ya hay `maximoVigentes` sin
+   * usar, sin revocar y sin vencer (no se guarda nada).
+   */
+  emitirInvitacion(e: {
+    codigoHash: string;
+    alias: string;
+    actor: string;
+    ahora: string;
+    vence: string;
+    maximoVigentes: number;
+  }): Promise<{ id: string } | "tope">;
+  /**
+   * Toma un correo de alta de la invitación de ese código, si sigue vigente (sin usar, sin revocar, sin vencer y con menos
+   * de `maximoEnvios` correos): devuelve su id. `null` si no existe o ya no vale (sin decir por qué). No la gasta.
+   */
+  reservarInvitacion(codigoHash: string, ahora: string, maximoEnvios: number): Promise<string | null>;
+  /** Revoca una invitación sin usar (y deja la fila en la auditoría). `false` si no existe o ya estaba usada o revocada. */
+  revocarInvitacion(id: string, actor: string, ahora: string): Promise<boolean>;
+  /** Las invitaciones, la más nueva primero. */
+  listarInvitaciones(limite: number): Promise<InvitacionGuardada[]>;
+  /** La auditoría de las invitaciones, lo más nuevo primero. */
+  auditoriaInvitaciones(limite: number): Promise<AuditoriaInvitacion[]>;
+  /** La invitación con que se creó la cuenta (para «Descargar mis datos»). */
+  invitacionDeCuenta(cuentaId: string): Promise<{ alias: string; emitida: string; usada: string } | null>;
 }

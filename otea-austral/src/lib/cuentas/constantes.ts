@@ -51,6 +51,24 @@ export const INTENTOS_POR_CORREO_Y_CLIENTE = 8;
  */
 export const PARTE_DE_CUOTA_PARA_ALTAS = 0.6;
 
+/**
+ * Invitaciones (`CUENTAS_MODO=invitacion`, `docs/alertas-reales.md` §6). Un código vale 14 días por omisión y 30 como
+ * máximo (la base no admite más); puede haber hasta 50 vigentes a la vez.
+ */
+export const VIGENCIA_INVITACION_DIAS = 14;
+export const VIGENCIA_MAXIMA_INVITACION_DIAS = 30;
+export const INVITACIONES_VIGENTES_MAX = 50;
+/**
+ * Correos de alta que puede provocar un mismo código, contados en la base (para todas las instancias): un código filtrado no
+ * sirve para mandar correos sin fin. Pasado el tope, el código responde como uno que no existe.
+ */
+export const ENVIOS_POR_INVITACION = 5;
+/** Pedidos de alta con código por cliente: 10 por hora y 30 por día (todos cuentan, el código sea bueno o no). */
+export const INTENTOS_INVITACION_HORA = 10;
+export const INTENTOS_INVITACION_DIA = 30;
+/** Pedidos con un mismo código, desde cualquier cliente, por hora (en memoria; el tope firme es `ENVIOS_POR_INVITACION`). */
+export const INTENTOS_POR_CODIGO_HORA = 5;
+
 /** Las cuentas por confirmar se borran a los 7 días (no guardan contraseña: solo el correo cifrado). */
 export const PLAZO_ALTAS_SIN_CONFIRMAR_MS = 7 * DIA;
 /** La actividad de seguridad que ve la persona se guarda 90 días. */

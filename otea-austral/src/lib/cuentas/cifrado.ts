@@ -13,6 +13,8 @@ import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes } f
  *   · Secreto TOTP: AES-256-GCM. El «dato asociado» (AAD) lleva el índice (correo) o el id de la cuenta (TOTP): un texto
  *     cifrado copiado a otra fila no se descifra.
  *   · Formato: `v1.` + base64url(iv ‖ texto cifrado ‖ etiqueta). La versión permite cambiar el esquema.
+ *   · Códigos de invitación: solo su HMAC-SHA256 (clave `invitaciones`); con 100 bits al azar no hace falta un hash lento,
+ *     y sin el secreto una copia de la base no sirve para probar códigos.
  */
 export const VERSION_CIFRADO = "v1";
 /** Lo que valida la base (migración 0006): `v1.` y base64url. */
@@ -22,7 +24,7 @@ export const FORMATO_TOTP_CIFRADO = /^v1\.[A-Za-z0-9_-]{60,120}$/;
 const TAM_IV = 12;
 const TAM_ETIQUETA = 16;
 
-export type PropositoClave = "correo-cifrado" | "correo-indice" | "totp" | "csrf" | "tiempo";
+export type PropositoClave = "correo-cifrado" | "correo-indice" | "totp" | "csrf" | "tiempo" | "invitaciones";
 
 /** Clave de 256 bits para un propósito. Los nombres de propósito son parte del formato: no los cambies. */
 export function derivarClaveCuentas(secreto: string, proposito: PropositoClave): Buffer {
@@ -63,6 +65,8 @@ export type CifradorCuentas = {
   tokenCsrf(hashSesion: string): string;
   /** Clave de la marca de tiempo del formulario de alta (trampa contra bots; ver `waitlist/tiempo.ts`). */
   claveTiempo: Buffer;
+  /** HMAC-SHA256 de un código de invitación ya normalizado (`invitaciones.ts`): lo único que se guarda del código. */
+  hashInvitacion(codigoNormalizado: string): string;
 };
 
 export function crearCifradorCuentas(secreto: string): CifradorCuentas {
@@ -70,6 +74,7 @@ export function crearCifradorCuentas(secreto: string): CifradorCuentas {
   const claveIndice = derivarClaveCuentas(secreto, "correo-indice");
   const claveTotp = derivarClaveCuentas(secreto, "totp");
   const claveCsrf = derivarClaveCuentas(secreto, "csrf");
+  const claveInvitaciones = derivarClaveCuentas(secreto, "invitaciones");
   const indiceCorreo = (correo: string) => createHmac("sha256", claveIndice).update(correo).digest("hex");
   const aadCorreo = (indice: string) => `otea:cuentas.correo:${VERSION_CIFRADO}:${indice}`;
   const aadTotp = (cuentaId: string) => `otea:cuentas.totp:${VERSION_CIFRADO}:${cuentaId}`;
@@ -94,5 +99,7 @@ export function crearCifradorCuentas(secreto: string): CifradorCuentas {
     tokenCsrf: (hashSesion) => createHmac("sha256", claveCsrf).update(`csrf.${hashSesion}`).digest("base64url"),
 
     claveTiempo: derivarClaveCuentas(secreto, "tiempo"),
+
+    hashInvitacion: (codigo) => createHmac("sha256", claveInvitaciones).update(`otea:invitacion:${codigo}`).digest("hex"),
   };
 }

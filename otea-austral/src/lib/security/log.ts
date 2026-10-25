@@ -40,6 +40,11 @@ export type SecurityEvent =
         | "eliminada"
         | "datos_exportados";
     }
+  /**
+   * Invitaciones del acceso anticipado: emitida o revocada en el panel, usada al crear una cuenta, o rechazada (un pedido de
+   * alta con un código que no sirve). Nunca el código, su hash ni el correo.
+   */
+  | { tipo: "invitacion"; evento: "emitida" | "revocada" | "usada" | "rechazada" }
   /** Una pregunta al asistente: solo la categoría del resultado, nunca el texto ni quién preguntó. */
   | { tipo: "asistente"; resultado: "ia" | "sin_respuesta" | "negativa" | "degradada"; motivo?: string }
   /**

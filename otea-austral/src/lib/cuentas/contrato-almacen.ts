@@ -555,6 +555,170 @@ export function pruebasDelContrato(nombre: string, preparar: () => Promise<Prepa
         expect(await a.buscarPorId(id)).not.toBeNull();
         expect((await a.eventosRecientes(id, 10)).length).toBeGreaterThan(0);
       });
+
+      it("saber si la cuota del día está agotada solo lee: no reserva nada", async () => {
+        const dia = new Date(Date.UTC(2041, 2, 1 + Math.floor(Math.random() * 25), 15, 0, 0)).toISOString();
+        expect(await a.cuotaAgotada(2, dia)).toBe(false);
+        expect(await a.cuotaAgotada(2, dia)).toBe(false);
+        expect(await a.reservarCorreo(2, dia)).toBe(true);
+        expect(await a.cuotaAgotada(2, dia)).toBe(false);
+        expect(await a.cuotaAgotada(1, dia)).toBe(true);
+        expect(await a.reservarCorreo(2, dia)).toBe(true);
+        expect(await a.cuotaAgotada(2, dia)).toBe(true);
+      });
+    });
+
+    describe("invitaciones (acceso anticipado)", () => {
+      /** Seis años más tarde: ahí no vale ninguna invitación de las otras pruebas (vencen a los 30 días como mucho). */
+      const LEJOS = 60 * 24 * 365 * 6;
+
+      async function nuevaInvitacion(minuto = 0, dias = 14, alias = "prueba") {
+        const codigoHash = hex();
+        const r = await a.emitirInvitacion({
+          codigoHash,
+          alias,
+          actor: "panel",
+          ahora: T(minuto),
+          vence: T(minuto + dias * 24 * 60),
+          maximoVigentes: 10_000,
+        });
+        if (r === "tope") throw new Error("tope inesperado");
+        return { id: r.id, codigoHash };
+      }
+
+      /** Pide un alta con la invitación y la confirma; devuelve lo que contesta el almacén y lo necesario para mirar. */
+      async function altaConInvitacion(invitacionId: string | null, minuto: number, { exigir = true, confirmar = minuto + 1 } = {}) {
+        const tokenHash = hex();
+        const correoIndice = hex();
+        expect(
+          await a.emitirAlta({
+            correoIndice,
+            correoCifrado: cifradoCorreo(),
+            tokenHash,
+            versionTextos: "v1",
+            ahora: T(minuto),
+            reenviarSiAnteriorA: T(minuto - 10),
+            invitacionId,
+          }),
+        ).toBe("nuevo");
+        const resultado = await a.activarAlta({
+          tokenHash,
+          vigenteDesde: T(minuto - 60),
+          claveHash: claveHash(),
+          ahora: T(confirmar),
+          sesion: { tokenHash: hex(), expira: T(confirmar + 60), dispositivo: null },
+          exigirInvitacion: exigir,
+        });
+        return { resultado, tokenHash, correoIndice };
+      }
+
+      it("se reserva por su huella mientras vale y hasta el tope de correos; un código desconocido no da nada", async () => {
+        const { id, codigoHash } = await nuevaInvitacion();
+        expect(await a.reservarInvitacion(codigoHash, T(1), 3)).toBe(id);
+        expect(await a.reservarInvitacion(codigoHash, T(2), 3)).toBe(id);
+        expect(await a.reservarInvitacion(codigoHash, T(3), 3)).toBe(id);
+        expect(await a.reservarInvitacion(codigoHash, T(4), 3)).toBeNull();
+        expect(await a.reservarInvitacion(hex(), T(1), 3)).toBeNull();
+        expect((await a.listarInvitaciones(500)).find((i) => i.id === id)).toMatchObject({ envios: 3, usada: null, revocada: null });
+      });
+
+      it("vencida o revocada no se reserva; se revoca una sola vez y queda en la auditoría", async () => {
+        const vencida = await nuevaInvitacion(0, 1);
+        expect(await a.reservarInvitacion(vencida.codigoHash, T(24 * 60 - 1), 5)).toBe(vencida.id);
+        expect(await a.reservarInvitacion(vencida.codigoHash, T(24 * 60), 5)).toBeNull();
+
+        const revocada = await nuevaInvitacion(0);
+        expect(await a.revocarInvitacion(revocada.id, "panel", T(5))).toBe(true);
+        expect(await a.revocarInvitacion(revocada.id, "panel", T(6))).toBe(false);
+        expect(await a.reservarInvitacion(revocada.codigoHash, T(7), 5)).toBeNull();
+        const filas = (await a.auditoriaInvitaciones(500)).filter((f) => f.invitacionId === revocada.id);
+        expect(filas.map((f) => [f.accion, f.actor, f.fecha])).toEqual([
+          ["revocada", "panel", T(5)],
+          ["emitida", "panel", T(0)],
+        ]);
+        expect(filas[0].alias).toBe("prueba");
+      });
+
+      it("crear la cuenta gasta la invitación en la misma operación, y con ella no se crea otra", async () => {
+        const { id, codigoHash } = await nuevaInvitacion(0, 14, "primera");
+        const primera = await altaConInvitacion(id, 5);
+        if (typeof primera.resultado === "string") throw new Error(primera.resultado);
+        expect(await a.invitacionDeCuenta(primera.resultado.cuentaId)).toEqual({ alias: "primera", emitida: T(0), usada: T(6) });
+        expect(await a.reservarInvitacion(codigoHash, T(7), 5)).toBeNull();
+        expect(await a.revocarInvitacion(id, "panel", T(7))).toBe(false);
+
+        const segunda = await altaConInvitacion(id, 8);
+        expect(segunda.resultado).toBe("invitacion");
+        // No cambió nada: ni cuenta nueva ni enlace gastado.
+        expect(await a.buscarPorCorreo(segunda.correoIndice)).toBeNull();
+        expect(await a.leerAlta(segunda.tokenHash, T(-60))).not.toBeNull();
+        const usos = (await a.auditoriaInvitaciones(500)).filter((f) => f.invitacionId === id && f.accion === "usada");
+        expect(usos).toEqual([expect.objectContaining({ actor: null, fecha: T(6) })]);
+        expect((await a.listarInvitaciones(500)).find((i) => i.id === id)?.usada).toBe(T(6));
+      });
+
+      it("si se exige, un enlace sin invitación no crea la cuenta; si no se exige (cuentas abiertas), la invitación no cuenta", async () => {
+        const sin = await altaConInvitacion(null, 0);
+        expect(sin.resultado).toBe("invitacion");
+        expect(await a.buscarPorCorreo(sin.correoIndice)).toBeNull();
+
+        const { id, codigoHash } = await nuevaInvitacion();
+        const abierta = await altaConInvitacion(id, 1, { exigir: false });
+        expect(typeof abierta.resultado).toBe("object");
+        expect(await a.reservarInvitacion(codigoHash, T(3), 5)).toBe(id);
+      });
+
+      it("una invitación que vence entre el pedido y la confirmación ya no crea la cuenta", async () => {
+        const { id } = await nuevaInvitacion(0, 1);
+        const tarde = await altaConInvitacion(id, 10, { confirmar: 24 * 60 + 5 });
+        expect(tarde.resultado).toBe("invitacion");
+        expect(await a.buscarPorCorreo(tarde.correoIndice)).toBeNull();
+      });
+
+      it("al renovar el enlace, este se queda con la invitación del pedido nuevo", async () => {
+        const vieja = await nuevaInvitacion();
+        const nueva = await nuevaInvitacion();
+        const correoIndice = hex();
+        const datos = { correoIndice, correoCifrado: cifradoCorreo(), versionTextos: "v1" };
+        expect(await a.emitirAlta({ ...datos, tokenHash: hex(), ahora: T(0), reenviarSiAnteriorA: T(-10), invitacionId: vieja.id })).toBe("nuevo");
+        const tokenHash = hex();
+        expect(await a.emitirAlta({ ...datos, tokenHash, ahora: T(12), reenviarSiAnteriorA: T(2), invitacionId: nueva.id })).toBe("renovado");
+        const r = await a.activarAlta({
+          tokenHash,
+          vigenteDesde: T(-60),
+          claveHash: claveHash(),
+          ahora: T(13),
+          sesion: { tokenHash: hex(), expira: T(80), dispositivo: null },
+          exigirInvitacion: true,
+        });
+        expect(typeof r).toBe("object");
+        const lista = await a.listarInvitaciones(500);
+        expect(lista.find((i) => i.id === nueva.id)?.usada).toBe(T(13));
+        expect(lista.find((i) => i.id === vieja.id)?.usada).toBeNull();
+      });
+
+      it("el tope de vigentes cuenta solo las que no se usaron, no se revocaron ni vencieron", async () => {
+        const emitir = (minuto: number, max: number) =>
+          a.emitirInvitacion({ codigoHash: hex(), alias: "tope", actor: "panel", ahora: T(LEJOS + minuto), vence: T(LEJOS + minuto + 60), maximoVigentes: max });
+        const primera = await emitir(0, 2);
+        expect(await emitir(1, 2)).not.toBe("tope");
+        expect(await emitir(2, 2)).toBe("tope");
+        if (primera === "tope") throw new Error();
+        await a.revocarInvitacion(primera.id, "panel", T(LEJOS + 3));
+        expect(await emitir(4, 2)).not.toBe("tope");
+        // Una hora y media después las dos primeras ya vencieron.
+        expect(await emitir(90, 1)).not.toBe("tope");
+      });
+
+      it("al eliminar la cuenta, la invitación sigue en la auditoría sin apuntar a ella", async () => {
+        const { id } = await nuevaInvitacion(0, 14, "se-va");
+        const alta = await altaConInvitacion(id, 1);
+        if (typeof alta.resultado === "string") throw new Error(alta.resultado);
+        await a.eliminarCuenta(alta.resultado.cuentaId);
+        expect(await a.invitacionDeCuenta(alta.resultado.cuentaId)).toBeNull();
+        expect((await a.listarInvitaciones(500)).find((i) => i.id === id)?.usada).toBe(T(2));
+        expect((await a.auditoriaInvitaciones(500)).filter((f) => f.invitacionId === id).map((f) => f.accion)).toEqual(["usada", "emitida"]);
+      });
     });
   });
 }

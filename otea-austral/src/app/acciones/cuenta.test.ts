@@ -4,6 +4,7 @@ import { codigoTotp, decodificarBase32, pasoTotp } from "@/lib/admin/totp";
 import { crearAlmacenMemoria } from "@/lib/cuentas/almacen-memoria";
 import { crearCifradorCuentas } from "@/lib/cuentas/cifrado";
 import { COOKIE_SESION_CUENTA } from "@/lib/cuentas/constantes";
+import { crearServicioInvitaciones } from "@/lib/cuentas/invitaciones";
 import { crearServicioCuentas, type ServicioCuentas } from "@/lib/cuentas/servicio";
 import type { Correo } from "@/lib/correo/resend";
 
@@ -161,6 +162,61 @@ describe("crear la cuenta", () => {
   it("un enlace que no sirve responde con el aviso de enlace, sin detalles", async () => {
     const estado = await activarCuentaAccion(INICIAL, formulario({ token: "x".repeat(43), clave: CLAVE, repetir: CLAVE }));
     expect(estado).toMatchObject({ estado: "error", mensaje: expect.stringMatching(/enlace/i) });
+  });
+});
+
+describe("crear la cuenta con invitación (acceso anticipado)", () => {
+  /** Cambia el servicio por uno en modo `invitacion` sobre un almacén propio; devuelve un código emitido de verdad. */
+  async function porInvitacion(): Promise<string> {
+    const almacen = crearAlmacenMemoria();
+    const cifrador = crearCifradorCuentas("S".repeat(43));
+    mundo.servicio = crearServicioCuentas({
+      modo: "invitacion",
+      almacen,
+      cifrador,
+      urlSitio: "https://oteaustral.com",
+      enviar: async (c) => {
+        correos.push(c);
+      },
+      clave: { hashear: async (c) => hashFalso(c), verificar: async (c, h) => h === hashFalso(c), necesitaRehash: () => false, senuelo: async () => false },
+      duracionMinimaMs: 0,
+    });
+    const r = await crearServicioInvitaciones({ almacen, cifrador }).emitir({ alias: "prueba", dias: "14" }, "panel");
+    if (!r.ok) throw new Error(r.motivos.join());
+    return r.codigo;
+  }
+  const campos = (invitacion: string, extra: Record<string, string> = {}) =>
+    formulario({ correo: CORREO, condiciones: "on", privacidad: "on", sitio_web: "", invitacion, ...extra });
+
+  it("un código bueno y uno inventado reciben exactamente la misma respuesta, que nunca trae el código", async () => {
+    const codigo = await porInvitacion();
+    const inventado = await crearCuentaAccion(INICIAL, campos("ABCDE-FGHIJ-KLMNO-PQRST", { correo: "otra@correo.cl" }));
+    expect(correos).toHaveLength(0);
+    const bueno = await crearCuentaAccion(INICIAL, campos(codigo));
+    expect(correos).toHaveLength(1);
+    expect(bueno).toEqual(inventado);
+    expect(bueno).toMatchObject({ estado: "enviado", mensaje: expect.stringContaining("Si el código de invitación y el correo son válidos") });
+    expect(JSON.stringify(bueno)).not.toContain(codigo);
+  });
+
+  it("si falta una casilla, el código no vuelve al navegador (como las contraseñas)", async () => {
+    const codigo = await porInvitacion();
+    const estado = await crearCuentaAccion(INICIAL, campos(codigo, { privacidad: "" }));
+    expect(estado).toMatchObject({ estado: "error", errores: { privacidad: expect.any(String) } });
+    expect(Object.keys(estado.valores!).sort()).toEqual(["condiciones", "correo", "privacidad"]);
+    expect(JSON.stringify(estado)).not.toContain(codigo);
+    expect(JSON.stringify(estado)).not.toContain(codigo.replaceAll("-", ""));
+  });
+
+  it("con la invitación ya gastada, el enlace del correo lo dice a quien lo abrió", async () => {
+    const codigo = await porInvitacion();
+    await crearCuentaAccion(INICIAL, campos(codigo, { correo: "una@correo.cl" }));
+    const primero = tokenDelUltimoCorreo();
+    await crearCuentaAccion(INICIAL, campos(codigo, { correo: "dos@correo.cl" }));
+    const segundo = tokenDelUltimoCorreo();
+    expect(await redirige(activarCuentaAccion(INICIAL, formulario({ token: primero, clave: CLAVE, repetir: CLAVE })))).toBe("/cuenta?aviso=bienvenida");
+    const estado = await activarCuentaAccion(INICIAL, formulario({ token: segundo, clave: CLAVE, repetir: CLAVE }));
+    expect(estado).toMatchObject({ estado: "error", mensaje: expect.stringContaining("Tu invitación ya no vale") });
   });
 });
 

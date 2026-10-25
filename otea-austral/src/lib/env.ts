@@ -96,9 +96,11 @@ export const EnvSchema = z
     /**
      * Cuentas de personas usuarias. `cerradas` (por omisión): las páginas existen pero no guardan nada. `memoria`: solo
      * desarrollo y pruebas (se pierde al reiniciar; los enlaces salen en el registro del servidor, no por correo).
-     * `abiertas`: Postgres y correo real; exige DATABASE_URL, RESEND_API_KEY y CUENTAS_SECRETO.
+     * `abiertas`: Postgres y correo real; exige DATABASE_URL, RESEND_API_KEY y CUENTAS_SECRETO. `invitacion`: como
+     * `abiertas` (exige lo mismo), pero una cuenta solo se crea con un código de invitación de un solo uso emitido en
+     * /admin/invitaciones (acceso anticipado privado, `docs/alertas-reales.md` §6).
      */
-    CUENTAS_MODO: z.enum(["cerradas", "memoria", "abiertas"]).default("cerradas"),
+    CUENTAS_MODO: z.enum(["cerradas", "memoria", "abiertas", "invitacion"]).default("cerradas"),
     /**
      * Secreto maestro de las cuentas: 256 bits en base64url (`npm run cuentas:secreto`). De él se derivan, con HKDF, las
      * claves que cifran el correo y el secreto de la verificación en dos pasos, el índice ciego del correo y el token
@@ -190,10 +192,11 @@ export const EnvSchema = z
     if (produccion && e.CUENTAS_MODO === "memoria") {
       problema("CUENTAS_MODO", "CUENTAS_MODO=memoria no se permite en producción: las cuentas se perderían al reiniciar.");
     }
-    if (e.CUENTAS_MODO === "abiertas") {
-      if (!e.DATABASE_URL) problema("DATABASE_URL", "Las cuentas abiertas necesitan DATABASE_URL.");
-      if (!e.RESEND_API_KEY) problema("RESEND_API_KEY", "Las cuentas abiertas necesitan RESEND_API_KEY (confirmación y restablecimiento por correo).");
-      if (!e.CUENTAS_SECRETO) problema("CUENTAS_SECRETO", "Las cuentas abiertas necesitan CUENTAS_SECRETO (`npm run cuentas:secreto`).");
+    if (e.CUENTAS_MODO === "abiertas" || e.CUENTAS_MODO === "invitacion") {
+      const cuales = e.CUENTAS_MODO === "abiertas" ? "Las cuentas abiertas" : "Las cuentas por invitación";
+      if (!e.DATABASE_URL) problema("DATABASE_URL", `${cuales} necesitan DATABASE_URL.`);
+      if (!e.RESEND_API_KEY) problema("RESEND_API_KEY", `${cuales} necesitan RESEND_API_KEY (confirmación y restablecimiento por correo).`);
+      if (!e.CUENTAS_SECRETO) problema("CUENTAS_SECRETO", `${cuales} necesitan CUENTAS_SECRETO (\`npm run cuentas:secreto\`).`);
     }
     if (e.CUENTAS_SECRETO && (e.CUENTAS_SECRETO === e.WAITLIST_SECRETO || e.CUENTAS_SECRETO === e.ADMIN_SESION_SECRETO)) {
       problema("CUENTAS_SECRETO", "Debe ser distinto de WAITLIST_SECRETO y de ADMIN_SESION_SECRETO: cada secreto protege una sola cosa.");
@@ -309,7 +312,12 @@ export function tareasActivas(
   return e.TAREAS_MODO === "activo" && Boolean(e.TAREAS_SECRETO && e.INGESTA_CONTACTO && e.DATABASE_URL);
 }
 
-/** Las cuentas guardan datos solo si no están cerradas. */
+/** Las cuentas guardan datos solo si no están cerradas (también en modo `invitacion`: quien tiene cuenta entra). */
 export function cuentasAbiertas(e: Env = env): boolean {
   return e.CUENTAS_MODO !== "cerradas";
+}
+
+/** Acceso anticipado privado: una cuenta nueva solo con un código de invitación. */
+export function cuentasPorInvitacion(e: Env = env): boolean {
+  return e.CUENTAS_MODO === "invitacion";
 }

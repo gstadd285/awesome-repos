@@ -7,7 +7,10 @@ import { crearAlmacenMemoria } from "./almacen-memoria";
 import { ClaveSaturada } from "./clave";
 import { crearCifradorCuentas } from "./cifrado";
 import {
+  ENVIOS_POR_INVITACION,
   ESPERA_REENVIO_MS,
+  INTENTOS_INVITACION_HORA,
+  INTENTOS_POR_CODIGO_HORA,
   INTENTOS_CODIGO,
   INTENTOS_POR_CORREO_Y_CLIENTE,
   PUNTOS_CLAVE,
@@ -17,6 +20,7 @@ import {
   VIGENCIA_ALTA_MS,
   VIGENCIA_RESTABLECER_MS,
 } from "./constantes";
+import { crearServicioInvitaciones } from "./invitaciones";
 import { crearServicioCuentas, type Contexto, type DependenciasClave, type DependenciasServicio, type SesionEmitida } from "./servicio";
 import { VERSION_TEXTOS } from "./schema";
 
@@ -36,7 +40,7 @@ const hashFalso = (c: string, viejo = false) =>
 
 function montar(
   opciones: {
-    modo?: "cerradas" | "memoria" | "abiertas";
+    modo?: "cerradas" | "memoria" | "abiertas" | "invitacion";
     sinMarca?: boolean;
     tope?: number;
     limitadores?: DependenciasServicio["limitadores"];
@@ -81,6 +85,11 @@ function montar(
     // Los límites normales no estorban a las pruebas que no hablan de ellos.
     limitadores: opciones.limitesReales ? undefined : {
       alta: { cliente: createFixedWindowLimiter({ limite: 1000, ventanaMs: HORA }), global: createFixedWindowLimiter({ limite: 1000, ventanaMs: HORA }) },
+      invitacion: {
+        hora: createFixedWindowLimiter({ limite: 1000, ventanaMs: HORA }),
+        dia: createFixedWindowLimiter({ limite: 1000, ventanaMs: DIA }),
+        codigo: createFixedWindowLimiter({ limite: 1000, ventanaMs: HORA }),
+      },
       activar: createFixedWindowLimiter({ limite: 1000, ventanaMs: HORA }),
       entrar: {
         cliente: createFixedWindowLimiter({ limite: 1000, ventanaMs: HORA }),
@@ -1171,6 +1180,190 @@ describe("la cuenta por dentro", () => {
       m.avanzar(60_000);
       expect(await m.servicio.eliminar(vigente, { actual: CLAVE_BUENA, codigo: codigoActual(m, secreto) })).toEqual({ estado: "ok" });
     });
+  });
+});
+
+describe("acceso anticipado por invitación (modo invitacion)", () => {
+  /** Monta el servicio por invitación y el del panel sobre el mismo almacén, como en la aplicación. */
+  function conInvitaciones(opciones: Parameters<typeof montar>[0] = {}) {
+    const m = montar({ modo: "invitacion", ...opciones });
+    const panel = crearServicioInvitaciones({ almacen: m.almacen, cifrador: m.cifrador, ahora: m.ahora });
+    async function invitar(dias = "14"): Promise<{ id: string; codigo: string }> {
+      const r = await panel.emitir({ alias: "prueba", dias }, "panel");
+      if (!r.ok) throw new Error(r.motivos.join());
+      return { id: r.id, codigo: r.codigo };
+    }
+    const pedir = (codigo: string, correo = CORREO, cliente = "c") => m.servicio.solicitarAlta({ ...ALTA, correo, invitacion: codigo }, cliente);
+    const estadoDe = async (id: string) => (await panel.listar()).invitaciones.find((i) => i.id === id)?.estado;
+    return { ...m, panel, invitar, pedir, estadoDe };
+  }
+  const OK = { estado: "ok", prueba: false };
+  /** Un código con buena forma que nadie emitió. */
+  const INVENTADO = "ABCDE-FGHIJ-KLMNO-PQRST";
+
+  it("sin código o con uno mal escrito, solo se señala la forma del código", async () => {
+    const m = conInvitaciones();
+    expect(await m.servicio.solicitarAlta(ALTA, "c")).toEqual({ estado: "invalida", errores: { invitacion: "Escribe tu código de invitación." } });
+    const mal = await m.pedir("ABC-123");
+    expect(mal).toEqual({ estado: "invalida", errores: { invitacion: expect.stringContaining("20 letras y números") } });
+    expect(m.correos).toHaveLength(0);
+  });
+
+  it("un código que no existe responde igual que uno bueno y no envía nada", async () => {
+    const m = conInvitaciones();
+    const { codigo } = await m.invitar();
+    expect(await m.pedir(INVENTADO, "otra@correo.cl")).toEqual(OK);
+    expect(m.correos).toHaveLength(0);
+    expect(await m.pedir(codigo)).toEqual(OK);
+    expect(m.correos).toHaveLength(1);
+    expect(ultimoEnlace(m).ruta).toBe("/cuenta/activar");
+  });
+
+  it("con un código bueno se crea la cuenta y la invitación queda usada: no sirve para otra", async () => {
+    const m = conInvitaciones();
+    const { id, codigo } = await m.invitar();
+    expect(await m.pedir(codigo.toLowerCase().replaceAll("-", " "))).toEqual(OK);
+    const r = await m.servicio.activar({ token: ultimoEnlace(m).token, clave: CLAVE_BUENA, repetir: CLAVE_BUENA }, m.ctx);
+    expect(r.estado).toBe("ok");
+    expect(await m.estadoDe(id)).toBe("usada");
+
+    const antes = m.correos.length;
+    expect(await m.pedir(codigo, "otra@correo.cl")).toEqual(OK);
+    expect(m.correos).toHaveLength(antes);
+    expect(m.almacen.cuentasGuardadas()).toHaveLength(1);
+  });
+
+  it("código bueno y correo con cuenta: la misma respuesta, el aviso a la dueña y la invitación sigue sin usar", async () => {
+    const m = conInvitaciones();
+    const primera = await m.invitar();
+    await m.pedir(primera.codigo);
+    await m.servicio.activar({ token: ultimoEnlace(m).token, clave: CLAVE_BUENA, repetir: CLAVE_BUENA }, m.ctx);
+    const segunda = await m.invitar();
+    const antes = m.correos.length;
+    expect(await m.pedir(segunda.codigo)).toEqual(OK);
+    expect(m.correos).toHaveLength(antes + 1);
+    expect(m.correos.at(-1)!.asunto).toContain("Intentaron crear una cuenta");
+    expect(m.correos.at(-1)!.texto).not.toMatch(/token=/);
+    expect(await m.estadoDe(segunda.id)).toBe("vigente");
+  });
+
+  it("vencida o revocada responde igual y no envía nada", async () => {
+    const m = conInvitaciones();
+    const vence = await m.invitar("1");
+    const revocada = await m.invitar();
+    await m.panel.revocar(revocada.id, "panel");
+    m.avanzar(DIA + MIN);
+    expect(await m.pedir(vence.codigo)).toEqual(OK);
+    expect(await m.pedir(revocada.codigo, "b@correo.cl")).toEqual(OK);
+    expect(m.correos).toHaveLength(0);
+  });
+
+  it("si la invitación deja de valer antes de elegir la contraseña, no se crea la cuenta y se puede pedir otra al instante", async () => {
+    const m = conInvitaciones();
+    const { id, codigo } = await m.invitar();
+    await m.pedir(codigo);
+    const { token } = ultimoEnlace(m);
+    await m.panel.revocar(id, "panel");
+    expect(await m.servicio.activar({ token, clave: CLAVE_BUENA, repetir: CLAVE_BUENA }, m.ctx)).toEqual({ estado: "invitacion" });
+    expect(m.almacen.cuentasGuardadas()).toHaveLength(0);
+    expect((await m.servicio.consultarAlta(token, "c")).estado).toBe("invalido");
+    // El enlace se borró: con una invitación nueva llega otro correo enseguida (no hay que esperar los 10 minutos).
+    const nueva = await m.invitar();
+    await m.pedir(nueva.codigo);
+    expect(m.correos).toHaveLength(2);
+    expect((await m.servicio.activar({ token: ultimoEnlace(m).token, clave: CLAVE_BUENA, repetir: CLAVE_BUENA }, m.ctx)).estado).toBe("ok");
+  });
+
+  it("dos personas con el mismo código a la vez: solo una crea la cuenta", async () => {
+    const m = conInvitaciones();
+    const { codigo } = await m.invitar();
+    await m.pedir(codigo, "una@correo.cl");
+    const primera = ultimoEnlace(m).token;
+    await m.pedir(codigo, "dos@correo.cl");
+    const segunda = ultimoEnlace(m).token;
+    const resultados = await Promise.all(
+      [primera, segunda].map((token) => m.servicio.activar({ token, clave: CLAVE_BUENA, repetir: CLAVE_BUENA }, m.ctx)),
+    );
+    expect(resultados.map((r) => r.estado).sort()).toEqual(["invitacion", "ok"]);
+    expect(m.almacen.cuentasGuardadas()).toHaveLength(1);
+  });
+
+  it(`un mismo código provoca como mucho ${ENVIOS_POR_INVITACION} correos de alta (contados en la base); después, silencio`, async () => {
+    const m = conInvitaciones();
+    const { codigo } = await m.invitar();
+    for (let i = 0; i < ENVIOS_POR_INVITACION; i++) expect(await m.pedir(codigo, `p${i}@correo.cl`)).toEqual(OK);
+    expect(m.correos).toHaveLength(ENVIOS_POR_INVITACION);
+    expect(await m.pedir(codigo, "otra@correo.cl")).toEqual(OK);
+    expect(m.correos).toHaveLength(ENVIOS_POR_INVITACION);
+  });
+
+  it("los límites por cliente y por código cuentan todos los pedidos, sirva o no el código", async () => {
+    // Los números de producción (el límite de alta de siempre, 5 cada 10 minutos por cliente, se prueba aparte).
+    const m = conInvitaciones({
+      limitadores: {
+        invitacion: {
+          hora: createFixedWindowLimiter({ limite: INTENTOS_INVITACION_HORA, ventanaMs: HORA }),
+          dia: createFixedWindowLimiter({ limite: 1000, ventanaMs: DIA }),
+          codigo: createFixedWindowLimiter({ limite: INTENTOS_POR_CODIGO_HORA, ventanaMs: HORA }),
+        },
+      },
+    });
+    const { codigo } = await m.invitar();
+    // Por cliente: 10 por hora, con códigos buenos o inventados por igual.
+    const inventados = Array.from({ length: INTENTOS_INVITACION_HORA }, (_, i) => `ABCDE-FGHIJ-KLMNO-PQR${"234567"[i % 6]}${"234567"[Math.floor(i / 6)]}`);
+    for (let i = 0; i < INTENTOS_INVITACION_HORA; i++) {
+      expect((await m.pedir(i === 3 ? codigo : inventados[i], `c${i}@correo.cl`, "una-ip")).estado, `intento ${i}`).toBe("ok");
+    }
+    expect((await m.pedir(codigo, "x@correo.cl", "una-ip")).estado).toBe("limite");
+    expect((await m.pedir(INVENTADO, "x@correo.cl", "una-ip")).estado).toBe("limite");
+
+    // Por código, desde clientes distintos: 5 por hora, también para uno que no existe.
+    const otro = "QRSTU-VWXYZ-23456-7ABCD";
+    for (let i = 0; i < INTENTOS_POR_CODIGO_HORA; i++) expect((await m.pedir(otro, `d${i}@correo.cl`, `ip-${i}`)).estado).toBe("ok");
+    expect((await m.pedir(otro, "e@correo.cl", "ip-nueva")).estado).toBe("limite");
+    expect((await m.pedir(codigo, "e@correo.cl", "ip-nueva")).estado).toBe("ok");
+  });
+
+  it("con la cuota de altas agotada, la respuesta es la misma para todos: código bueno, inventado o correo con cuenta", async () => {
+    const m = conInvitaciones({ tope: 5 }); // las altas pueden usar 3
+    const codigos = [await m.invitar(), await m.invitar(), await m.invitar(), await m.invitar()];
+    for (const [i, c] of codigos.slice(0, 3).entries()) expect(await m.pedir(c.codigo, `p${i}@correo.cl`)).toEqual(OK);
+    expect(await m.pedir(codigos[3].codigo, "nuevo@correo.cl")).toEqual({ estado: "saturada" });
+    expect(await m.pedir(INVENTADO, "nuevo@correo.cl")).toEqual({ estado: "saturada" });
+    expect(await m.pedir(codigos[3].codigo, "p0@correo.cl")).toEqual({ estado: "saturada" });
+    expect(await m.estadoDe(codigos[3].id)).toBe("vigente");
+  });
+
+  it("las cuentas abiertas no piden código y siguen igual", async () => {
+    const m = montar({ modo: "abiertas" });
+    expect(await m.servicio.solicitarAlta({ ...ALTA, invitacion: "lo-que-sea" }, "c")).toEqual(OK);
+    expect((await m.servicio.activar({ token: ultimoEnlace(m).token, clave: CLAVE_BUENA, repetir: CLAVE_BUENA }, m.ctx)).estado).toBe("ok");
+  });
+
+  it("«Descargar mis datos» dice con qué invitación se creó la cuenta (su alias interno), y nunca el código", async () => {
+    const m = conInvitaciones();
+    const { codigo } = await m.invitar();
+    await m.pedir(codigo);
+    const r = await m.servicio.activar({ token: ultimoEnlace(m).token, clave: CLAVE_BUENA, repetir: CLAVE_BUENA }, m.ctx);
+    if (r.estado !== "ok") throw new Error(r.estado);
+    const vigente = (await m.servicio.leerSesion(r.sesion.token))!;
+    const datos = (await m.servicio.exportar(vigente))!;
+    expect(datos.cuenta.invitacion).toEqual({ alias: "prueba", emitida: expect.any(String), usada: expect.any(String) });
+    expect(JSON.stringify(datos)).not.toContain(codigo.replaceAll("-", ""));
+    expect(JSON.stringify(datos)).not.toContain(codigo);
+  });
+
+  it("ni los registros ni los correos llevan el código", async () => {
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const m = conInvitaciones();
+    const { codigo } = await m.invitar();
+    await m.pedir(INVENTADO);
+    await m.pedir(codigo);
+    await m.servicio.activar({ token: ultimoEnlace(m).token, clave: CLAVE_BUENA, repetir: CLAVE_BUENA }, m.ctx);
+    const registro = JSON.stringify(aviso.mock.calls);
+    for (const c of [codigo, codigo.replaceAll("-", ""), INVENTADO, INVENTADO.replaceAll("-", "")]) expect(registro, c).not.toContain(c);
+    expect(aviso.mock.calls.some((c) => String(c[0]).includes('"tipo":"invitacion"'))).toBe(true);
+    for (const correo of m.correos) expect(correo.texto + correo.html).not.toContain(codigo);
   });
 });
 

@@ -248,4 +248,132 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("almacén de cuentas en Postgres", () => {
       }
     });
   });
+
+  describe("invitaciones: lo que la base impide aunque la aplicación se equivoque (migración 0009)", () => {
+    const app = (sql: string, parametros: unknown[] = []) => base!.app.consulta(sql, parametros);
+    const dueño = (sql: string, parametros: unknown[] = []) => base!.propietario.consulta(sql, parametros);
+
+    async function invitacion(): Promise<string> {
+      const [f] = await app(
+        "insert into invitaciones (codigo_hash, alias, emitida, vence) values ($1, 'prueba', now(), now() + interval '14 days') returning id",
+        [hex()],
+      );
+      return f.id as string;
+    }
+
+    it("dos altas a la vez con la misma invitación: se crea una sola cuenta (cinco rondas)", async () => {
+      const almacen = crearAlmacenPostgres(base!.app);
+      const ahora = new Date();
+      const T = (s: number) => new Date(ahora.getTime() + s * 1000).toISOString();
+      for (let ronda = 0; ronda < 5; ronda++) {
+        const id = await invitacion();
+        const altas = [hex(), hex()].map((correoIndice) => ({ correoIndice, tokenHash: hex() }));
+        for (const { correoIndice, tokenHash } of altas) {
+          await almacen.emitirAlta({ correoIndice, correoCifrado: cifrado(), tokenHash, versionTextos: "v1", ahora: T(0), reenviarSiAnteriorA: T(-600), invitacionId: id });
+        }
+        const resultados = await Promise.all(
+          altas.map(({ tokenHash }) =>
+            almacen.activarAlta({
+              tokenHash,
+              vigenteDesde: T(-60),
+              claveHash: claveHash(),
+              ahora: T(1),
+              sesion: { tokenHash: hex(), expira: T(3600), dispositivo: null },
+              exigirInvitacion: true,
+            }),
+          ),
+        );
+        expect(resultados.filter((r) => typeof r === "object"), `ronda ${ronda}`).toHaveLength(1);
+        expect(resultados.filter((r) => r === "invitacion"), `ronda ${ronda}`).toHaveLength(1);
+        const [{ n }] = await dueño("select count(*)::int as n from cuentas where correo_indice = any($1::text[])", [altas.map((x) => x.correoIndice)]);
+        expect(n).toBe(1);
+        const [{ usos }] = await dueño("select count(*)::int as usos from invitacion_auditoria where invitacion_id = $1 and accion = 'usada'", [id]);
+        expect(usos).toBe(1);
+      }
+    });
+
+    it("el código no se guarda: solo su huella, con la forma de un HMAC", async () => {
+      const columnas = await dueño(
+        "select column_name from information_schema.columns where table_name = 'invitaciones' order by ordinal_position",
+      );
+      expect(columnas.map((c) => c.column_name)).toEqual([
+        "id",
+        "codigo_hash",
+        "alias",
+        "emitida",
+        "vence",
+        "envios",
+        "usada",
+        "revocada",
+        "cuenta_id",
+        "registrada",
+      ]);
+      await expect(
+        app("insert into invitaciones (codigo_hash, alias, emitida, vence) values ('ABCDE-FGHIJ-KLMNO-PQRST', 'a', now(), now() + interval '1 day')"),
+      ).rejects.toMatchObject({ code: "23514" });
+      await expect(
+        app("insert into invitaciones (codigo_hash, alias, emitida, vence) values ($1, 'Ana Pérez', now(), now() + interval '1 day')", [hex()]),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it("nace vigente, no vale más de 30 días y la aplicación no cambia lo que la identifica ni la borra", async () => {
+      const otro = hex();
+      await expect(
+        app("insert into invitaciones (codigo_hash, alias, emitida, vence, usada) values ($1, 'a', now(), now() + interval '1 day', now())", [otro]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        app("insert into invitaciones (codigo_hash, alias, emitida, vence) values ($1, 'a', now(), now() + interval '31 days')", [otro]),
+      ).rejects.toMatchObject({ code: "23514" });
+      const id = await invitacion();
+      for (const asignacion of ["alias = 'otro'", "vence = now() + interval '20 days'", "codigo_hash = md5('x') || md5('y')", "emitida = now()"]) {
+        await expect(app(`update invitaciones set ${asignacion} where id = $1`, [id]), asignacion).rejects.toMatchObject({ code: "42501" });
+      }
+      await expect(app("delete from invitaciones where id = $1", [id])).rejects.toMatchObject({ code: "42501" });
+      await expect(app("truncate invitaciones")).rejects.toMatchObject({ code: "42501" });
+    });
+
+    it("usada y revocada se fijan una sola vez, los correos solo suben y ni el dueño la borra", async () => {
+      const id = await invitacion();
+      await app("update invitaciones set envios = envios + 1 where id = $1", [id]);
+      await expect(dueño("update invitaciones set envios = 0 where id = $1", [id])).rejects.toMatchObject({ code: "OT013" });
+      await app("update invitaciones set revocada = now() where id = $1", [id]);
+      // Revocada: fuera del alcance de la aplicación (0 filas, sin error) y el dueño tampoco la reabre ni la gasta.
+      expect(await app("update invitaciones set usada = now() where id = $1 returning 1 as ok", [id])).toEqual([]);
+      await expect(dueño("update invitaciones set revocada = null where id = $1", [id])).rejects.toMatchObject({ code: "OT013" });
+      await expect(dueño("update invitaciones set usada = now() where id = $1", [id])).rejects.toMatchObject({ code: "23514" });
+      await expect(dueño("update invitaciones set envios = envios + 1 where id = $1", [id])).rejects.toMatchObject({ code: "OT013" });
+      await expect(dueño("delete from invitaciones where id = $1", [id])).rejects.toMatchObject({ code: "OT001" });
+      await expect(dueño("truncate invitaciones cascade")).rejects.toMatchObject({ code: "OT001" });
+    });
+
+    it("la auditoría es de solo agregar, también para el dueño, y su actor no lleva datos personales", async () => {
+      const id = await invitacion();
+      await app("insert into invitacion_auditoria (invitacion_id, accion, actor, fecha) values ($1, 'emitida', 'panel', now())", [id]);
+      await expect(app("update invitacion_auditoria set actor = 'otro' where invitacion_id = $1", [id])).rejects.toMatchObject({ code: "42501" });
+      await expect(app("delete from invitacion_auditoria where invitacion_id = $1", [id])).rejects.toMatchObject({ code: "42501" });
+      await expect(dueño("update invitacion_auditoria set actor = 'otro' where invitacion_id = $1", [id])).rejects.toMatchObject({ code: "OT001" });
+      await expect(dueño("delete from invitacion_auditoria where invitacion_id = $1", [id])).rejects.toMatchObject({ code: "OT001" });
+      await expect(
+        app("insert into invitacion_auditoria (invitacion_id, accion, actor, fecha) values ($1, 'emitida', 'ana@correo.cl', now())", [id]),
+      ).rejects.toMatchObject({ code: "23514" });
+      // Quien usa la invitación no queda nombrado; quien emite o revoca, sí (con el alias del panel).
+      await expect(app("insert into invitacion_auditoria (invitacion_id, accion, actor, fecha) values ($1, 'usada', 'panel', now())", [id])).rejects.toMatchObject({
+        code: "23514",
+      });
+      await expect(app("insert into invitacion_auditoria (invitacion_id, accion, actor, fecha) values ($1, 'revocada', null, now())", [id])).rejects.toMatchObject({
+        code: "23514",
+      });
+    });
+
+    it("solo un enlace de alta lleva invitación", async () => {
+      const id = await invitacion();
+      const [cuenta] = await app(
+        "insert into cuentas (correo_indice, correo_cifrado, clave_hash, version_textos, aceptado) values ($1, $2, $3, 'v', now()) returning id",
+        [hex(), cifrado(), claveHash()],
+      );
+      await expect(
+        app("insert into cuenta_tokens (token_hash, proposito, cuenta_id, invitacion_id) values ($1, 'restablecer', $2, $3)", [hex(), cuenta.id, id]),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+  });
 });

@@ -93,6 +93,12 @@ describe("eventos de las cuentas", () => {
     expect(Object.keys(linea).sort()).toEqual(["evento", "fecha", "nivel", "tipo"]);
   });
 
+  it("una invitación lleva solo qué pasó: nunca el código, su hash ni el correo", () => {
+    const linea = JSON.parse(formatSecurityEvent({ tipo: "invitacion", evento: "rechazada" }));
+    expect(Object.keys(linea).sort()).toEqual(["evento", "fecha", "nivel", "tipo"]);
+    expect(linea).toMatchObject({ tipo: "invitacion", evento: "rechazada" });
+  });
+
   it("aunque se colara un correo, una IP o un token en un campo de texto, el saneado lo oculta", () => {
     const linea = formatSecurityEvent({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: `ana@correo.cl 190.1.2.3 ${"aB3_".repeat(11)}` });
     expect(linea).not.toMatch(/ana@correo|190\.1\.2\.3|aB3_aB3_/);

@@ -6,8 +6,12 @@ import { ClaveSaturada } from "./clave";
 import type { CifradorCuentas } from "./cifrado";
 import {
   CODIGOS_DE_RECUPERACION,
+  ENVIOS_POR_INVITACION,
   ESPERA_REENVIO_MS,
   FORMATO_TOKEN,
+  INTENTOS_INVITACION_DIA,
+  INTENTOS_INVITACION_HORA,
+  INTENTOS_POR_CODIGO_HORA,
   INTENTOS_POR_CORREO_Y_CLIENTE,
   MAX_SESIONES_POR_CUENTA,
   PARTE_DE_CUOTA_PARA_ALTAS,
@@ -37,15 +41,19 @@ import { AltaSchema, CodigoSchema, CorreoSchema, EntrarSchema, PerfilSchema, VER
 import { generarCodigoRecuperacion, generarToken, hashCodigoRecuperacion, hashToken } from "./tokens";
 import { generarSecretoTotp, uriTotp } from "./totp-cuenta";
 import { enmascararCorreo } from "./formato";
+import { CodigoInvitacionSchema } from "./invitaciones";
 
 /**
  * `cerradas`: las cuentas no existen todavía (no se guarda nada). `memoria`: desarrollo y pruebas, sin correo real.
- * `abiertas`: Postgres y correo de verdad.
+ * `abiertas`: Postgres y correo de verdad. `invitacion`: como `abiertas`, pero una cuenta solo se crea con un código de
+ * invitación de un solo uso (acceso anticipado privado, `docs/alertas-reales.md` §6).
  */
-export type ModoCuentas = "cerradas" | "memoria" | "abiertas";
+export type ModoCuentas = "cerradas" | "memoria" | "abiertas" | "invitacion";
 
 /** Qué campo de un formulario falló y por qué (el texto se muestra tal cual). */
-export type Errores = Partial<Record<"correo" | "condiciones" | "privacidad" | "clave" | "repetir" | "actual" | "nueva" | "nombre" | "temas" | "codigo", string>>;
+export type Errores = Partial<
+  Record<"correo" | "condiciones" | "privacidad" | "clave" | "repetir" | "actual" | "nueva" | "nombre" | "temas" | "codigo" | "invitacion", string>
+>;
 
 export type SesionEmitida = { token: string; expira: Date };
 
@@ -86,7 +94,11 @@ export type ResultadoClaveNueva =
   | { estado: "limite" }
   | { estado: "reintentar" };
 
-export type ResultadoActivar = ({ estado: "ok"; sesion: SesionEmitida } | Exclude<ResultadoClaveNueva, { estado: "ok" }>);
+export type ResultadoActivar =
+  | { estado: "ok"; sesion: SesionEmitida }
+  | Exclude<ResultadoClaveNueva, { estado: "ok" }>
+  /** Modo `invitacion`: la invitación del enlace ya no vale (se usó, se revocó o venció). No se creó nada. */
+  | { estado: "invitacion" };
 
 export type ResultadoEntrar =
   | { estado: "ok"; sesion: SesionEmitida }
@@ -140,6 +152,8 @@ export type DatosExportados = {
     resumenPrevio: boolean;
     verificacionEnDosPasos: boolean;
     aceptaste: { versionDeLosTextos: string; fecha: string };
+    /** La invitación con que se creó la cuenta (acceso anticipado), o `null`. Su alias es la etiqueta interna del panel. */
+    invitacion: { alias: string; emitida: string; usada: string } | null;
   };
   sesionesAbiertas: { dispositivo: string | null; iniciada: string; ultimoUso: string }[];
   actividad: EventoGuardado[];
@@ -157,6 +171,11 @@ export type DependenciasClave = {
 type ParLimite = { cliente: FixedWindowLimiter; global: FixedWindowLimiter };
 export type Limitadores = {
   alta: ParLimite;
+  /**
+   * Solo en modo `invitacion`: pedidos de alta por cliente (por hora y por día) y por código (su HMAC, desde todos los
+   * clientes). Cuentan todos los pedidos, el código sirva o no: así el límite tampoco dice nada del código.
+   */
+  invitacion: { hora: FixedWindowLimiter; dia: FixedWindowLimiter; codigo: FixedWindowLimiter };
   activar: FixedWindowLimiter;
   /** `correoYCliente`: un correo desde un cliente (frena a quien prueba, no a la dueña de la cuenta). `correo`: ese correo desde todos. */
   entrar: ParLimite & { correoYCliente: FixedWindowLimiter; correo: FixedWindowLimiter };
@@ -197,6 +216,11 @@ function crearLimitadores(parcial: Partial<Limitadores> = {}): Limitadores {
       cliente: createFixedWindowLimiter({ limite: 5, ventanaMs: 10 * 60_000 }),
       global: createFixedWindowLimiter({ limite: 300, ventanaMs: 10 * 60_000 }),
     },
+    invitacion: parcial.invitacion ?? {
+      hora: createFixedWindowLimiter({ limite: INTENTOS_INVITACION_HORA, ventanaMs: HORA_MS }),
+      dia: createFixedWindowLimiter({ limite: INTENTOS_INVITACION_DIA, ventanaMs: 24 * HORA_MS }),
+      codigo: createFixedWindowLimiter({ limite: INTENTOS_POR_CODIGO_HORA, ventanaMs: HORA_MS }),
+    },
     activar: parcial.activar ?? createFixedWindowLimiter({ limite: 20, ventanaMs: 10 * 60_000 }),
     entrar: parcial.entrar ?? {
       cliente: createFixedWindowLimiter({ limite: 10, ventanaMs: VENTANA_FALLOS_MS }),
@@ -217,7 +241,8 @@ function crearLimitadores(parcial: Partial<Limitadores> = {}): Limitadores {
  * Cuentas de personas usuarias. Reglas que recorren todo el servicio:
  *
  *   · **Sin enumeración**: pedir una cuenta, restablecer una contraseña o entrar responden lo mismo exista o no el correo,
- *     y tardan parecido (tiempo mínimo, y una contraseña «señuelo» cuando no hay cuenta).
+ *     y tardan parecido (tiempo mínimo, y una contraseña «señuelo» cuando no hay cuenta). En modo `invitacion`, el alta
+ *     responde lo mismo también sirva o no el código: uno que no sirve no envía nada y no lo dice.
  *   · **Una cuenta no existe hasta que se confirma el correo**: la contraseña se elige en el segundo paso, con el enlace
  *     del correo. Así nadie puede crear una cuenta con el correo de otra persona y quedarse con la contraseña.
  *   · **Los intentos se cuentan**: por IP, por correo desde cada IP y por correo en total (en memoria, primera barrera) y por
@@ -411,18 +436,26 @@ export function crearServicioCuentas({
     // ── Crear la cuenta (dos pasos: el correo y, con el enlace, la contraseña) ──────────────────────────────────────
 
     async solicitarAlta(
-      entrada: { correo: unknown; condiciones: unknown; privacidad: unknown; sitio_web: unknown; tiempo?: unknown },
+      entrada: { correo: unknown; condiciones: unknown; privacidad: unknown; sitio_web: unknown; tiempo?: unknown; invitacion?: unknown },
       claveCliente: string,
     ): Promise<ResultadoAlta> {
       if (!lim.alta.cliente.tryConsume(claveCliente) || !lim.alta.global.tryConsume()) return { estado: "limite" };
+      const porInvitacion = modo === "invitacion";
+      if (porInvitacion && (!lim.invitacion.hora.tryConsume(claveCliente) || !lim.invitacion.dia.tryConsume(claveCliente))) {
+        logSecurityEvent({ tipo: "limite_excedido", recurso: "cuentas_invitacion" });
+        return { estado: "limite" };
+      }
 
       const validada = AltaSchema.safeParse({ correo: entrada.correo, condiciones: entrada.condiciones, privacidad: entrada.privacidad });
-      if (!validada.success) {
+      // Del código solo se mira la forma: si existe o no, no se dice.
+      const codigo = porInvitacion ? CodigoInvitacionSchema.safeParse(entrada.invitacion ?? "") : null;
+      if (!validada.success || (codigo && !codigo.success)) {
         const errores: Errores = {};
-        for (const issue of validada.error.issues) {
+        for (const issue of validada.success ? [] : validada.error.issues) {
           const campo = issue.path[0];
           if ((campo === "correo" || campo === "condiciones" || campo === "privacidad") && !errores[campo]) errores[campo] = issue.message;
         }
+        if (codigo && !codigo.success) errores.invitacion = codigo.error.issues[0]?.message;
         return { estado: "invalida", errores };
       }
 
@@ -437,6 +470,38 @@ export function crearServicioCuentas({
           logSecurityEvent({ tipo: "limite_excedido", recurso: "cuentas_marca_de_tiempo" });
           return { estado: "espera" } as const;
         }
+        // Con la cuota de altas agotada se responde igual a todos (correo con cuenta o sin ella, código bueno o no), antes
+        // de mirar nada más: «saturada» no puede distinguir unos de otros.
+        try {
+          if (await almacen.cuotaAgotada(topeAltas, iso(instante))) {
+            logSecurityEvent({ tipo: "limite_excedido", recurso: "cuentas_envios_diarios" });
+            return { estado: "saturada" } as const;
+          }
+        } catch {
+          fallaDeBase("cuentas_cuota");
+          return { estado: "reintentar" } as const;
+        }
+
+        let invitacionId: string | null = null;
+        if (codigo?.success) {
+          const codigoHash = cifrador.hashInvitacion(codigo.data);
+          if (!lim.invitacion.codigo.tryConsume(codigoHash)) {
+            logSecurityEvent({ tipo: "limite_excedido", recurso: "cuentas_invitacion_codigo" });
+            return { estado: "limite" } as const;
+          }
+          try {
+            invitacionId = await almacen.reservarInvitacion(codigoHash, iso(instante), ENVIOS_POR_INVITACION);
+          } catch {
+            fallaDeBase("cuentas_invitacion");
+            return { estado: "reintentar" } as const;
+          }
+          // Un código que no existe, venció, se usó, se revocó o agotó sus correos: la misma respuesta y ningún correo.
+          if (!invitacionId) {
+            logSecurityEvent({ tipo: "invitacion", evento: "rechazada" });
+            return ok;
+          }
+        }
+
         const correo = validada.data.correo;
         const { indice, cifrado } = cifrador.cifrarCorreo(correo);
         const token = generar();
@@ -450,6 +515,7 @@ export function crearServicioCuentas({
             versionTextos: VERSION_TEXTOS,
             ahora: iso(instante),
             reenviarSiAnteriorA: iso(antes(instante, ESPERA_REENVIO_MS)),
+            invitacionId,
           });
         } catch {
           fallaDeBase("cuentas_alta");
@@ -558,12 +624,20 @@ export function crearServicioCuentas({
           claveHash,
           ahora: iso(instante),
           sesion: { tokenHash: sesion.hash, expira: iso(expira), dispositivo: ctx.dispositivo },
+          exigirInvitacion: modo === "invitacion",
         });
       } catch {
         fallaDeBase("cuentas_activar");
         return { estado: "reintentar" };
       }
       if (resultado === "invalido" || resultado === "duplicado") return { estado: "enlace" };
+      if (resultado === "invitacion") {
+        // El enlace ya no sirve: se borra, para que la persona pueda pedir otro de inmediato con una invitación nueva.
+        await almacen.descartarEnlace(tokenHash).catch(() => fallaDeBase("cuentas_descartar"));
+        logSecurityEvent({ tipo: "invitacion", evento: "rechazada" });
+        return { estado: "invitacion" };
+      }
+      if (modo === "invitacion") logSecurityEvent({ tipo: "invitacion", evento: "usada" });
       logSecurityEvent({ tipo: "cuenta", evento: "alta" });
       return { estado: "ok", sesion: { token: sesion.token, expira } };
     },
@@ -1028,9 +1102,10 @@ export function crearServicioCuentas({
       const c = await cuentaDe(sesion.cuentaId);
       if (!c) return null;
       const instante = ahora();
-      const [abiertas, actividad] = await Promise.all([
+      const [abiertas, actividad, invitacion] = await Promise.all([
         sesionesAbiertas(sesion),
         almacen.eventosRecientes(c.id, 200).catch(() => []),
+        almacen.invitacionDeCuenta(c.id).catch(() => null),
       ]);
       logSecurityEvent({ tipo: "cuenta", evento: "datos_exportados" });
       return {
@@ -1044,6 +1119,7 @@ export function crearServicioCuentas({
           resumenPrevio: c.resumenPrevio,
           verificacionEnDosPasos: c.totpActivado !== null,
           aceptaste: { versionDeLosTextos: c.versionTextos, fecha: c.aceptado },
+          invitacion: invitacion ? { alias: invitacion.alias, emitida: invitacion.emitida, usada: invitacion.usada } : null,
         },
         sesionesAbiertas: abiertas.map((s) => ({ dispositivo: s.dispositivo, iniciada: s.creada, ultimoUso: s.ultimoUso })),
         actividad,

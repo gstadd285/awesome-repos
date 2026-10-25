@@ -28,10 +28,11 @@ export const CANARIOS = {
 
 /**
  * Ajustes que no son secretos, pero que el build necesita junto a los canarios para recorrer el camino de la IA
- * (el asistente en modo `ia`, las cuentas abiertas y las tareas activas): así las claves pasan por el mismo código que usan en producción.
+ * (el asistente en modo `ia`, las cuentas por invitación y las tareas activas): así las claves pasan por el mismo código que usan en producción.
  */
 export const AJUSTES = {
-  CUENTAS_MODO: "abiertas",
+  // `invitacion` exige lo mismo que `abiertas` y además recorre el HMAC de los códigos con el secreto de las cuentas.
+  CUENTAS_MODO: "invitacion",
   ASISTENTE_MODO: "ia",
   ASISTENTE_MODELO: "claude-haiku-5-5",
   ASISTENTE_PRECIO_ENTRADA: "0.1",

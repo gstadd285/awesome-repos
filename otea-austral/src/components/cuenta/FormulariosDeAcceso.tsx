@@ -15,6 +15,7 @@ import {
   BotonEnviar,
   Campo,
   CampoClave,
+  CampoInvitacion,
   CampoTrampa,
   CLASE_ENLACE,
   CLASE_TARJETA,
@@ -45,13 +46,14 @@ export function FormularioEntrar({ siguiente }: { siguiente?: string }) {
 }
 
 /** Paso 1 de la creación de la cuenta: el correo y los dos textos. El paso 2 llega por correo. */
-export function FormularioCrear({ marca }: { marca: string }) {
+/** `invitacion`: acceso anticipado privado (`CUENTAS_MODO=invitacion`): pide además el código de invitación. */
+export function FormularioCrear({ marca, invitacion = false }: { marca: string; invitacion?: boolean }) {
   // Cambiar la clave reinicia el formulario (la acción vuelve a su estado inicial): «Usar otro correo».
   const [intento, setIntento] = useState(0);
-  return <FormularioCrearInterno key={intento} marca={marca} otro={() => setIntento((i) => i + 1)} />;
+  return <FormularioCrearInterno key={intento} marca={marca} invitacion={invitacion} otro={() => setIntento((i) => i + 1)} />;
 }
 
-function FormularioCrearInterno({ marca, otro }: { marca: string; otro: () => void }) {
+function FormularioCrearInterno({ marca, invitacion, otro }: { marca: string; invitacion: boolean; otro: () => void }) {
   const f = useFormularioCuenta(crearCuentaAccion);
   const enviado = f.estado.estado === "enviado";
   const etiquetaPasos = "La cuenta se crea en dos pasos";
@@ -72,6 +74,7 @@ function FormularioCrearInterno({ marca, otro }: { marca: string; otro: () => vo
   return (
     <form action={f.despachar} noValidate aria-label="Crear una cuenta" className={CLASE_TARJETA}>
       <Pasos actual={1} etiqueta={etiquetaPasos} uno="Deja tu correo y acepta los textos" dos="Confirma desde el enlace y elige tu contraseña" />
+      {invitacion ? <CampoInvitacion error={f.error("invitacion")} className="mb-5" /> : null}
       <Campo nombre="correo" etiqueta="Tu correo" tipo="email" autoComplete="email" inputMode="email" maxLength={254} valor={f.texto("correo")} error={f.error("correo")} placeholder="nombre@correo.cl" />
       <input type="hidden" name="tiempo" value={marca} />
       <CampoTrampa />
