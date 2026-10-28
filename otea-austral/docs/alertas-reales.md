@@ -4,7 +4,9 @@ Fase **F1** (2026-10-25): verificación de fuentes y este diseño. Fase **F2** (
 implementada, probada contra fuentes falsas y **apagada por omisión** (§2.4); hoy no tiene nada que leer. Fase **F3**
 (2026-10-25): la agrupación en eventos candidatos y la cola manual sin IA de `/admin` (§3.1); sin datos reales que agrupar
 todavía. Fase **F4** (2026-10-25): el acceso privado por invitación (§6.1), **apagado por omisión** (`CUENTAS_MODO=cerradas`); desde
-ya, `/alertas` muestra lo real solo con sesión. F5 y F6 siguen sin implementar. El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
+ya, `/alertas` muestra lo real solo con sesión. Fase **F5** (2026-10-28): los borradores con IA y su revisión en `/admin/eventos`
+(§4.8), **apagados por omisión** (`BORRADORES_MODO=apagado`) y, aunque se activen, sin nada que redactar hasta que alguna fuente tenga
+`lectura_ia`. F6 sigue sin implementar. El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
 
 Encargo de la dueña: un sistema lee las fuentes oficiales del registro y arma borradores; Claude redacta **un borrador por
 evento** con un tope duro de **US$ 5 al mes** (autorizado solo para esto); ella aprueba o descarta cada uno en `/admin` y
@@ -373,7 +375,58 @@ create table borradores_uso (
 no cambia y el estado pasa de `pendiente` a `aceptado` o `descartado` una sola vez; sin borrados. Grants por columna (la app
 inserta todo salvo `estado`, `alert_id`, `resuelto`; actualiza solo esos tres) y RLS con una política por operación.
 
-## 5. Revisión en `/admin` (F5; la cola sin IA llega en F3)
+### 4.8 Implementado en F5 (lo que se precisó al construirlo)
+
+Código en `src/lib/borradores/{esquema,prompt,lectura,anticopia,revision,proveedor-borrador,presupuesto-postgres,almacen-postgres,
+servicio,instancia}.ts`, `src/lib/ia/{gasto,gasto-postgres}.ts`, la cola en `src/lib/ingesta/cola-postgres.ts`, `src/app/admin/eventos/`
+(acciones y páginas), `src/components/admin/BorradorIa.tsx`, el tablero y `db/migraciones/0010_borradores.sql`; operación en
+`despliegue.md` §14. Sobre lo escrito arriba:
+
+- **Cambió una decisión: `lectura_ia` acota todo lo que llega al modelo, no solo el texto.** De una fuente sin la marca no viaja nada
+  (ni sus títulos: el FMI, por ejemplo, prohíbe usar su contenido con modelos de lenguaje), y un evento sin ninguna fuente con
+  `lectura_ia` no se redacta (queda en la cola manual, que lo dice). El borrador lleva la bandera `fuentes_sin_lectura` si el evento
+  tiene fuentes que el modelo no vio; al aceptarlo se enlazan igual todas las elegidas. Hoy ninguna fuente la tiene
+  (`registry.test.ts`): activada, la IA no llamaría a nadie.
+- **Cuándo**: al final de cada corrida de `POST /api/tareas/ingesta`, después de agrupar y con el turno tomado (`redactar` en
+  `correrIngesta`); solo la ruta arma el redactor (`redactorBorradores()`, `null` salvo `BORRADORES_MODO=ia` completo). Plazo de toda la
+  corrida: 270 s (Cloud Run corta a 300); no empieza un borrador si quedan menos de 75 s. La respuesta suma `borradores` e `ia`
+  (`apagada`·`ok`·`tope`·`cortada`·`fallida`) y `ingesta_corridas` guarda `borradores` y `costo_micros`.
+- **Elegibles**: abiertos o `solicitado`, con tema, puntaje ≥ 50 o pedidos, abiertos (72 h), sin borrador (uno por evento, `unique`),
+  sin un intento final y con menos de 3 errores del servicio; primero los pedidos, después por puntaje; `BORRADORES_POR_CORRIDA` (5).
+- **Tabla nueva `borrador_intentos`** (solo agregar): cada intento con su resultado (`borrador`·`lectura_manual`·`rechazo`·
+  `revision`·`error`), un código (nunca un texto), banderas, llamadas y costo. Evita volver a gastar en un evento que la IA no pudo
+  redactar y le dice a la dueña por qué. `evento_auditoria` suma `solicitado` y `borrador_descartado`; `borradores.motivo_descarte`
+  también se actualiza (la app cambia `estado`, `motivo_descarte`, `alert_id` y `resuelto`). `borradores_uso.tope_micros` guarda el
+  tope vigente (≤ 5.000.000 en la base) para que el panel, que no tiene la configuración de las tareas, lo muestre.
+- **La llamada**: `messages.create` con `zodOutputFormat` y no `messages.parse`, que lanza antes de que se puedan leer `stop_reason` y
+  `usage` cuando el JSON no valida (sin `usage` no se ajusta el gasto). El texto lo valida `revision.ts` con el esquema local. Sistema
+  fijo con `cache_control`; sin `thinking`, muestreo, herramientas ni relleno; `effort: "low"`; `max_tokens` 3.000; un reintento del SDK
+  y 60 s. Un error del servicio deja la reserva entera; una clave rechazada termina la redacción.
+- **Gasto**: reserva del peor caso = entrada estimada × 1,25 (toda escrita en la caché) × precio + 3.000 × precio de salida; ajuste
+  con la caché a su precio (`costoDetalladoEnMicros`). El **tope acumulado** (`IA_TOPE_TOTAL_USD`, opcional, ≤ 40) no tiene tabla: es
+  la suma de `asistente_uso` y `borradores_uso`; cada reserva con ese tope corre en una transacción con
+  `pg_advisory_xact_lock` (el asistente también lo respeta si se fija; sin él, su reserva no cambia).
+- **Lectura**: el HTML pasa a texto en una sola pasada (sin expresiones que retrocedan); un PDF no se pide y deja `lectura_manual`,
+  igual que un `robots.txt` que lo prohíbe o no responde, otro tipo o un error. Las marcas de inyección se buscan en los títulos y en
+  el texto ya cortado (sin tildes, sin caracteres invisibles); con una, no se lee lo que falta ni se llama.
+- **Anticopia**: un nombre propio de varias palabras («Reunión de Política Monetaria del Banco Central de Chile») cuenta como una
+  palabra; sin eso, «la» + el nombre ya llegaba a 10. Sin texto leído, las dos cifras son 0. Umbrales sin calibrar con textos reales.
+- **Lenguaje**: además de `frasesProhibidas`, las formas de un redactor («recomend…», «aconsej…», «sugerimos», «conviene comprar»,
+  «buen momento para», «señal de compra», «precio objetivo», «compre/venda/invierta»). No se rechaza «debe vender» en tercera persona
+  (un hecho del documento).
+- **Panel**: la cola muestra el borrador (propuesta, anticopia, banderas, dudas, costo) o por qué la IA no dejó uno; el detalle trae el
+  borrador en el formulario de alta con la confianza **calculada** en cada fila (la dueña puede bajarla), las casillas de fuentes y
+  «Revisado por»; aceptar usa `crearConFuentes` con `vincular` (evento convertido y borrador aceptado en la misma transacción; dos
+  aceptaciones a la vez dan una alerta; nota «Desde borrador ⟨id⟩ · claude-haiku-5-5 · N fuentes»). Crear la alerta a mano con un
+  borrador pendiente lo descarta (`otro`). Pedir un borrador solo se ofrece si alguna fuente tiene `lectura_ia`. El tablero muestra
+  los borradores por revisar, el gasto del mes contra su tope (aviso desde el 80 %) y toda la IA desde el primer día.
+- **Pruebas**: unitarias de cada revisión (inyección, copia, recomendación, JSON roto, largo, cifras, forma, orden), del servicio con
+  dobles (tope agotado, base caída, refusal, `max_tokens`, reintento, plazo) y del proveedor contra el Anthropic falso; integración con
+  Postgres y los dos servidores falsos (`integracion.test.ts`, `presupuesto-postgres.test.ts`: 60 reservas a la vez, techo de US$ 5,
+  tope total con el asistente); e2e `borradores.spec.ts`. `npm run borradores:probar` (con la clave de la dueña) mide el costo real:
+  **pendiente**, no se corrió (sin clave en este entorno).
+
+## 5. Revisión en `/admin` (F5, hecha; la cola sin IA llega en F3; ver §4.8)
 
 - **`/admin` (tablero)**: última corrida y su resultado, feeds en pausa o con fallos, gasto del mes contra el tope, borradores
   pendientes.
@@ -606,7 +659,7 @@ se publica antes de cerrar F4.
 - **Aceptación**: sin invitación no se crea ninguna cuenta; una alerta real publicada no aparece sin sesión (HTML, sitemap,
   imagen OG); el modo `abiertas` sigue igual.
 
-### F5 · Borradores con IA y su revisión
+### F5 · Borradores con IA y su revisión (hecha el 2026-10-28, apagada; ver §4.8)
 
 - **Archivos**: `src/lib/ia/gasto.ts`, `src/lib/borradores/{lectura,prompt,proveedor-borrador,revision,anticopia,presupuesto-postgres,servicio}.ts`,
   `db/migraciones/0010_borradores.sql`, `schemas.ts` (`lectura_ia` en `Source`), `env.ts` (`BORRADORES_*`, `IA_TOPE_TOTAL_USD`),
@@ -618,8 +671,8 @@ se publica antes de cerrar F4.
   servidor falso de Anthropic (qué recibe y qué **no**: ningún texto de una fuente sin `lectura_ia`); aceptar crea alerta y
   fuentes en una transacción; `arquitectura.test.ts` (proveedor sin herramientas, configuración explícita).
 - **Aceptación**: `npm run borradores:probar` (con la clave de la dueña) mide costo real ≤ US$ 0,004 por borrador y el
-  estimador por encima de `countTokens`; con el tope agotado no hay llamadas; ningún texto de fuente queda en la base ni en
-  los registros; ninguna alerta nace sin la acción de la dueña.
+  estimador por encima de `countTokens` (**pendiente**: sin clave en este entorno); con el tope agotado no hay llamadas;
+  ningún texto de fuente queda en la base ni en los registros; ninguna alerta nace sin la acción de la dueña (probados).
 
 ### F6 · Preferencias, resumen diario y operación
 

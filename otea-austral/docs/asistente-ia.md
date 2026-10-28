@@ -68,7 +68,7 @@ El navegador lee la respuesta como NDJSON (`cliente.ts`): un evento por línea (
 | Borde HTTP y ruta | `manejador.ts`, `src/app/api/asistente/route.ts`, `instancia.ts`, `modo.ts` |
 | Modelo: prompt, proveedor real y proveedor de pruebas | `prompt.ts`, `proveedor.ts`, `proveedor-anthropic.ts`, `proveedor-guion.ts` |
 | Revisión de la salida | `salida.ts` |
-| Gasto: topes, memoria y Postgres | `presupuesto.ts`, `presupuesto-postgres.ts`, `db/migraciones/0005_asistente_uso.sql` |
+| Gasto: topes, memoria y Postgres | `presupuesto.ts`, `presupuesto-postgres.ts`, `db/migraciones/0005_asistente_uso.sql`; lo común con los borradores con IA (precios, micros, reserva del peor caso y el tope acumulado `IA_TOPE_TOTAL_USD`) en `src/lib/ia/gasto.ts` y `gasto-postgres.ts` (`presupuesto.ts` lo reexporta sin cambiar su conducta) |
 | Navegador | `cliente.ts`, `src/components/asistente/AsistenteChat.tsx`, `src/components/home/Asistente.tsx` |
 | Servidor que imita la API de Anthropic (pruebas) | `scripts/lib/anthropic-falso.mjs`, `scripts/anthropic-falso.mjs` |
 | Configuración | `src/lib/env.ts` (`ASISTENTE_*`, `ANTHROPIC_API_KEY`), `.env.example`, `despliegue/cloud-run.yaml` |
@@ -101,6 +101,12 @@ si los citas fuera de aquí).
 | LLM10 Consumo sin límites | Topes de gasto, de llamadas, por persona y por IP; tiempo y tokens máximos; cancelación al cerrar la conexión |
 
 ## 5. Costos reales
+
+> **Tope acumulado de toda la IA (desde F5, opcional).** `IA_TOPE_TOTAL_USD` (≤ 40, sin valor por omisión: decisión de la dueña,
+> `alertas-reales.md` §11) limita lo gastado por el asistente **y** por los borradores desde el primer día, sumado en la base
+> (`asistente_uso` + `borradores_uso`). Si se fija, va en los dos servicios: cada reserva del asistente corre entonces en una
+> transacción con un candado (`pg_advisory_xact_lock`) y no pasa si la suma más el peor caso supera el tope; sin la base, no hay IA.
+> Sin la variable, la reserva del asistente es la de siempre (una sentencia).
 
 La IA se cobra por uso: dólares por millón de tokens (MTok), de entrada y de salida. **Precios según la documentación
 de la API consultada el 11 de octubre de 2026; confírmalos en la página de precios de Anthropic antes de fijarlos**: el

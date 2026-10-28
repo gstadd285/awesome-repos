@@ -193,7 +193,8 @@ Diseño, costos, cumplimiento y plan en [`alertas-reales.md`](alertas-reales.md)
       localizados y condiciones resumidas «por confirmar»), campo `feeds` en el registro con sus reglas y el diseño técnico.
 - [ ] **F2** Ingesta de metadatos (hecha, apagada) · **F3** eventos candidatos y cola manual sin IA (hecha, sin datos reales
       todavía) · **F4** acceso privado por invitación (hecho, apagado: `/alertas` muestra lo real solo con sesión; pasar a
-      `CUENTAS_MODO=invitacion` es decisión de la dueña) · **F5** borradores con IA (`claude-haiku-5-5`, tope de US$ 5 al mes) y su revisión · **F6**
+      `CUENTAS_MODO=invitacion` es decisión de la dueña) · **F5** borradores con IA (hechos, apagados: `claude-haiku-5-5`, tope de US$ 5
+      al mes en la base, revisión en `/admin/eventos`; activarlos y elegir las fuentes con `lectura_ia` es decisión de la dueña) · **F6**
       preferencias, resumen diario y operación.
 - [ ] Decisiones de la dueña: `alertas-reales.md` §11.
 

@@ -538,3 +538,97 @@ La e2e `e2e/tareas.spec.ts` prueba las puertas en el sitio público (3200) y en 
 
 **Costo:** US$ 0 dentro de las capas gratuitas (Cloud Scheduler incluye 3 trabajos por cuenta de facturación; ~720 corridas cortas al mes
 en Cloud Run con mínimo 0 instancias). Confírmalo en las páginas de precios antes de crear el trabajo.
+
+## 14. Borradores con IA (en `otea-tareas`, apagados por omisión)
+
+Al final de cada corrida de la ingesta, con el turno tomado, Claude (`claude-haiku-5-5`) redacta **un borrador por evento
+candidato** sobre el umbral (o pedido por la dueña en `/admin/eventos`) y lo deja en la cola; la dueña lo acepta (la alerta nace en
+borrador por `rules.ts`, con sus fuentes), lo edita o lo descarta con un motivo. **Nada se publica solo.** Diseño, costos y
+decisiones: [`alertas-reales.md`](alertas-reales.md) §4, §5 y §4.8. Es un **servicio de pago** (CLAUDE.md, regla 1): solo la dueña
+lo activa, con la clave, los precios y el tope que ella decida.
+
+> **Hoy no redactaría nada.** Ninguna fuente del registro tiene `lectura_ia: true` y **nada de una fuente sin esa marca llega al
+> modelo** (ni su texto ni sus títulos): un evento sin ninguna queda en la cola manual. Marcar una fuente exige leer sus condiciones
+> completas y la opinión del abogado (`alertas-reales.md` §11, decisión 3). Sin feeds verificados (§13) tampoco hay eventos.
+
+**Qué protege a quién:**
+
+| Barrera | Dónde |
+|---|---|
+| `BORRADORES_MODO=ia` solo con `TAREAS_MODO=activo` y todo lo de pago explícito (clave, modelo, precios, tope); el sitio público no tiene la clave | `src/lib/env.ts` |
+| Espacio de trabajo propio en la consola de Anthropic con **límite de gasto mensual de US$ 5** y su clave (distinta de la del asistente) | Consola de Anthropic (barrera final, independiente de la app) |
+| Tope del mes ≤ US$ 5 (esquema, sentencia y restricción de la base), llamadas por mes y por corrida, tope acumulado opcional (`IA_TOPE_TOTAL_USD`); reserva del peor caso antes de llamar; **si la base falla, no se llama** | `src/lib/borradores/presupuesto-postgres.ts`, `src/lib/ia/gasto-postgres.ts`, `borradores_uso` (`0010`) |
+| Solo fuentes con `lectura_ia`; el texto se lee con `descarga.ts` (registro, dominio, 10 s, 2 MB, `text/html`, `robots.txt`), se corta en 12.000 caracteres y **nunca se guarda ni se registra** | `src/lib/borradores/lectura.ts` |
+| Marcas de inyección en títulos o documentos ⇒ no se llama (lectura manual); cada documento entre límites aleatorios | `src/lib/borradores/prompt.ts` |
+| Sin herramientas, sin secretos, salida estructurada; un solo reintento del SDK, 60 s, sin registros del SDK | `src/lib/borradores/proveedor-borrador.ts` |
+| Revisión en orden: Zod estricto, forma (sin enlaces, HTML ni Markdown), lenguaje de recomendación, cifras, anticopia, reglas; la confianza la calcula el código | `src/lib/borradores/revision.ts`, `anticopia.ts` |
+| Aceptar, descartar y pedir con sesión y CSRF del panel; aceptar crea la alerta, sus fuentes y el borrador aceptado en una transacción | `src/app/admin/eventos/acciones.ts`, `src/lib/ingesta/cola-postgres.ts` |
+
+**Costo previsto** (precios del 2026-10-06, a confirmar en la página de precios): ~US$ 0,0014 por borrador típico (8.000 tokens de
+entrada y 1.200 de salida), ≤ US$ 0,0036 en el peor caso; a 430 borradores al mes, ~US$ 0,60 (≤ US$ 1,53). El tope de US$ 5 cubre
+~1.400 llamadas aunque todas costaran el peor caso.
+
+### Activarlos
+
+1. **Migra** con el rol dueño (`npm run db:migrar`): la `0010` crea `borradores_uso`, `borradores` y `borrador_intentos` (grants por
+   columna, RLS, disparadores: el contenido no cambia, el estado se resuelve una vez, los intentos son de solo agregar) y suma dos
+   acciones a `evento_auditoria`.
+2. **Espacio de trabajo en Anthropic** (decisión 4 de §11): en la consola, un espacio de trabajo «Otea · borradores» con **límite de
+   gasto mensual de US$ 5** (si el plan no lo permite, el de la organización) y una clave propia; verificación en dos pasos en la
+   cuenta. Confirma en la página de precios lo que cuesta `claude-haiku-5-5`.
+3. **Mide el costo real** antes de activar (gasta décimas de centavo, con un documento sintético):
+
+   ```bash
+   BORRADORES_PRUEBA_REAL=1 BORRADORES_ANTHROPIC_API_KEY=sk-ant-… BORRADORES_PRECIO_ENTRADA=… BORRADORES_PRECIO_SALIDA=… \
+     npm run borradores:probar
+   ```
+
+   Debe pasar: borrador revisado, **costo ≤ US$ 0,004** y el estimador del gasto por encima de `countTokens`.
+4. **Elige las fuentes** (decisión 3 de §11): `"lectura_ia": true` en `data/sources.seed.json`, solo con condiciones «Verificadas el
+   …» que permitan el uso con IA (el esquema lo exige). Es un commit, una imagen y un despliegue de los dos servicios.
+5. **Secreto y despliegue** de `otea-tareas` (la misma imagen; el sitio público no recibe nada de esto):
+
+   ```bash
+   gcloud secrets create otea-borradores-anthropic --replication-policy=automatic
+   printf 'Clave de borradores: '; read -rs CLAVE; echo; printf '%s' "$CLAVE" | gcloud secrets versions add otea-borradores-anthropic --data-file=-; unset CLAVE
+   gcloud secrets add-iam-policy-binding otea-borradores-anthropic --role=roles/secretmanager.secretAccessor \
+     --member="serviceAccount:sa-tareas@$PROYECTO.iam.gserviceaccount.com"
+   gcloud run services update otea-tareas --region $REGION \
+     --update-env-vars "BORRADORES_MODO=ia,BORRADORES_MODELO=claude-haiku-5-5,BORRADORES_PRECIO_ENTRADA=0.1,BORRADORES_PRECIO_SALIDA=0.5,BORRADORES_TOPE_MENSUAL_USD=5" \
+     --update-secrets "BORRADORES_ANTHROPIC_API_KEY=otea-borradores-anthropic:latest"
+   ```
+
+   Los precios del ejemplo son los de la referencia del 2026-10-06: usa los que confirmes. Si la dueña aprueba el tope acumulado
+   (decisión 2), `IA_TOPE_TOTAL_USD` va en **los dos** servicios (el asistente también lo respeta). Si falta algo, `/api/salud` falla
+   y la revisión no recibe tráfico. La corrida debe terminar antes de los 300 s de Cloud Run: la redacción no empieza un borrador si
+   quedan menos de 75 s del plazo de 270 s.
+6. **Comprueba** una corrida: la respuesta lleva solo conteos (`…,"borradores":1,"ia":"ok"`; `"ia":"tope"` si no alcanzó el tope) y
+   el registro, eventos `"tipo":"borrador"` con un resultado y un código, nunca textos. En `/admin` el tablero muestra los borradores
+   por revisar y el gasto del mes contra el tope (aviso desde el 80 %).
+
+### Vigilarlos
+
+- **Panel**: tablero (gasto del mes, toda la IA desde el primer día, borradores pendientes) y `/admin/eventos/[id]` (cada intento con su
+  resultado, motivo, llamadas y costo). Un evento que la IA no pudo redactar queda en la cola manual y no se vuelve a intentar (salvo
+  errores del servicio, hasta 3 veces).
+- **Registros**: `gcloud logging read 'resource.labels.service_name="otea-tareas" AND jsonPayload.tipo="borrador"' --limit 20`.
+  `lectura_manual` con `posible_inyeccion` merece mirar ese documento; `sin_presupuesto`, que se llegó al tope.
+- **Consola de Anthropic** una vez por semana (`alertas-reales.md` §8.6): gasto del espacio de trabajo contra el del panel.
+
+### Apagarlos de inmediato
+
+```bash
+gcloud run services update otea-tareas --region $REGION --update-env-vars BORRADORES_MODO=apagado   # la próxima corrida no llama
+```
+
+Y, si hace falta cortar ya mismo o se sospecha de la clave: **revócala en la consola de Anthropic** (o baja el límite del espacio de
+trabajo a 0) y pausa la ingesta (`gcloud scheduler jobs pause otea-ingesta --location $REGION`). Apagados, la cola de `/admin/eventos`
+sigue funcionando a mano y los borradores ya hechos se pueden aceptar o descartar.
+
+### Probarlos sin salir a internet
+
+`npm test` con `PRUEBAS_DATABASE_URL` corre la redacción completa con Postgres, el servidor de **fuentes falsas** (documentos HTML
+sintéticos en `e2e/fixtures/fuentes/*/documentos/`) y el **Anthropic falso** (`scripts/lib/anthropic-falso.mjs`, salida estructurada
+sin flujo) contra el SDK oficial (`src/lib/borradores/integracion.test.ts`): qué recibe el modelo y qué no, que ningún texto queda en
+la base, la inyección, el tope agotado y la revisión en la cola. La e2e `e2e/borradores.spec.ts` corre la ingesta en el 3201 con los
+borradores activos y el registro real (al «proveedor» no le llega nada) y la revisión en el panel con un borrador sintético.

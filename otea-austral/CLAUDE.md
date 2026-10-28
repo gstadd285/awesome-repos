@@ -316,7 +316,7 @@ Reglas (las vigila `src/lib/design/motion.test.ts`):
 
 | Entidad | Campos |
 |---|---|
-| `Source` | `id`, `nombre`, `organismo`, `url_base` (https o vacía si no está verificada), `tipo` (`primaria`·`secundaria`·`prensa`), `temas[]`, `acceso` (`rss`·`api`·`manual`), `feeds[]` (`url`, `formato` `rss`·`atom`·`api`, `titulo`, `verificado`: solo feeds vistos responder, en el dominio de `url_base` y sin credenciales; `rss`/`api` exigen uno, `manual` ninguno), `condiciones_reutilizacion` (`pendiente de verificar`, `Por confirmar en la página (…)` o `Verificadas el AAAA-MM-DD: …`), `prioridad` (`A`·`B`·`C`), `activa` |
+| `Source` | `id`, `nombre`, `organismo`, `url_base` (https o vacía si no está verificada), `tipo` (`primaria`·`secundaria`·`prensa`), `temas[]`, `acceso` (`rss`·`api`·`manual`), `feeds[]` (`url`, `formato` `rss`·`atom`·`api`, `titulo`, `verificado`: solo feeds vistos responder, en el dominio de `url_base` y sin credenciales; `rss`/`api` exigen uno, `manual` ninguno), `condiciones_reutilizacion` (`pendiente de verificar`, `Por confirmar en la página (…)` o `Verificadas el AAAA-MM-DD: …`), `prioridad` (`A`·`B`·`C`), `activa`, `lectura_ia?` (por omisión falso; exige condiciones «Verificadas»: sin ella nada de la fuente llega a la IA de borradores) |
 | `AlertSource` | `alert_id`, `source_id`, `titulo_documento`, `url` (solo https), `fecha_publicacion`, `fecha_consulta` (no anterior a la publicación), `identificador?` |
 | `Alert` | `id`, `tema`, `evento`, `resumen`, `filas[]` (`sector`, `direccion` `gana`·`condicionado`·`pierde`, `condicion`, `confianza` declarada), `fecha`, `revisor`, `impacto` (`bajo`·`medio`·`alto`), `estado` (`borrador`·`en_revision`·`publicada`·`corregida`·`retractada`), `es_ejemplo` |
 | `AlertAudit` | `id`, `alert_id`, `accion` (`creada`·`editada`·`aprobada`·`publicada`·`corregida`·`retractada`), `actor` (alias interno, **sin datos personales**), `fecha`, `nota` |
@@ -440,6 +440,19 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
     red ni IA. Una alerta creada desde un evento nace en borrador, **nunca de ejemplo**, por `crearConFuentes` (reglas de
     `rules.ts`, una transacción) y con sus fuentes leídas de `fuente_items` (del formulario solo llegan ids). `evento_auditoria`
     es de solo agregar.
+- **Borradores con IA** (F5, `src/lib/borradores/`, `src/lib/ia/`, migración `0010`; diseño en `docs/alertas-reales.md` §4 y §4.8,
+  operación en `docs/despliegue.md` §14). Reglas:
+  - **Apagados por omisión** (`BORRADORES_MODO=apagado`). `ia` solo en `otea-tareas` (exige `TAREAS_MODO=activo`) y con todo lo de pago
+    explícito: clave propia (distinta de la del asistente), modelo (`claude-haiku-5-5`), precios y tope del mes **≤ US$ 5** (esquema,
+    sentencia y base). Es de pago: **nunca lo actives ni cambies modelo, precios, topes, claves ni `lectura_ia` sin que la dueña lo pida.**
+  - Corre al final de la corrida de la ingesta, con el turno tomado; solo la ruta arma el redactor. El panel y la cola **nunca** importan el
+    proveedor, el servicio, la lectura ni el prompt (solo `borradores/esquema`); `proveedor-borrador.ts` es el único que llama al modelo:
+    sin herramientas, todo explícito en el cliente del SDK, `messages.create` + `zodOutputFormat`.
+  - **Nada de una fuente sin `lectura_ia` llega al modelo**; el texto se lee con `descarga.ts`, vive en memoria y **nunca se guarda ni se
+    registra** (ninguna columna lo admite). Marcas de inyección ⇒ no se llama. Reserva del peor caso antes de llamar; si la base falla, no se
+    llama. La salida se revisa en orden (Zod estricto, forma, lenguaje, cifras, anticopia, reglas) y la confianza la calcula el código.
+  - La dueña acepta (alerta en borrador por `crearConFuentes`, con el borrador aceptado en la misma transacción), descarta con motivo o pide un
+    borrador en `/admin/eventos`; nada se publica solo. `borrador_intentos` es de solo agregar.
 - **Alertas reales solo con sesión** (F4, `docs/alertas-reales.md` §6.1): `/alertas` pasa la sesión de la cuenta a `alertasVisibles`
   (`src/lib/alertas/visibles.ts`), el **único** que llama a `repo.publicas({ ejemplo })`: sin sesión, solo ejemplos; con sesión, solo
   `es_ejemplo = false`. Nada real en metadatos, mapa del sitio, imagen OG ni feeds (no hay). El panel avisa quién verá lo publicado según
@@ -491,8 +504,9 @@ npm test             # Vitest (una pasada); npm run test:watch para modo observa
 npm run build && npm start   # `output: "standalone"`: start corre `node .next/standalone/server.js`
 npm run test:e2e     # Playwright sobre el build (servidor en el 3200, con las cuentas abiertas si hay DATABASE_URL y el correo
                      # yendo a un servidor que imita a Resend en el 3298: `scripts/resend-falso.mjs`; el modo IA del asistente,
-                     # en el 3201 contra un servidor que imita a Anthropic en el 3299: `scripts/anthropic-falso.mjs`; con base, las
-                     # cuentas por invitación en el 3202. Libera antes 3200, 3201, 3202, 3298 y 3299)
+                     # en el 3201 contra un servidor que imita a Anthropic en el 3299: `scripts/anthropic-falso.mjs`; con base, el
+                     # 3201 también corre la ingesta y los borradores con IA, y las cuentas por invitación van en el 3202. Libera antes
+                     # 3200, 3201, 3202, 3298 y 3299)
 npm run db:migrar    # DATABASE_URL_ADMIN (rol dueño): aplica db/migraciones y la semilla de fuentes
 npm run db:rol-app   # crea el usuario de la aplicación e imprime su URL una sola vez
 npm run admin:credenciales   # frase, TOTP y secretos de sesión del panel
@@ -502,6 +516,7 @@ npm run lista:recifrar       # rotar WAITLIST_SECRETO (ensayo; -- --aplicar para
 npm run cuentas:secreto      # CUENTAS_SECRETO (cifrado del correo y de los dos pasos de las cuentas; hoy no se puede rotar)
 node scripts/fuentes-falsas.mjs   # fuentes falsas (fixtures sintéticos) en el 3297, para la ingesta con INGESTA_URL_PRUEBA
 npm run asistente:probar     # GASTA DINERO: prueba el asistente con la API real (ASISTENTE_PRUEBA_REAL=1 + clave en el entorno)
+npm run borradores:probar    # GASTA DINERO: un borrador con la API real (BORRADORES_PRUEBA_REAL=1 + clave y precios): costo y countTokens
 npm run seguridad:secretos   # escáner de secretos en archivos e historial (lo corre la CI)
 npm run seguridad:canarios   # build con secretos falsos: ninguno debe quedar en .next/ (lo corre la CI)
 npm run seguridad:dependencias   # audita TODAS las dependencias contra seguridad/avisos-npm-aceptados.json
@@ -561,6 +576,9 @@ src/
                        marca de tiempo (tiempo.ts), cifrado y claves derivadas
     admin/             sesión firmada, TOTP, frase, almacén de sesiones en la base
     asistente/         preguntas frecuentes, búsqueda, políticas, servicio, proveedor de IA, revisión de la salida, gasto
+    ia/                gasto común de la IA (precios, micros, reserva del peor caso, tope acumulado en la base)
+    borradores/        borradores con IA: esquema, prompt e inyección, lectura transitoria, anticopia, revisión, proveedor, tope
+                       mensual, almacén, servicio e instancia
     cuentas/           cuentas de personas usuarias: servicio, almacenes (memoria y Postgres), contraseñas, cifrado, tokens,
                        TOTP, código QR propio, correos, acceso (cookie y CSRF)
     correo/            envío con Resend y plantilla de los correos (compartidos por la lista de espera y las cuentas)
@@ -574,7 +592,7 @@ src/
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
 db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados, 0005 gasto del asistente,
-                       0006 cuentas, 0007 ingesta, 0008 eventos candidatos, 0009 invitaciones)
+                       0006 cuentas, 0007 ingesta, 0008 eventos candidatos, 0009 invitaciones, 0010 borradores con IA)
 scripts/               migrar, rol de la aplicación, credenciales del panel, preparar standalone, lista de espera
                        (secreto, exportar, recifrar), escáner de secretos, canarios, auditoría de dependencias
 seguridad/             avisos de npm aceptados (con motivo y fecha de revisión)
@@ -937,6 +955,19 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   lanza un error propio dentro y se traduce fuera (`InvitacionNoVale` en `almacen-postgres.ts`).
 - **Un `on delete set null` también dispara los `before update`** de la tabla que apunta: el disparador de `invitaciones` deja pasar
   `cuenta_id` a nulo sin tocar nada más.
+
+## Lo aprendido (borradores con IA)
+
+- **`messages.parse` lanza antes de que se puedan leer `stop_reason` y `usage`** si el JSON no valida: sin `usage` no se ajusta el gasto.
+  Los borradores usan `messages.create` con `zodOutputFormat(…)` en `output_config.format` y validan el texto con el esquema local.
+- **El servidor falso de Anthropic elige el guion por `stream`**: con flujo, el del asistente; sin flujo (salida estructurada), un borrador
+  válido. Tiene dos claves falsas porque `env.ts` exige que la de los borradores sea distinta de la del asistente.
+- **Un tope que suman dos servicios necesita serializar las reservas**: con `IA_TOPE_TOTAL_USD`, cada reserva corre en una transacción con
+  `pg_advisory_xact_lock` (el candado de transacción sí funciona con el agrupador de Neon; el de sesión no) y una sola sentencia que vuelve a sumar.
+- **Anticopia y nombres propios**: «la Reunión de Política Monetaria del Banco Central de Chile» ya son 10 palabras seguidas; una secuencia
+  de palabras con mayúscula inicial cuenta como una sola.
+- **Las herramientas de escritura convierten `\u00a0`, `\u200b` y `\u2028` en el carácter**, también en las pruebas: revisa los bytes
+  (un U+2028 literal rompe la expresión regular; uno de U+00A0, la comparación).
 
 ## Notas de Next.js
 
