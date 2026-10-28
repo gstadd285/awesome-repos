@@ -1,6 +1,6 @@
 import { pbkdf2Sync, randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
-import { CLAVE_FALSA } from "./scripts/lib/anthropic-falso.mjs";
+import { CLAVE_FALSA, CLAVE_FALSA_BORRADORES } from "./scripts/lib/anthropic-falso.mjs";
 import { base32 } from "./scripts/lib/credenciales.mjs";
 import { CLAVE_RESEND_FALSA } from "./scripts/lib/resend-falso.mjs";
 import { PUERTO_API_FALSA, PUERTO_CORREO, PUERTO_IA, PUERTO_INVITACION, URL_CORREO } from "./e2e/puertos";
@@ -54,6 +54,23 @@ const tareas: Record<string, string> = hayBase
   ? { TAREAS_MODO: "activo", TAREAS_SECRETO: process.env.E2E_TAREAS_SECRETO!, INGESTA_CONTACTO: "mailto:ingesta@example.org" }
   : {};
 
+/**
+ * Con base de datos, el servicio de tareas (3201) también tiene los borradores con IA activos, contra el mismo servidor que
+ * imita a Anthropic (nada sale a internet ni se gasta): así la corrida recorre el camino de la IA con el registro real, en
+ * el que ninguna fuente tiene `lectura_ia`, y la e2e comprueba que al «proveedor» no le llega nada de ellas.
+ */
+const borradores: Record<string, string> = hayBase
+  ? {
+      BORRADORES_MODO: "ia",
+      BORRADORES_ANTHROPIC_API_KEY: CLAVE_FALSA_BORRADORES,
+      BORRADORES_MODELO: "claude-haiku-5-5",
+      BORRADORES_PRECIO_ENTRADA: "0.1",
+      BORRADORES_PRECIO_SALIDA: "0.5",
+      BORRADORES_TOPE_MENSUAL_USD: "5",
+      BORRADORES_URL_API_PRUEBA: `http://127.0.0.1:${PUERTO_API_FALSA}`,
+    }
+  : {};
+
 const panel: Record<string, string> = hayBase
   ? {
       ADMIN_CLAVE_HASH: process.env.E2E_ADMIN_HASH!,
@@ -87,7 +104,7 @@ export default defineConfig({
     },
     // El panel es una herramienta interna de escritorio: se prueba una vez. Las pruebas de movimiento abren
     // sus propias ventanas (estrecha, teléfono, sin soporte…): tampoco se repiten en el móvil.
-    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec|tareas\.spec|invitaciones\.spec/ },
+    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec|tareas\.spec|invitaciones\.spec|borradores\.spec/ },
   ],
   webServer: [
     {
@@ -136,6 +153,7 @@ export default defineConfig({
         ASISTENTE_LLAMADAS_DIARIAS: "10000",
         ASISTENTE_URL_API_PRUEBA: `http://127.0.0.1:${PUERTO_API_FALSA}`,
         ...tareas,
+        ...borradores,
       },
     },
     // Con base de datos, una tercera instancia con las cuentas por invitación (acceso anticipado privado). Sin panel: los

@@ -57,7 +57,12 @@ test.describe("ingesta de metadatos", () => {
           );
         }
 
-        const r = await request.post(`${URL_IA}${RUTA}`, { headers: { "x-otea-tarea": SECRETO! } });
+        // Si otra prueba (borradores.spec.ts) tiene el turno, la corrida sale «omitida»: se espera y se reintenta.
+        let r = await request.post(`${URL_IA}${RUTA}`, { headers: { "x-otea-tarea": SECRETO! } });
+        for (let i = 0; i < 20 && (await r.json()).resultado === "omitida"; i++) {
+          await new Promise((ok) => setTimeout(ok, 500));
+          r = await request.post(`${URL_IA}${RUTA}`, { headers: { "x-otea-tarea": SECRETO! } });
+        }
         expect(r.status()).toBe(200);
         expect(r.headers()["cache-control"]).toBe("no-store");
         const cuerpo = await r.json();
@@ -70,6 +75,9 @@ test.describe("ingesta de metadatos", () => {
           sin_feeds: true,
           agrupados: expect.any(Number),
           eventos_nuevos: expect.any(Number),
+          // Los borradores con IA están activos en esta instancia, pero ninguna fuente del registro tiene `lectura_ia`.
+          borradores: 0,
+          ia: "ok",
         });
         expect(cuerpo.agrupados).toBeGreaterThanOrEqual(2);
         const { rows } = await cliente.query(
@@ -84,9 +92,13 @@ test.describe("ingesta de metadatos", () => {
       } finally {
         await cliente.end();
       }
-      // El turno se suelta al terminar: la siguiente corrida no queda omitida.
-      const otra = await request.post(`${URL_IA}${RUTA}`, { headers: { "x-otea-tarea": SECRETO! } });
-      expect((await otra.json()).resultado).toBe("ok");
+      // El turno se suelta al terminar: la siguiente corrida no queda omitida (salvo que otra prueba lo tenga justo ahora).
+      let otra = await (await request.post(`${URL_IA}${RUTA}`, { headers: { "x-otea-tarea": SECRETO! } })).json();
+      for (let i = 0; i < 20 && otra.resultado === "omitida"; i++) {
+        await new Promise((ok) => setTimeout(ok, 500));
+        otra = await (await request.post(`${URL_IA}${RUTA}`, { headers: { "x-otea-tarea": SECRETO! } })).json();
+      }
+      expect(otra.resultado).toBe("ok");
     });
   });
 });
