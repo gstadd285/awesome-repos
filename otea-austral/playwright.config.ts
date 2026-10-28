@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { CLAVE_FALSA, CLAVE_FALSA_BORRADORES } from "./scripts/lib/anthropic-falso.mjs";
 import { base32 } from "./scripts/lib/credenciales.mjs";
 import { CLAVE_RESEND_FALSA } from "./scripts/lib/resend-falso.mjs";
-import { PUERTO_API_FALSA, PUERTO_CORREO, PUERTO_IA, PUERTO_INVITACION, URL_CORREO } from "./e2e/puertos";
+import { DONACIONES_URL_PRUEBA, PUERTO_API_FALSA, PUERTO_CORREO, PUERTO_IA, PUERTO_INVITACION, URL_CORREO } from "./e2e/puertos";
 
 const PUERTO = 3200;
 const chromium = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
@@ -152,6 +152,8 @@ export default defineConfig({
         ASISTENTE_TOPE_DIARIO_USD: "10",
         ASISTENTE_LLAMADAS_DIARIAS: "10000",
         ASISTENTE_URL_API_PRUEBA: `http://127.0.0.1:${PUERTO_API_FALSA}`,
+        // Aportes activos solo aquí (la principal los deja apagados: la portada y su presupuesto no cambian).
+        DONACIONES_URL: DONACIONES_URL_PRUEBA,
         ...tareas,
         ...borradores,
       },

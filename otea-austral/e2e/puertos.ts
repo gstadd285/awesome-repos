@@ -17,3 +17,9 @@ export const URL_IA = `http://localhost:${PUERTO_IA}`;
 export const URL_INVITACION = `http://localhost:${PUERTO_INVITACION}`;
 export const URL_API_FALSA = `http://127.0.0.1:${PUERTO_API_FALSA}`;
 export const URL_CORREO = `http://127.0.0.1:${PUERTO_CORREO}`;
+
+/**
+ * Aportes por Mercado Pago (`/apoyar`): activos solo en la segunda instancia (3201), con este link **de prueba** de un dominio
+ * permitido. No es el de la dueña (todavía no existe) y las pruebas nunca lo abren. La principal (3200) los deja apagados.
+ */
+export const DONACIONES_URL_PRUEBA = "https://link.mercadopago.cl/prueba-e2e-otea";
