@@ -5,6 +5,7 @@ import { REGISTRO_FUENTES } from "@/lib/sources/registry";
 import type { Descarga, Descargador, SolicitudDescarga } from "./descarga";
 import {
   PAUSA_MS,
+  PLAZO_CORRIDA_MS,
   correrIngesta,
   feedsElegibles,
   type AlmacenIngesta,
@@ -106,7 +107,7 @@ function preparar(guion: Guion, fuentes: Source[] = [fuente("prueba", [feed(FEED
     solicitudes.push(s);
     return guion(s);
   });
-  const correr = (extra: Pick<DependenciasIngesta, "presupuestoMs" | "agrupar"> = {}) =>
+  const correr = (extra: Pick<DependenciasIngesta, "presupuestoMs" | "agrupar" | "redactar"> = {}) =>
     correrIngesta({ fuentes, almacen: memoria.almacen, turno, descargar, reloj: () => ahora, registrar: (e) => eventos.push(e), ...extra });
   return {
     ...memoria,
@@ -300,6 +301,53 @@ describe("una corrida", () => {
     const agrupar = vi.fn(async () => ({ asignados: 0, eventosNuevos: 0 }));
     expect(await p.correr({ agrupar })).toMatchObject({ resultado: "omitida" });
     expect(agrupar).not.toHaveBeenCalled();
+  });
+
+  it("los borradores con IA se redactan al final, con el turno tomado y un plazo antes de los 300 s de Cloud Run", async () => {
+    const p = preparar(() => {
+      throw new Error("no debería pedir nada");
+    }, []);
+    const vistos: { ocupado: boolean; plazo?: number; senal: boolean; agrupado: boolean }[] = [];
+    let agrupado = false;
+    const r = await p.correr({
+      agrupar: async () => {
+        agrupado = true;
+        return { asignados: 0, eventosNuevos: 0 };
+      },
+      redactar: async ({ senal, plazo }) => {
+        vistos.push({ ocupado: p.turno.ocupado, plazo, senal: senal instanceof AbortSignal, agrupado });
+        return { estado: "ok", redactados: 2, costoMicros: 900 };
+      },
+    });
+    expect(vistos).toEqual([{ ocupado: true, plazo: p.ahora().getTime() + PLAZO_CORRIDA_MS, senal: true, agrupado: true }]);
+    expect(PLAZO_CORRIDA_MS).toBeLessThan(300_000);
+    expect(r.redaccion).toEqual({ estado: "ok", redactados: 2, costoMicros: 900 });
+    expect(p.corridas).toMatchObject([{ borradores: 2, costoMicros: 900, resultado: "ok" }]);
+    expect(p.eventos.at(-1)).toMatchObject({ tipo: "tarea", borradores: 2 });
+  });
+
+  it("sin la redacción (apagada) la corrida no llama a nadie y cuenta cero; si la redacción falla, la corrida sigue", async () => {
+    const p = preparar(() => {
+      throw new Error("no debería pedir nada");
+    }, []);
+    expect((await p.correr()).redaccion).toBeUndefined();
+    expect(p.corridas.at(-1)).toMatchObject({ borradores: 0, costoMicros: 0 });
+    const r = await p.correr({
+      redactar: async () => {
+        throw new Error("base caída");
+      },
+    });
+    expect(r.redaccion).toEqual({ estado: "fallida", redactados: 0, costoMicros: 0 });
+    expect(p.eventos).toContainEqual({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: "borradores" });
+    expect(p.turno.ocupado).toBe(false);
+  });
+
+  it("con el turno tomado por otra corrida no redacta", async () => {
+    const p = preparar(() => ok(RSS));
+    p.turno.ocupado = true;
+    const redactar = vi.fn(async () => ({ estado: "ok", redactados: 0, costoMicros: 0 }));
+    await p.correr({ redactar });
+    expect(redactar).not.toHaveBeenCalled();
   });
 
   it("los registros llevan solo conteos y códigos: ni URLs, ni títulos, ni texto", async () => {

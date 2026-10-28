@@ -24,6 +24,8 @@ const TIPOS = [
   [/\.xml$/, "application/xml; charset=utf-8"],
   [/\.json$/, "application/json; charset=utf-8"],
   [/\.txt$/, "text/plain; charset=utf-8"],
+  // Documentos para la lectura transitoria de los borradores con IA.
+  [/\.html$/, "text/html; charset=utf-8"],
 ];
 
 const RSS_MINIMO =

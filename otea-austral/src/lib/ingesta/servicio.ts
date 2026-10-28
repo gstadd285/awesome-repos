@@ -12,6 +12,11 @@ import { permitePorRobots } from "./robots";
  */
 
 export const PRESUPUESTO_CORRIDA_MS = 4 * 60_000;
+/**
+ * Plazo de toda la corrida, borradores incluidos: Cloud Run y Cloud Scheduler cortan a los 300 s (`--timeout=300`,
+ * `--attempt-deadline=300s`). La redacción no empieza un borrador si no le alcanza antes de este plazo.
+ */
+export const PLAZO_CORRIDA_MS = 270_000;
 export const FALLOS_PARA_PAUSA = 3;
 export const PAUSA_MS = 24 * 60 * 60_000;
 export const VIGENCIA_ROBOTS_MS = 24 * 60 * 60_000;
@@ -53,6 +58,9 @@ export type Corrida = {
   feeds: number;
   nuevos: number;
   fallos: number;
+  /** Borradores con IA que la corrida dejó en la cola y lo que costaron (0 sin IA). */
+  borradores: number;
+  costoMicros: number;
   resultado: ResultadoCorrida;
 };
 
@@ -86,6 +94,9 @@ export function feedsElegibles(fuentes: readonly Source[], hoy: string): FeedEle
 /** Lo que deja la agrupación en eventos candidatos (`agrupar.ts`, §3). */
 export type ResumenAgrupacion = { asignados: number; eventosNuevos: number };
 
+/** Lo que deja la redacción de borradores con IA (`borradores/servicio.ts`, §4); la ingesta no sabe más que esto. */
+export type ResumenRedaccionCorrida = { estado: string; redactados: number; costoMicros: number };
+
 export type DependenciasIngesta = {
   fuentes: readonly Source[];
   almacen: AlmacenIngesta;
@@ -93,6 +104,11 @@ export type DependenciasIngesta = {
   descargar: Descargador;
   /** Agrupa los ítems sin evento (con el turno todavía tomado). Sin ella, la corrida solo ingiere. */
   agrupar?: (ahora: Date) => Promise<ResumenAgrupacion>;
+  /**
+   * Redacta borradores con IA (con el turno tomado, después de agrupar). Solo existe con `BORRADORES_MODO=ia` en
+   * `otea-tareas`; sin ella, la corrida no llama a ningún modelo.
+   */
+  redactar?: (opciones: { senal?: AbortSignal; plazo?: number }) => Promise<ResumenRedaccionCorrida>;
   reloj?: () => Date;
   presupuestoMs?: number;
   registrar?: (evento: SecurityEvent) => void;
@@ -109,6 +125,8 @@ export type ResumenCorrida = {
   sinFeeds: boolean;
   /** Solo si la corrida agrupó (la agrupación también corre sin feeds: puede haber ítems pendientes). */
   agrupacion?: ResumenAgrupacion;
+  /** Solo con los borradores con IA activos. */
+  redaccion?: ResumenRedaccionCorrida;
 };
 
 type Veredicto = { estado: "permitido" | "prohibido" | "no_disponible" };
@@ -129,6 +147,7 @@ export async function correrIngesta(deps: DependenciasIngesta): Promise<ResumenC
       nuevos: resumen.nuevos,
       fallos: resumen.fallos,
       ...(resumen.agrupacion ? { agrupados: resumen.agrupacion.asignados } : {}),
+      ...(resumen.redaccion ? { borradores: resumen.redaccion.redactados } : {}),
     });
   const corrida = (): Corrida => ({
     tarea: "ingesta",
@@ -137,6 +156,8 @@ export async function correrIngesta(deps: DependenciasIngesta): Promise<ResumenC
     feeds: resumen.feeds,
     nuevos: resumen.nuevos,
     fallos: resumen.fallos,
+    borradores: resumen.redaccion?.redactados ?? 0,
+    costoMicros: resumen.redaccion?.costoMicros ?? 0,
     resultado: resumen.resultado,
   });
 
@@ -314,6 +335,18 @@ export async function correrIngesta(deps: DependenciasIngesta): Promise<ResumenC
     } catch {
       registrar({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: "ingesta_agrupar" });
       if (resumen.resultado === "ok") resumen.resultado = "parcial";
+    }
+  }
+
+  if (deps.redactar && resumen.resultado !== "fallida") {
+    // Con el turno todavía tomado: dos corridas nunca redactan a la vez. Lo que no alcanza queda para la siguiente.
+    const plazo = inicio.getTime() + PLAZO_CORRIDA_MS;
+    const senal = AbortSignal.timeout(Math.max(1, plazo - reloj().getTime()));
+    try {
+      resumen.redaccion = await deps.redactar({ senal, plazo });
+    } catch {
+      registrar({ tipo: "fallo_servicio", servicio: "base_de_datos", codigo: "borradores" });
+      resumen.redaccion = { estado: "fallida", redactados: 0, costoMicros: 0 };
     }
   }
 

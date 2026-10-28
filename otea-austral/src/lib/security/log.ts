@@ -60,6 +60,17 @@ export type SecurityEvent =
       fallos?: number;
       /** Ítems que la corrida agrupó en eventos candidatos. */
       agrupados?: number;
+      /** Borradores con IA que dejó la corrida en la cola. */
+      borradores?: number;
+    }
+  /**
+   * Un intento de redactar un borrador con IA (`otea-tareas`): el resultado y un código, nunca el texto de una fuente, el
+   * borrador, un título ni una URL. `sin_presupuesto`: el tope (o la base) no dejó llamar al modelo.
+   */
+  | {
+      tipo: "borrador";
+      resultado: "redactado" | "lectura_manual" | "rechazo" | "revision" | "error" | "sin_presupuesto";
+      motivo?: string;
     }
   /** Un feed que la ingesta deja en pausa: el id de la fuente en el registro y un código, nunca la URL ni el texto. */
   | { tipo: "ingesta_feed"; fuente: string; evento: "pausa" | "robots_prohibido"; codigo: string };

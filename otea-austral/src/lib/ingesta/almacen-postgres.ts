@@ -27,8 +27,8 @@ const SQL_ITEMS = `insert into fuente_items (source_id, feed_url, clave, titulo,
   on conflict (source_id, clave) do nothing
   returning 1`;
 
-const SQL_CORRIDA = `insert into ingesta_corridas (tarea, inicio, fin, feeds, nuevos, fallos, resultado)
-  values ($1, $2, $3, $4, $5, $6, $7)`;
+const SQL_CORRIDA = `insert into ingesta_corridas (tarea, inicio, fin, feeds, nuevos, fallos, borradores, costo_micros, resultado)
+  values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`;
 
 type FilaFeed = {
   feed_url: string;
@@ -95,7 +95,7 @@ export function crearAlmacenIngestaPostgres(db: Consultor): AlmacenIngesta {
     },
 
     async registrarCorrida(c: Corrida) {
-      await db.consulta(SQL_CORRIDA, [c.tarea, c.inicio, c.fin, c.feeds, c.nuevos, c.fallos, c.resultado]);
+      await db.consulta(SQL_CORRIDA, [c.tarea, c.inicio, c.fin, c.feeds, c.nuevos, c.fallos, c.borradores, c.costoMicros, c.resultado]);
     },
   };
 }

@@ -19,6 +19,7 @@
     "lista:recifrar": "node scripts/lista-recifrar.mjs",
     "cuentas:secreto": "node scripts/cuentas-secreto.mjs",
     "asistente:probar": "vitest run src/lib/asistente/real.test.ts",
+    "borradores:probar": "vitest run src/lib/borradores/real.test.ts",
     "seguridad:secretos": "node scripts/escanear-secretos.mjs --historial",
     "seguridad:canarios": "node scripts/comprobar-secretos-en-build.mjs",
     "seguridad:dependencias": "node scripts/auditar-dependencias.mjs"
