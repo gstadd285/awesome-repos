@@ -60,6 +60,12 @@ export default function PrivacidadPage() {
             Las preguntas que traen un correo, un teléfono o un RUT no se procesan ni se envían a ningún proveedor.
           </li>
           <li>
+            <strong>Aportes voluntarios (si se habilitan):</strong> el sitio solo enlaza a Mercado Pago, que procesa el pago
+            según sus propias condiciones y su política de privacidad. Otea Austral no recibe ni guarda tus datos de pago
+            (tarjeta, cuenta o claves): en su cuenta de Mercado Pago ve lo que Mercado Pago informa de cada aporte a quien lo
+            recibe, y el sitio no lo guarda.
+          </li>
+          <li>
             <strong>Límites de uso:</strong> para frenar abusos, el sitio cuenta las solicitudes al formulario y al
             asistente con una huella irreversible de tu IP que vive solo en la memoria del servidor y se descarta al
             reiniciarlo. No se guarda.

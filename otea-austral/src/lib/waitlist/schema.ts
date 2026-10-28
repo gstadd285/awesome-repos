@@ -6,7 +6,7 @@ import { z } from "zod";
  * política de privacidad y las condiciones aclaran sobre lo aceptado. Es la misma versión que usan las cuentas
  * (`VERSION_TEXTOS`): son las mismas dos páginas, y una prueba vigila que no se separen.
  */
-export const VERSION_CONSENTIMIENTO = "2026-10-borrador-4";
+export const VERSION_CONSENTIMIENTO = "2026-10-borrador-5";
 
 export const SolicitudListaSchema = z.object({
   correo: z

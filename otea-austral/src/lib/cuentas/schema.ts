@@ -7,7 +7,7 @@ import { FORMATO_TOKEN, LARGO_MAX_NOMBRE } from "./constantes";
  * con la cuenta. Cámbiala cada vez que cambie lo que esas casillas dicen o lo que las dos páginas aclaran sobre las
  * cuentas. Los textos son provisionales: el sufijo `borrador` se quita cuando los revise una persona abogada.
  */
-export const VERSION_TEXTOS = "2026-10-borrador-4";
+export const VERSION_TEXTOS = "2026-10-borrador-5";
 
 /** Correo normalizado: sin espacios y en minúsculas (el mismo correo, escrito distinto, es una sola cuenta). */
 export const CorreoSchema = z
