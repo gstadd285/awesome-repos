@@ -37,6 +37,7 @@ const AVISOS: Record<Hecho, string> = {
   "fuente-agregada": "Fuente enlazada.",
   "fuente-retirada": "Fuente retirada. Queda en el historial.",
   "desde-evento": "Borrador creado desde el evento candidato, con sus fuentes enlazadas.",
+  "desde-borrador": "Alerta creada desde el borrador con IA, con sus fuentes enlazadas. Revísala, apruébala y publícala tú.",
 };
 
 const esHecho = (v: unknown): v is Hecho => typeof v === "string" && Object.hasOwn(AVISOS, v);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AvisoAccesoPrivado } from "@/components/admin/AvisoAccesoPrivado";
+import { dolares } from "@/components/admin/BorradorIa";
 import { FormularioAcceso } from "@/components/admin/FormularioAcceso";
 import { ENLACE, TARJETA } from "@/components/admin/estilos";
 import { sesionActual } from "@/lib/admin/acceso";
@@ -39,6 +40,7 @@ export default async function PanelPage() {
   if (!cola) notFound();
   const t = await cola.tablero(new Date());
   const c = t.ultimaCorrida;
+  const g = t.gastoMes;
 
   return (
     <>
@@ -91,7 +93,10 @@ export default async function PanelPage() {
           <p className="mt-4 text-sm text-texto-suave">
             <strong className="font-semibold text-texto">{t.eventosPendientes}</strong>{" "}
             {t.eventosPendientes === 1 ? "evento candidato pendiente" : "eventos candidatos pendientes"}
-            {t.itemsSinEvento > 0 ? ` · ${t.itemsSinEvento} ítems esperan la próxima agrupación` : null}.
+            {t.itemsSinEvento > 0 ? ` · ${t.itemsSinEvento} ítems esperan la próxima agrupación` : null}
+            {" · "}
+            <strong className="font-semibold text-texto">{t.borradoresPendientes}</strong>{" "}
+            {t.borradoresPendientes === 1 ? "borrador con IA por revisar" : "borradores con IA por revisar"}.
           </p>
           <p className="mt-4 text-sm">
             <Link href="/admin/eventos" className={ENLACE}>
@@ -102,6 +107,29 @@ export default async function PanelPage() {
             <Link href="/admin/alertas" className={ENLACE}>
               Ver las alertas
             </Link>
+          </p>
+        </section>
+
+        <section aria-labelledby="gasto-titulo" className={TARJETA}>
+          <h2 id="gasto-titulo" className="titular text-xl text-texto">
+            Gasto de la IA
+          </h2>
+          {g.topeMicros ? (
+            <p className="mt-4 text-sm text-texto-suave">
+              Borradores este mes: <strong className="font-semibold text-texto">{dolares(g.micros)}</strong> de un tope de{" "}
+              {dolares(g.topeMicros)} · {g.llamadas} {g.llamadas === 1 ? "llamada" : "llamadas"}
+              {g.micros >= g.topeMicros * 0.8 ? (
+                <strong className="font-semibold text-texto"> · Aviso: pasó el 80 % del tope del mes.</strong>
+              ) : null}
+            </p>
+          ) : (
+            <p className="mt-4 text-sm text-texto-suave">
+              Sin gasto de borradores este mes: la IA de borradores está apagada (por omisión) o todavía no llamó al modelo.
+            </p>
+          )}
+          <p className="mt-2 text-sm text-texto-suave">
+            Toda la IA (asistente y borradores) desde el primer día: {dolares(t.gastoTotalMicros)}. El tope mensual de los borradores
+            no pasa de US$ 5; el límite del espacio de trabajo en la consola de Anthropic es la última barrera.
           </p>
         </section>
       </div>

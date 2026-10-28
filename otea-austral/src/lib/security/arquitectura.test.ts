@@ -92,7 +92,7 @@ describe("consultas SQL (control 13: parametrizar)", () => {
 
 describe("frontera entre el servidor y el navegador (controles 1 y 3)", () => {
   const PROHIBIDO_EN_CLIENTE =
-    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario|visibles)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+|@\/lib\/cuentas\/(?!formato-secreto$).+|@\/lib\/correo\/.+|@\/lib\/ingesta\/.+|@\/lib\/tareas\/.+)$/;
+    /^(pg|server-only|node:.+|@\/lib\/env|@\/lib\/db(\/.*)?|@\/lib\/admin\/(acceso|almacen|sesion|clave|totp)|@\/lib\/alertas\/(repositorio|instancia|formulario|visibles)|@\/lib\/waitlist\/(instance|store|store-postgres|service|correo)|@\/lib\/asistente\/(?!limites$|cliente$).+|@\/lib\/cuentas\/(?!formato-secreto$).+|@\/lib\/correo\/.+|@\/lib\/ingesta\/.+|@\/lib\/tareas\/.+|@\/lib\/borradores\/.+|@\/lib\/ia\/.+)$/;
 
   const clientes = fuentes.filter((r) => /^\s*["']use client["'];?/.test(leer(r)));
 
@@ -120,6 +120,8 @@ describe("frontera entre el servidor y el navegador (controles 1 y 3)", () => {
       "lib/ingesta/descarga.ts",
       "lib/ingesta/instancia.ts",
       "lib/tareas/exigir.ts",
+      "lib/borradores/proveedor-borrador.ts",
+      "lib/borradores/instancia.ts",
     ]) {
       expect(leer(path.join(SRC, modulo)), modulo).toMatch(/^import "server-only";/m);
     }
@@ -142,9 +144,9 @@ describe("asistente de preguntas (IA de pago)", () => {
     expect(delAsistente.length).toBeGreaterThan(10);
   });
 
-  it("solo el proveedor de Anthropic importa el SDK: un único lugar llama al servicio de pago", () => {
+  it("solo los dos proveedores importan el SDK: el del asistente y el de los borradores (un lugar por servicio de pago)", () => {
     const usuarios = fuentes.filter((r) => /["']@anthropic-ai\/sdk/.test(leer(r))).map(relativa);
-    expect(usuarios).toEqual(["src/lib/asistente/proveedor-anthropic.ts"]);
+    expect(usuarios).toEqual(["src/lib/asistente/proveedor-anthropic.ts", "src/lib/borradores/proveedor-borrador.ts"]);
     expect(proveedor).toMatch(/^import "server-only";/m);
   });
 
@@ -242,9 +244,15 @@ describe("cola de eventos candidatos (docs/alertas-reales.md §3 y §5)", () => 
   const acciones = leer(path.join(SRC, "app/admin/eventos/acciones.ts"));
   const cola = leer(path.join(SRC, "lib/ingesta/cola-postgres.ts"));
 
-  it("las dos acciones exigen sesión y CSRF antes de leer el formulario o tocar la base", () => {
+  it("las acciones de la cola exigen sesión y CSRF antes de leer el formulario o tocar la base", () => {
     const exportadas = funcionesExportadas(acciones);
-    expect(exportadas.map((f) => f.nombre).sort()).toEqual(["crearAlertaDesdeEventoAccion", "descartarEventoAccion"]);
+    expect(exportadas.map((f) => f.nombre).sort()).toEqual([
+      "aceptarBorradorAccion",
+      "crearAlertaDesdeEventoAccion",
+      "descartarBorradorAccion",
+      "descartarEventoAccion",
+      "pedirBorradorAccion",
+    ]);
     for (const { nombre, cuerpo } of exportadas) {
       expect(cuerpo.replace(/^\{/, "").trim().split("\n")[0], nombre).toBe("const sesion = await exigirAccionAdmin(datos);");
     }
@@ -258,11 +266,26 @@ describe("cola de eventos candidatos (docs/alertas-reales.md §3 y §5)", () => 
     expect(cola).toMatch(/where i\.evento_id = \$1 and i\.id = any\(\$2::uuid\[\]\)/);
   });
 
-  it("nada de la agrupación ni de la cola llama a una IA", () => {
-    const deLaCola = fuentes.filter((r) => /^src\/(lib\/ingesta|app\/admin\/eventos|components\/admin)\//.test(relativa(r)));
+  it("nada de la agrupación, de la cola ni del panel llama a una IA: del módulo de borradores solo leen el esquema", () => {
+    const deLaCola = fuentes.filter((r) => /^src\/(lib\/ingesta|app\/admin|components\/admin)\//.test(relativa(r)));
     expect(deLaCola.length).toBeGreaterThanOrEqual(10);
-    const infractores = deLaCola.filter((r) => /@anthropic-ai|@\/lib\/asistente|@\/lib\/borradores/.test(leer(r))).map(relativa);
+    const infractores = deLaCola
+      .filter((r) => /@anthropic-ai|@\/lib\/asistente|@\/lib\/borradores\/(?!esquema["'])/.test(leer(r)))
+      .map(relativa);
     expect(infractores).toEqual([]);
+    // La redacción la arma solo la ruta de la tarea (servicio privado `otea-tareas`), nunca una página ni una acción.
+    expect(fuentes.filter((r) => /redactorBorradores\(/.test(leer(r))).map(relativa).sort()).toEqual([
+      "src/app/api/tareas/ingesta/route.ts",
+      "src/lib/borradores/instancia.ts",
+    ]);
+  });
+
+  it("aceptar un borrador crea la alerta por el mismo camino que la manual: crearConFuentes, nunca de ejemplo, con el borrador en la transacción", () => {
+    expect(acciones).toMatch(/cola\.crearAlerta\(alertas, leerTexto\(datos, "evento_id"\), nueva\.valor, leerItems\(datos\), contextoAdmin\(sesion\), \{\n\s*borradorId,/);
+    // El borrador se marca aceptado dentro de `vincular`, en la transacción que crea la alerta.
+    const vincular = /async function vincular\([\s\S]*?\n  \}\n/.exec(cola)?.[0] ?? "";
+    expect(vincular).toMatch(/update borradores set estado = 'aceptado'/);
+    expect(vincular).toMatch(/estado = 'pendiente' returning 1/);
   });
 
   it("en el panel, todo enlace que abre otra pestaña lleva rel=\"noopener noreferrer\" y un href pasado por safeHref", () => {
@@ -277,6 +300,64 @@ describe("cola de eventos candidatos (docs/alertas-reales.md §3 y §5)", () => 
       }
     }
     expect(enlaces).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("borradores con IA (docs/alertas-reales.md §4 y §8.4)", () => {
+  const proveedor = leer(path.join(SRC, "lib/borradores/proveedor-borrador.ts"));
+  const deBorradores = fuentes.filter((r) => relativa(r).startsWith("src/lib/borradores/"));
+  const configuracion = leer(path.join(SRC, "lib/env.ts"));
+
+  it("hay código de los borradores (la prueba vigila algo)", () => {
+    expect(deBorradores.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("el cliente del SDK recibe todo explícito: clave, URL y token; un reintento, sin registros", () => {
+    expect(proveedor).toMatch(/apiKey,\n\s*authToken: null,\n\s*webhookKey: null,\n\s*baseURL,\n\s*maxRetries: 1,/);
+    expect(proveedor).toMatch(/baseURL = URL_API_ANTHROPIC/); // nunca `undefined`: el SDK lo leería del entorno
+    expect(proveedor).toMatch(/logLevel: "off"/);
+    // Un solo cliente (también para `countTokens`, que solo usa la prueba con la API real).
+    expect(proveedor.match(/new Anthropic\(/g)).toHaveLength(1);
+  });
+
+  it("la solicitud no lleva herramientas, pensamiento explícito, muestreo ni relleno: salida estructurada con esfuerzo bajo", () => {
+    const solicitud = /cliente\.messages\.create\(\n\s*\{([\s\S]*?)\n\s*\},\n\s*\{ signal: senal \}/.exec(proveedor)?.[1] ?? "";
+    expect(solicitud).toMatch(/output_config: \{ effort: "low", format: formato \}/);
+    expect(solicitud).toMatch(/messages: \[\{ role: "user", content: mensaje \}\]/);
+    expect(proveedor).not.toMatch(/\b(tools|tool_choice|mcp_servers|thinking|temperature|top_p|top_k)\s*:/);
+    expect(proveedor).not.toMatch(/role: "assistant"/);
+    expect(proveedor).toMatch(/zodOutputFormat\(BorradorModeloSchema\)/);
+  });
+
+  it("solo el proveedor llama al modelo; nada de los borradores registra textos (solo resultado y código)", () => {
+    const llamadas = deBorradores.filter((r) => /\.messages\.(create|parse|stream|countTokens)\(/.test(leer(r))).map(relativa);
+    expect(llamadas).toEqual(["src/lib/borradores/proveedor-borrador.ts"]);
+    for (const ruta of deBorradores) {
+      for (const m of leer(ruta).matchAll(/registrar\(\{[^}]*\}/g)) {
+        expect(m[0], relativa(ruta)).not.toMatch(/\b(texto|titulo|url|mensaje|contenido|borrador:)/);
+      }
+    }
+  });
+
+  it("los borradores nacen apagados, solo en el servicio de tareas, con tope ≤ US$ 5 y la dirección de pruebas con OTEA_E2E=1", () => {
+    expect(configuracion).toMatch(/BORRADORES_MODO: z\.enum\(\["apagado", "ia"\]\)\.default\("apagado"\)/);
+    expect(configuracion).toMatch(/TOPE_MENSUAL_BORRADORES_MAXIMO_USD = 5;/);
+    expect(configuracion).toMatch(/BORRADORES_TOPE_MENSUAL_USD: z\.coerce\.number\(\)\.positive\(\)\.max\(TOPE_MENSUAL_BORRADORES_MAXIMO_USD\)\.optional\(\)/);
+    expect(configuracion).toMatch(/if \(e\.TAREAS_MODO !== "activo"\) \{\n\s*problema\(\n\s*"BORRADORES_MODO"/);
+    expect(configuracion).toMatch(/e\.BORRADORES_URL_API_PRUEBA && e\.OTEA_E2E !== "1"/);
+    expect(leer(path.join(SRC, "lib/borradores/instancia.ts"))).toMatch(/env\.OTEA_E2E === "1" \? env\.BORRADORES_URL_API_PRUEBA : undefined/);
+    // El techo también en la reserva y en la base.
+    expect(leer(path.join(SRC, "lib/borradores/presupuesto-postgres.ts"))).toMatch(/least\(\$2::bigint, 5000000\)/);
+    expect(leer(path.join(RAIZ, "db/migraciones/0010_borradores.sql"))).toMatch(/tope_micros bigint not null check \(tope_micros between 1 and 5000000\)/);
+  });
+
+  it("la lectura del texto de las fuentes pasa por descarga.ts y por lectura_ia, y nunca se guarda", () => {
+    const lectura = leer(path.join(SRC, "lib/borradores/lectura.ts"));
+    expect(lectura).toMatch(/!permiteLecturaIa\(fuente\)/);
+    expect(lectura).toMatch(/clase: "documento"/);
+    // Ninguna columna para el texto: el almacén no tiene dónde ponerlo.
+    const almacen = leer(path.join(SRC, "lib/borradores/almacen-postgres.ts"));
+    expect(almacen).not.toMatch(/\b(texto|documento_texto|cuerpo)\b\s*[,)]/);
   });
 });
 

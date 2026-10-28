@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { descartarEventoAccion } from "@/app/admin/eventos/acciones";
 import { AvisoAccesoPrivado } from "@/components/admin/AvisoAccesoPrivado";
+import { describirIntento, ResumenBorrador } from "@/components/admin/BorradorIa";
 import { CAMPO, ENLACE, ETIQUETA, TARJETA } from "@/components/admin/estilos";
 import {
   CONFIANZA_POSIBLE_ETIQUETA,
@@ -23,8 +24,9 @@ import { env } from "@/lib/env";
 export const metadata: Metadata = { title: "Eventos candidatos" };
 
 /**
- * Cola manual de eventos candidatos (`docs/alertas-reales.md` §5, sin IA): ordenada por puntaje y hora, cada evento con
- * sus fuentes enlazadas al documento oficial. Desde aquí se descarta; para crear una alerta se abre el evento.
+ * Cola de eventos candidatos (`docs/alertas-reales.md` §5): ordenada por puntaje y hora, cada evento con sus fuentes
+ * enlazadas al documento oficial y, si la IA dejó uno, su borrador (banderas, anticopia y dudas). Desde aquí se descarta;
+ * para revisar el borrador o crear una alerta se abre el evento.
  */
 export default async function EventosPage({ searchParams }: PageProps<"/admin/eventos">) {
   const sesion = await exigirSesion();
@@ -38,8 +40,9 @@ export default async function EventosPage({ searchParams }: PageProps<"/admin/ev
       <p className="micro text-apoyo">Panel interno</p>
       <h1 className="titular mt-3 text-titulo text-texto">Eventos candidatos</h1>
       <p className="mt-4 max-w-[680px] leading-relaxed text-texto-suave">
-        La ingesta agrupa los títulos de las fuentes oficiales por tema y fecha. Revisa las fuentes, descarta lo que no
-        sirva o crea a mano una alerta en borrador con ellas. Nada se publica solo y aquí no interviene ninguna IA.
+        La ingesta agrupa los títulos de las fuentes oficiales por tema y fecha y, si la IA de borradores está activa, deja un
+        borrador para los eventos sobre el umbral cuyas fuentes lo permiten. Revisa las fuentes, acepta o descarta el borrador,
+        descarta lo que no sirva o crea a mano una alerta en borrador. Nada se publica solo.
       </p>
       <AvisoAccesoPrivado modo={env.CUENTAS_MODO} className="mt-6 max-w-[680px]" />
       <p role="status" className="mt-4 min-h-[1.25rem] text-sm font-medium text-texto">
@@ -79,6 +82,11 @@ export default async function EventosPage({ searchParams }: PageProps<"/admin/ev
               <FuentesEvento fuentes={e.fuentes} className="mt-4" />
               {e.fuentesOcultas > 0 ? (
                 <p className="mt-2 text-xs text-apoyo">Y {e.fuentesOcultas} fuentes más en el detalle.</p>
+              ) : null}
+              {e.borrador?.estado === "pendiente" ? (
+                <ResumenBorrador borrador={e.borrador} className="mt-4" />
+              ) : e.ultimoIntento && !e.borrador ? (
+                <p className="mt-4 text-xs text-apoyo">La IA no dejó borrador: {describirIntento(e.ultimoIntento)}.</p>
               ) : null}
               <div className="mt-4 flex flex-wrap items-start gap-x-6 gap-y-3">
                 <Link href={`/admin/eventos/${e.id}`} className={buttonClasses("primary", "mt-4")}>

@@ -154,10 +154,10 @@ export const CONTROLES: Control[] = [
     id: "GV-04",
     titulo: "Proveedores conocidos y priorizados",
     descripcion:
-      "Cada servicio externo está listado con su criticidad. Solo planes gratuitos y con el acceso mínimo necesario.",
+      "Cada servicio externo está listado con su criticidad. Solo planes gratuitos y con el acceso mínimo necesario; la IA de pago (asistente y borradores) va apagada, con tope en la base y, para los borradores, un espacio de trabajo propio en Anthropic.",
     estado: "implementado",
     subcategorias: ["GV.SC-04"],
-    evidencia: [PROGRAMA],
+    evidencia: [PROGRAMA, "docs/alertas-reales.md"],
   },
   {
     id: "GV-05",
@@ -182,10 +182,10 @@ export const CONTROLES: Control[] = [
     id: "ID-02",
     titulo: "Inventario de datos y conexiones",
     descripcion:
-      "Sabemos qué datos tratamos y a dónde van: el navegador solo habla con el propio sitio; el servidor, con la base, el correo y, si se activa la IA del asistente, Anthropic; el servicio privado de tareas, solo con los feeds verificados del registro de fuentes.",
+      "Sabemos qué datos van a dónde: el navegador, solo al sitio; el servidor, a la base, el correo y (con la IA del asistente) Anthropic; el servicio de tareas, a los feeds verificados y, con los borradores, a Anthropic con solo lo de fuentes con lectura_ia.",
     estado: "implementado",
     subcategorias: ["ID.AM-03", "ID.AM-07"],
-    evidencia: [PROGRAMA, "src/lib/security/csp.ts", "src/lib/ingesta/descarga.ts"],
+    evidencia: [PROGRAMA, "src/lib/security/csp.ts", "src/lib/ingesta/descarga.ts", "src/lib/borradores/lectura.ts"],
   },
   {
     id: "ID-03",
@@ -450,10 +450,17 @@ export const CONTROLES: Control[] = [
     id: "PR-20",
     titulo: "Borradores con IA revisados y gasto mensual acotado",
     descripcion:
-      "Claude redactará borradores sin herramientas, con tope mensual en la base y en la consola de Anthropic; la salida se revisará (anticopia, cifras, lenguaje) y nada se publicará sin la aprobación de la dueña.",
-    estado: "objetivo",
+      "Claude redacta borradores sin herramientas ni secretos, solo con fuentes con lectura_ia y texto que nunca se guarda; tope mensual ≤ US$ 5 en la base (falla cerrado); salida revisada (esquema, lenguaje, cifras, anticopia) y nada se publica sin la dueña. Apagado.",
+    estado: "parcial",
     subcategorias: ["PR.PS-01", "PR.DS-10"],
-    evidencia: [],
+    evidencia: [
+      "src/lib/borradores/proveedor-borrador.ts",
+      "src/lib/borradores/revision.ts",
+      "src/lib/borradores/presupuesto-postgres.ts",
+      "src/app/admin/eventos/acciones.ts",
+      "db/migraciones/0010_borradores.sql",
+      "docs/alertas-reales.md",
+    ],
   },
   {
     id: "PR-21",
