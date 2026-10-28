@@ -28,6 +28,7 @@ function registrar(registro: Registro): void {
 function configuracionIa(): ConfiguracionIa | undefined {
   const { ASISTENTE_MODO: modo, ANTHROPIC_API_KEY: apiKey, ASISTENTE_MODELO: modelo } = env;
   const { ASISTENTE_PRECIO_ENTRADA: entrada, ASISTENTE_PRECIO_SALIDA: salida, ASISTENTE_TOPE_DIARIO_USD: tope } = env;
+  const total = env.IA_TOPE_TOTAL_USD;
   if (modo !== "ia" || !apiKey || !modelo || entrada === undefined || salida === undefined || tope === undefined) {
     return undefined;
   }
@@ -37,7 +38,12 @@ function configuracionIa(): ConfiguracionIa | undefined {
   const cupo = createFixedWindowLimiter({ limite: env.ASISTENTE_IA_POR_PERSONA_DIA, ventanaMs: DIA_MS });
   return {
     proveedor: crearProveedorAnthropic({ apiKey, modelo, baseURL: env.ASISTENTE_URL_API_PRUEBA }),
-    presupuesto: db ? crearPresupuestoPostgres(db, topes) : crearPresupuestoMemoria(topes),
+    // El tope acumulado de toda la IA (opcional) solo se puede contar en la base: sin ella no hay IA con ese tope.
+    presupuesto: db
+      ? crearPresupuestoPostgres(db, topes, { totalMicros: total === undefined ? undefined : dolaresAMicros(total) })
+      : total === undefined
+        ? crearPresupuestoMemoria(topes)
+        : { reservar: async () => false, ajustar: async () => undefined },
     precios: { entrada, salida },
     cupoPersona: (clave) => cupo.tryConsume(clave),
   };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
+import { permiteLecturaIa,
   AlertAuditSchema,
   AlertSchema,
   AlertSourceSchema,
@@ -106,6 +106,23 @@ describe("SourceSchema", () => {
 
   it("rechaza una URL base que no sea https", () => {
     expect(SourceSchema.safeParse({ ...fuente, url_base: "http://example.org" }).success).toBe(false);
+  });
+
+  it("lectura_ia (la IA de los borradores puede leer sus documentos) es falsa por omisión y exige condiciones verificadas y url_base", () => {
+    const r = SourceSchema.safeParse(fuente);
+    expect(r.success && r.data.lectura_ia).toBeUndefined();
+    expect(permiteLecturaIa({ lectura_ia: undefined, activa: true })).toBe(false);
+    const verificada = {
+      ...fuente,
+      url_base: "https://fuente-prueba.example.org/",
+      condiciones_reutilizacion: "Verificadas el 2026-10-24: datos sintéticos de prueba (ejemplo).",
+    };
+    expect(SourceSchema.safeParse({ ...verificada, lectura_ia: true }).success).toBe(true);
+    expect(SourceSchema.safeParse({ ...fuente, lectura_ia: true }).success).toBe(false); // condiciones pendientes
+    expect(SourceSchema.safeParse({ ...verificada, url_base: "", lectura_ia: true }).success).toBe(false);
+    expect(SourceSchema.safeParse({ ...verificada, lectura_ia: "sí" }).success).toBe(false);
+    expect(permiteLecturaIa({ lectura_ia: true, activa: false })).toBe(false);
+    expect(permiteLecturaIa({ lectura_ia: true, activa: true })).toBe(true);
   });
 
   describe("feeds", () => {

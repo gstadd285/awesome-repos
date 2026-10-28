@@ -109,9 +109,21 @@ export const SourceSchema = z
     condiciones_reutilizacion: texto(500),
     prioridad: PrioridadFuente,
     activa: z.boolean(),
+    /**
+     * ¿Puede la IA de los borradores leer (de forma transitoria, sin guardarlo) el texto de sus documentos y recibir sus
+     * metadatos? Por omisión, no (`docs/alertas-reales.md` D6): solo con condiciones «Verificadas el …» que lo permitan y
+     * la opinión del abogado (§11, decisión 3). Sin esta marca, nada de la fuente llega al modelo.
+     */
+    lectura_ia: z.boolean().optional(),
   })
   .superRefine((f, ctx) => {
     const problema = (path: (string | number)[], message: string) => ctx.addIssue({ code: "custom", path, message });
+    if (f.lectura_ia && !/^Verificadas el \d{4}-\d{2}-\d{2}: /.test(f.condiciones_reutilizacion)) {
+      problema(["lectura_ia"], "lectura_ia exige condiciones «Verificadas el AAAA-MM-DD: …» que permitan el uso con IA.");
+    }
+    if (f.lectura_ia && f.url_base === "") {
+      problema(["lectura_ia"], "lectura_ia exige url_base: la lectura solo sale al dominio de la fuente.");
+    }
     if (f.acceso === "manual" && f.feeds.length > 0) {
       problema(["feeds"], "Una fuente de acceso manual no lleva feeds: cambia el acceso al verificar uno.");
     }
@@ -136,6 +148,11 @@ export const SourceSchema = z
     });
   });
 export type Source = z.infer<typeof SourceSchema>;
+
+/** La IA de los borradores solo recibe algo de una fuente marcada a propósito (por omisión, nada). */
+export function permiteLecturaIa(fuente: Pick<Source, "lectura_ia" | "activa">): boolean {
+  return fuente.lectura_ia === true && fuente.activa;
+}
 
 /**
  * Enlace de una alerta a un documento concreto. Se guarda la referencia

@@ -3,7 +3,9 @@
  * (`proveedor-anthropic.ts`) usa el SDK oficial; las pruebas usan un guion (`proveedor-guion.ts`).
  */
 
-export type Uso = { entrada: number; salida: number };
+import type { Uso } from "@/lib/ia/gasto";
+
+export type { Uso };
 
 /** Cómo terminó la generación. `rechazo`: el modelo se negó (clasificadores de seguridad); `limite`: se acabó `maxTokens`. */
 export type MotivoFin = "completo" | "limite" | "rechazo" | "otro";

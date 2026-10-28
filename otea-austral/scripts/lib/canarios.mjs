@@ -24,11 +24,14 @@ export const CANARIOS = {
   ADMIN_SESION_SECRETO: "CANARIO_sesion_".padEnd(48, "z"),
   ANTHROPIC_API_KEY: "sk-ant-api03-CANARIO-clave-del-build-0123456789", // escaner:ignorar valor falso a propósito (canario)
   TAREAS_SECRETO: "CANARIO_tareas_".padEnd(48, "t"),
+  // La clave del espacio de trabajo de los borradores (distinta de la del asistente: el esquema lo exige).
+  BORRADORES_ANTHROPIC_API_KEY: "sk-ant-api03-CANARIO-clave-de-borradores-0123456789", // escaner:ignorar valor falso a propósito (canario)
 };
 
 /**
  * Ajustes que no son secretos, pero que el build necesita junto a los canarios para recorrer el camino de la IA
- * (el asistente en modo `ia`, las cuentas por invitación y las tareas activas): así las claves pasan por el mismo código que usan en producción.
+ * (el asistente en modo `ia`, las cuentas por invitación, las tareas activas y los borradores con IA): así las claves pasan por el
+ * mismo código que usan en producción.
  */
 export const AJUSTES = {
   // `invitacion` exige lo mismo que `abiertas` y además recorre el HMAC de los códigos con el secreto de las cuentas.
@@ -41,6 +44,12 @@ export const AJUSTES = {
   // La ingesta (servicio privado `otea-tareas`): así TAREAS_SECRETO recorre el mismo camino que en producción.
   TAREAS_MODO: "activo",
   INGESTA_CONTACTO: "mailto:ingesta@example.org",
+  // Los borradores con IA (solo en `otea-tareas`): así su clave recorre el mismo camino que en producción.
+  BORRADORES_MODO: "ia",
+  BORRADORES_MODELO: "claude-haiku-5-5",
+  BORRADORES_PRECIO_ENTRADA: "0.1",
+  BORRADORES_PRECIO_SALIDA: "0.5",
+  BORRADORES_TOPE_MENSUAL_USD: "5",
 };
 
 const MAX_BYTES = 100_000_000;

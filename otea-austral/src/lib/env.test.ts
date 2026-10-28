@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { cuentasAbiertas, cuentasPorInvitacion, EnvSchema, MODELOS_ASISTENTE, tareasActivas } from "./env";
+import { borradoresActivos, cuentasAbiertas, cuentasPorInvitacion, EnvSchema, MODELOS_ASISTENTE, tareasActivas } from "./env";
 
 describe("EnvSchema", () => {
   it("por defecto la lista de espera está cerrada", () => {
@@ -341,5 +341,80 @@ describe("EnvSchema · tareas programadas (ingesta)", () => {
   it("la dirección de las fuentes falsas solo existe con OTEA_E2E=1", () => {
     expect(EnvSchema.safeParse({ INGESTA_URL_PRUEBA: "http://127.0.0.1:3297" }).success).toBe(false);
     expect(EnvSchema.safeParse({ INGESTA_URL_PRUEBA: "http://127.0.0.1:3297", OTEA_E2E: "1" }).success).toBe(true);
+  });
+});
+
+describe("EnvSchema · borradores con IA (docs/alertas-reales.md §4 y §8.2)", () => {
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const tareas = { TAREAS_MODO: "activo", DATABASE_URL: DB, TAREAS_SECRETO: "t".repeat(43), INGESTA_CONTACTO: "mailto:ingesta@oteaustral.com" };
+  const ia = {
+    ...tareas,
+    BORRADORES_MODO: "ia",
+    BORRADORES_ANTHROPIC_API_KEY: `sk-ant-api03-${"b".repeat(40)}`,
+    BORRADORES_MODELO: "claude-haiku-5-5",
+    BORRADORES_PRECIO_ENTRADA: "0.1",
+    BORRADORES_PRECIO_SALIDA: "0.5",
+    BORRADORES_TOPE_MENSUAL_USD: "5",
+  };
+
+  it("por omisión están apagados: ninguna llamada a un modelo, sin clave ni valores de pago", () => {
+    const e = EnvSchema.parse({});
+    expect(e.BORRADORES_MODO).toBe("apagado");
+    expect(borradoresActivos(e)).toBe(false);
+    for (const k of ["BORRADORES_ANTHROPIC_API_KEY", "BORRADORES_MODELO", "BORRADORES_PRECIO_ENTRADA", "BORRADORES_PRECIO_SALIDA", "BORRADORES_TOPE_MENSUAL_USD", "IA_TOPE_TOTAL_USD"] as const) {
+      expect(e[k], k).toBeUndefined();
+    }
+    expect(e.BORRADORES_LLAMADAS_MES).toBe(600);
+    expect(e.BORRADORES_POR_CORRIDA).toBe(5);
+    // La clave sola no los enciende.
+    expect(borradoresActivos(EnvSchema.parse({ ...tareas, BORRADORES_ANTHROPIC_API_KEY: ia.BORRADORES_ANTHROPIC_API_KEY }))).toBe(false);
+  });
+
+  it("ia pide todo de forma explícita: clave, modelo, precios y tope del mes", () => {
+    const completa = EnvSchema.safeParse(ia);
+    expect(completa.success).toBe(true);
+    expect(borradoresActivos(completa.data!)).toBe(true);
+    for (const falta of Object.keys(ia).filter((k) => k.startsWith("BORRADORES_") && k !== "BORRADORES_MODO")) {
+      const { [falta]: _omitida, ...incompleta } = ia as Record<string, string>;
+      void _omitida;
+      const r = EnvSchema.safeParse(incompleta);
+      expect(r.success, falta).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0]), falta).toContain(falta);
+    }
+  });
+
+  it("solo en el servicio de tareas: el sitio público nunca redacta", () => {
+    const { TAREAS_MODO: _t, ...sinTareas } = ia;
+    void _t;
+    const r = EnvSchema.safeParse(sinTareas);
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.map((i) => i.path[0])).toContain("BORRADORES_MODO");
+  });
+
+  it("el tope del mes no pasa del techo autorizado (US$ 5) y el modelo es de una lista cerrada", () => {
+    expect(EnvSchema.safeParse({ ...ia, BORRADORES_TOPE_MENSUAL_USD: "5.01" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...ia, BORRADORES_TOPE_MENSUAL_USD: "0" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...ia, BORRADORES_TOPE_MENSUAL_USD: "2.5" }).success).toBe(true);
+    for (const malo of ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5", "gpt-5"]) {
+      expect(EnvSchema.safeParse({ ...ia, BORRADORES_MODELO: malo }).success, malo).toBe(false);
+    }
+    expect(EnvSchema.safeParse({ ...ia, BORRADORES_LLAMADAS_MES: "1401" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...ia, BORRADORES_POR_CORRIDA: "21" }).success).toBe(false);
+  });
+
+  it("la clave es la de su propio espacio de trabajo: distinta de la del asistente", () => {
+    expect(EnvSchema.safeParse({ ...ia, ANTHROPIC_API_KEY: ia.BORRADORES_ANTHROPIC_API_KEY }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...ia, BORRADORES_ANTHROPIC_API_KEY: "clave-cualquiera" }).success).toBe(false);
+  });
+
+  it("el tope acumulado de toda la IA es opcional y acotado al presupuesto del proyecto", () => {
+    expect(EnvSchema.parse({ ...ia, IA_TOPE_TOTAL_USD: "15" }).IA_TOPE_TOTAL_USD).toBe(15);
+    expect(EnvSchema.safeParse({ IA_TOPE_TOTAL_USD: "41" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ IA_TOPE_TOTAL_USD: "0" }).success).toBe(false);
+  });
+
+  it("la dirección de pruebas solo con OTEA_E2E=1", () => {
+    expect(EnvSchema.safeParse({ BORRADORES_URL_API_PRUEBA: "http://127.0.0.1:3299" }).success).toBe(false);
+    expect(EnvSchema.safeParse({ BORRADORES_URL_API_PRUEBA: "http://127.0.0.1:3299", OTEA_E2E: "1" }).success).toBe(true);
   });
 });

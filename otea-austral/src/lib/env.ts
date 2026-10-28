@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { MODELOS_BORRADOR } from "@/lib/borradores/esquema";
 import { Actor } from "@/lib/domain/schemas";
 import { parseHttpsUrl, httpsUrl } from "@/lib/domain/url";
 
@@ -24,6 +25,9 @@ export const REMITENTE_POR_DEFECTO = "Otea Austral <alertas@oteaustral.com>";
  * mal escrito, o un modelo anterior que rechaza los parámetros que se le envían, fallaría en cada pregunta.
  */
 export const MODELOS_ASISTENTE = ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"] as const;
+
+/** Techo del gasto en borradores que autorizó la dueña: US$ 5 al mes. El esquema no admite un tope mayor. */
+export const TOPE_MENSUAL_BORRADORES_MAXIMO_USD = 5;
 
 /** Iteraciones mínimas de PBKDF2-SHA256 (recomendación OWASP 2023). */
 export const ITERACIONES_MINIMAS = 600_000;
@@ -163,6 +167,29 @@ export const EnvSchema = z
     INGESTA_CONTACTO: contactoIngesta.optional(),
     /** Solo pruebas e2e: reescribe el origen de cada solicitud de la ingesta hacia un servidor de fuentes falsas. */
     INGESTA_URL_PRUEBA: z.string().url().optional(),
+    /**
+     * Borradores con IA (`docs/alertas-reales.md` §4). `apagado` (por omisión): ninguna llamada a un modelo; la cola manual
+     * de `/admin/eventos` sigue igual. `ia`: solo en `otea-tareas` (exige TAREAS_MODO=activo), Claude redacta un borrador por
+     * evento al final de cada corrida. Es de pago (CLAUDE.md, regla 1): clave propia, modelo, precios y tope mensual sin
+     * valores por omisión; el tope no puede pasar de US$ 5 al mes.
+     */
+    BORRADORES_MODO: z.enum(["apagado", "ia"]).default("apagado"),
+    /** Clave del espacio de trabajo de Anthropic para borradores (con su propio límite de gasto), distinta de la del asistente. */
+    BORRADORES_ANTHROPIC_API_KEY: z.string().regex(/^sk-ant-[A-Za-z0-9_-]{16,}$/, "Clave de Anthropic inválida").optional(),
+    BORRADORES_MODELO: z.enum(MODELOS_BORRADOR).optional(),
+    BORRADORES_PRECIO_ENTRADA: precioPorMillon.optional(),
+    BORRADORES_PRECIO_SALIDA: precioPorMillon.optional(),
+    /** Gasto máximo de los borradores por mes (hora de Chile), en dólares: como mucho el techo autorizado. */
+    BORRADORES_TOPE_MENSUAL_USD: z.coerce.number().positive().max(TOPE_MENSUAL_BORRADORES_MAXIMO_USD).optional(),
+    BORRADORES_LLAMADAS_MES: z.coerce.number().int().min(1).max(1400).default(600),
+    BORRADORES_POR_CORRIDA: z.coerce.number().int().min(1).max(20).default(5),
+    /**
+     * Tope acumulado de toda la IA (asistente + borradores), en dólares, contado en la base desde el primer día. Opcional:
+     * decisión pendiente de la dueña (`docs/alertas-reales.md` §11). Si se fija, va en los dos servicios.
+     */
+    IA_TOPE_TOTAL_USD: z.coerce.number().positive().max(40).optional(),
+    /** Solo pruebas e2e: dirección de un servidor que imita la API de Anthropic para los borradores. */
+    BORRADORES_URL_API_PRUEBA: z.string().url().optional(),
   })
   .superRefine((e, ctx) => {
     // `next build` también corre con NODE_ENV=production, pero la configuración del servidor llega al
@@ -252,6 +279,43 @@ export const EnvSchema = z
         "Solo se admite con OTEA_E2E=1: en cualquier otro caso la ingesta saldría hacia un servidor fuera del registro de fuentes.",
       );
     }
+    if (e.BORRADORES_MODO === "ia") {
+      if (e.TAREAS_MODO !== "activo") {
+        problema(
+          "BORRADORES_MODO",
+          "BORRADORES_MODO=ia solo en el servicio de tareas (TAREAS_MODO=activo): el sitio público nunca redacta ni tiene la clave.",
+        );
+      }
+      if (!e.BORRADORES_ANTHROPIC_API_KEY) {
+        problema("BORRADORES_ANTHROPIC_API_KEY", "BORRADORES_MODO=ia necesita BORRADORES_ANTHROPIC_API_KEY (en Secret Manager).");
+      }
+      if (!e.BORRADORES_MODELO) {
+        problema("BORRADORES_MODELO", `BORRADORES_MODO=ia necesita BORRADORES_MODELO: ${MODELOS_BORRADOR.join(", ")}.`);
+      }
+      for (const precio of ["BORRADORES_PRECIO_ENTRADA", "BORRADORES_PRECIO_SALIDA"] as const) {
+        if (e[precio] === undefined) {
+          problema(precio, `BORRADORES_MODO=ia necesita ${precio}: dólares por millón de tokens, de la página de precios de Anthropic.`);
+        }
+      }
+      if (e.BORRADORES_TOPE_MENSUAL_USD === undefined) {
+        problema(
+          "BORRADORES_TOPE_MENSUAL_USD",
+          `BORRADORES_MODO=ia necesita BORRADORES_TOPE_MENSUAL_USD: el gasto máximo por mes, en dólares (como mucho ${TOPE_MENSUAL_BORRADORES_MAXIMO_USD}).`,
+        );
+      }
+    }
+    if (e.BORRADORES_ANTHROPIC_API_KEY && e.BORRADORES_ANTHROPIC_API_KEY === e.ANTHROPIC_API_KEY) {
+      problema(
+        "BORRADORES_ANTHROPIC_API_KEY",
+        "Debe ser distinta de ANTHROPIC_API_KEY: los borradores van en su propio espacio de trabajo, con su propio límite de gasto.",
+      );
+    }
+    if (e.BORRADORES_URL_API_PRUEBA && e.OTEA_E2E !== "1") {
+      problema(
+        "BORRADORES_URL_API_PRUEBA",
+        "Solo se admite con OTEA_E2E=1: en cualquier otro caso la clave de los borradores podría viajar a un servidor ajeno.",
+      );
+    }
     if (e.ASISTENTE_URL_API_PRUEBA && e.OTEA_E2E !== "1") {
       problema(
         "ASISTENTE_URL_API_PRUEBA",
@@ -298,6 +362,16 @@ export const env: Env = EnvSchema.parse({
   TAREAS_SECRETO: leer("TAREAS_SECRETO"),
   INGESTA_CONTACTO: leer("INGESTA_CONTACTO"),
   INGESTA_URL_PRUEBA: leer("INGESTA_URL_PRUEBA"),
+  BORRADORES_MODO: leer("BORRADORES_MODO"),
+  BORRADORES_ANTHROPIC_API_KEY: leer("BORRADORES_ANTHROPIC_API_KEY"),
+  BORRADORES_MODELO: leer("BORRADORES_MODELO"),
+  BORRADORES_PRECIO_ENTRADA: leer("BORRADORES_PRECIO_ENTRADA"),
+  BORRADORES_PRECIO_SALIDA: leer("BORRADORES_PRECIO_SALIDA"),
+  BORRADORES_TOPE_MENSUAL_USD: leer("BORRADORES_TOPE_MENSUAL_USD"),
+  BORRADORES_LLAMADAS_MES: leer("BORRADORES_LLAMADAS_MES"),
+  BORRADORES_POR_CORRIDA: leer("BORRADORES_POR_CORRIDA"),
+  IA_TOPE_TOTAL_USD: leer("IA_TOPE_TOTAL_USD"),
+  BORRADORES_URL_API_PRUEBA: leer("BORRADORES_URL_API_PRUEBA"),
 });
 
 /** El panel interno existe solo si está configurado por completo; si no, responde 404. */
@@ -310,6 +384,21 @@ export function tareasActivas(
   e: Pick<Env, "TAREAS_MODO" | "TAREAS_SECRETO" | "INGESTA_CONTACTO" | "DATABASE_URL"> = env,
 ): boolean {
   return e.TAREAS_MODO === "activo" && Boolean(e.TAREAS_SECRETO && e.INGESTA_CONTACTO && e.DATABASE_URL);
+}
+
+/**
+ * Los borradores con IA existen solo en el servicio de tareas activo y configurado por completo (clave, modelo, precios y
+ * tope). En cualquier otro caso no se llama a ningún modelo y la cola de `/admin/eventos` es la manual de siempre.
+ */
+export function borradoresActivos(e: Env = env): boolean {
+  return (
+    e.BORRADORES_MODO === "ia" &&
+    tareasActivas(e) &&
+    Boolean(e.BORRADORES_ANTHROPIC_API_KEY && e.BORRADORES_MODELO) &&
+    e.BORRADORES_PRECIO_ENTRADA !== undefined &&
+    e.BORRADORES_PRECIO_SALIDA !== undefined &&
+    e.BORRADORES_TOPE_MENSUAL_USD !== undefined
+  );
 }
 
 /** Las cuentas guardan datos solo si no están cerradas (también en modo `invitacion`: quien tiene cuenta entra). */

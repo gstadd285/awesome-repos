@@ -34,6 +34,11 @@ describe("registro de fuentes", () => {
     }
   });
 
+  it("ninguna fuente tiene lectura_ia todavía: nada de ellas llega a la IA de los borradores (decisión 3 de §11)", () => {
+    // Activarla en una fuente exige leer sus condiciones completas y la opinión del abogado (`docs/alertas-reales.md` D6).
+    expect(REGISTRO_FUENTES.filter((f) => f.lectura_ia).map((f) => f.id)).toEqual([]);
+  });
+
   it("ningún feed se repite entre fuentes", () => {
     const urls = REGISTRO_FUENTES.flatMap((f) => f.feeds.map((x) => new URL(x.url).href));
     expect(new Set(urls).size).toBe(urls.length);
