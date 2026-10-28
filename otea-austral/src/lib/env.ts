@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { MODELOS_BORRADOR } from "@/lib/borradores/esquema";
 import { Actor } from "@/lib/domain/schemas";
+import { DOMINIOS_DONACIONES, enlaceDonacion } from "@/lib/donaciones/enlace";
 import { parseHttpsUrl, httpsUrl } from "@/lib/domain/url";
 
 /**
@@ -58,6 +59,14 @@ const remitente = z
 const contactoIngesta = z
   .string()
   .regex(/^mailto:[a-z0-9._%+-]{1,64}@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i, "Debe ser mailto:correo-de-rol@dominio");
+
+/** Link de pago de Mercado Pago para los aportes: https, host exacto de la lista cerrada, con ruta y sin parámetros. */
+const linkDonaciones = z
+  .string()
+  .refine(
+    (v) => enlaceDonacion(v) !== null,
+    `Debe ser un link de pago https de Mercado Pago (${DOMINIOS_DONACIONES.join(" o ")}), con su ruta y sin parámetros`,
+  );
 
 const secreto256 = (mensaje: string) => z.string().regex(/^[A-Za-z0-9_-]{43,}$/, mensaje);
 
@@ -190,6 +199,12 @@ export const EnvSchema = z
     IA_TOPE_TOTAL_USD: z.coerce.number().positive().max(40).optional(),
     /** Solo pruebas e2e: dirección de un servidor que imita la API de Anthropic para los borradores. */
     BORRADORES_URL_API_PRUEBA: z.string().url().optional(),
+    /**
+     * Aportes voluntarios (`/apoyar`, `docs/despliegue.md` §15): el «link de pago» de Mercado Pago que entrega la dueña. Sin
+     * él (por omisión) el apartado no existe: ni la página (404), ni sus enlaces, ni el mapa del sitio. El sitio solo enlaza:
+     * el pago ocurre en Mercado Pago y aquí no se procesa nada. Uno inválido hace fallar el arranque.
+     */
+    DONACIONES_URL: linkDonaciones.optional(),
   })
   .superRefine((e, ctx) => {
     // `next build` también corre con NODE_ENV=production, pero la configuración del servidor llega al
@@ -372,6 +387,7 @@ export const env: Env = EnvSchema.parse({
   BORRADORES_POR_CORRIDA: leer("BORRADORES_POR_CORRIDA"),
   IA_TOPE_TOTAL_USD: leer("IA_TOPE_TOTAL_USD"),
   BORRADORES_URL_API_PRUEBA: leer("BORRADORES_URL_API_PRUEBA"),
+  DONACIONES_URL: leer("DONACIONES_URL"),
 });
 
 /** El panel interno existe solo si está configurado por completo; si no, responde 404. */
@@ -409,4 +425,14 @@ export function cuentasAbiertas(e: Env = env): boolean {
 /** Acceso anticipado privado: una cuenta nueva solo con un código de invitación. */
 export function cuentasPorInvitacion(e: Env = env): boolean {
   return e.CUENTAS_MODO === "invitacion";
+}
+
+/** El link de pago de los aportes (normalizado) si el apartado está activo; si no, `undefined`. */
+export function enlaceDonaciones(e: Pick<Env, "DONACIONES_URL"> = env): string | undefined {
+  return (e.DONACIONES_URL && enlaceDonacion(e.DONACIONES_URL)) || undefined;
+}
+
+/** El apartado de aportes (`/apoyar` y sus enlaces) existe solo con un link de pago válido. */
+export function donacionesActivas(e: Pick<Env, "DONACIONES_URL"> = env): boolean {
+  return enlaceDonaciones(e) !== undefined;
 }

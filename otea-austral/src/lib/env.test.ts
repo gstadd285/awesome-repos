@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { borradoresActivos, cuentasAbiertas, cuentasPorInvitacion, EnvSchema, MODELOS_ASISTENTE, tareasActivas } from "./env";
+import {
+  borradoresActivos,
+  cuentasAbiertas,
+  cuentasPorInvitacion,
+  donacionesActivas,
+  enlaceDonaciones,
+  EnvSchema,
+  MODELOS_ASISTENTE,
+  tareasActivas,
+} from "./env";
 
 describe("EnvSchema", () => {
   it("por defecto la lista de espera está cerrada", () => {
@@ -416,5 +425,48 @@ describe("EnvSchema · borradores con IA (docs/alertas-reales.md §4 y §8.2)", 
   it("la dirección de pruebas solo con OTEA_E2E=1", () => {
     expect(EnvSchema.safeParse({ BORRADORES_URL_API_PRUEBA: "http://127.0.0.1:3299" }).success).toBe(false);
     expect(EnvSchema.safeParse({ BORRADORES_URL_API_PRUEBA: "http://127.0.0.1:3299", OTEA_E2E: "1" }).success).toBe(true);
+  });
+});
+
+describe("EnvSchema · aportes por Mercado Pago (docs/despliegue.md §15)", () => {
+  // Direcciones de prueba de dominios permitidos: el link real de la dueña todavía no existe.
+  const PRUEBA = "https://link.mercadopago.cl/prueba-otea";
+
+  it("apagados por omisión: sin DONACIONES_URL no hay apartado", () => {
+    const e = EnvSchema.parse({});
+    expect(e.DONACIONES_URL).toBeUndefined();
+    expect(donacionesActivas(e)).toBe(false);
+    expect(enlaceDonaciones(e)).toBeUndefined();
+  });
+
+  it("con un link de pago de un dominio permitido, el apartado existe y entrega el enlace normalizado", () => {
+    for (const valido of [PRUEBA, "https://mpago.la/2AbC9xZ"]) {
+      const e = EnvSchema.parse({ DONACIONES_URL: valido });
+      expect(donacionesActivas(e), valido).toBe(true);
+      expect(enlaceDonaciones(e)).toBe(valido);
+    }
+    // También en producción: no depende de OTEA_E2E.
+    const r = EnvSchema.safeParse({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://oteaustral.com", DONACIONES_URL: PRUEBA });
+    expect(r.success).toBe(true);
+  });
+
+  it("uno inválido hace fallar el arranque (http, dominio parecido, subdominio engañoso, parámetros)", () => {
+    for (const malo of [
+      "http://link.mercadopago.cl/prueba-otea",
+      "https://mpago.co/2AbC9xZ",
+      "https://link.mercadopago.cl.example.org/prueba-otea",
+      "https://mpago.la/2AbC9xZ?redirect=https://example.org",
+      "https://link.mercadopago.cl/",
+      "javascript:alert(1)",
+    ]) {
+      const r = EnvSchema.safeParse({ DONACIONES_URL: malo });
+      expect(r.success, malo).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0])).toContain("DONACIONES_URL");
+    }
+  });
+
+  it("las funciones de ayuda no confían en un objeto armado a mano: vuelven a validar", () => {
+    expect(donacionesActivas({ DONACIONES_URL: "https://mpago.co/2AbC9xZ" })).toBe(false);
+    expect(enlaceDonaciones({ DONACIONES_URL: "" })).toBeUndefined();
   });
 });
