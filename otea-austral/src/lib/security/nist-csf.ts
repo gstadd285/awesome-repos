@@ -478,6 +478,21 @@ export const CONTROLES: Control[] = [
     ],
   },
   {
+    id: "PR-22",
+    titulo: "Aportes solo por un enlace a Mercado Pago",
+    descripcion:
+      "El sitio no procesa pagos ni datos de tarjeta: /apoyar solo enlaza, en otra pestaña y con noopener, a un link de pago cuyo dominio sale de una lista cerrada de Mercado Pago que se valida al arrancar. Nada de Mercado Pago se carga y la CSP no cambia. Apagado por omisión.",
+    estado: "parcial",
+    subcategorias: ["PR.DS-02", "PR.PS-01"],
+    evidencia: [
+      "src/lib/donaciones/enlace.ts",
+      "src/lib/env.ts",
+      "src/app/apoyar/page.tsx",
+      "src/lib/security/arquitectura.test.ts",
+      "docs/despliegue.md",
+    ],
+  },
+  {
     id: "PR-14",
     titulo: "Reglas de seguridad que se comprueban solas",
     descripcion:

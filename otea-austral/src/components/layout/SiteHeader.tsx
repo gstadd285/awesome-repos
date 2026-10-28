@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
 import { buttonClasses } from "@/components/ui/button";
+import { donacionesActivas } from "@/lib/env";
 import { EnlaceCuenta } from "./EnlaceCuenta";
 import { NAV_CABECERA, NAV_PRINCIPAL } from "./navigation";
 
@@ -113,6 +114,12 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
           </Link>
           <div className="menu-legal">
             <EnlaceCuenta variante="menu" actual={actual} className="menu-cuenta" />
+            {/* Discreto, junto a la cuenta: solo con el apartado de aportes activo (`DONACIONES_URL`). */}
+            {donacionesActivas() ? (
+              <Link href="/apoyar" aria-current={enPagina("/apoyar")} className="menu-cuenta">
+                Apoyar el proyecto
+              </Link>
+            ) : null}
             <p>No constituye asesoría financiera.</p>
           </div>
         </div>

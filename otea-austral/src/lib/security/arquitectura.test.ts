@@ -404,6 +404,62 @@ describe("acceso privado por invitación (docs/alertas-reales.md §6 y §8.4)", 
   });
 });
 
+describe("aportes por Mercado Pago: solo un enlace hacia afuera (docs/despliegue.md §15)", () => {
+  const pagina = leer(path.join(SRC, "app/apoyar/page.tsx"));
+  const configuracion = leer(path.join(SRC, "lib/env.ts"));
+
+  it("nacen apagados: DONACIONES_URL no tiene valor por omisión y se valida contra la lista cerrada al arrancar", () => {
+    expect(configuracion).toMatch(/DONACIONES_URL: linkDonaciones\.optional\(\),/);
+    expect(configuracion).toMatch(/\(v\) => enlaceDonacion\(v\) !== null/);
+    expect(configuracion).toMatch(/DONACIONES_URL: leer\("DONACIONES_URL"\)/);
+  });
+
+  it("sin el apartado activo /apoyar responde 404 antes de dibujar nada, también en sus metadatos", () => {
+    expect(pagina).not.toMatch(/export const metadata/);
+    expect(pagina).toMatch(/export function generateMetadata\(\): Metadata \{\n\s*if \(!donacionesActivas\(\)\) notFound\(\);/);
+    const cuerpo = /export default function ApoyarPage\(\) \{\n([\s\S]*?)\n\s*return \(/.exec(pagina)?.[1] ?? "";
+    expect(cuerpo.trim().split("\n")).toEqual([
+      "const enlace = enlaceDonaciones();",
+      "  const href = enlace ? safeHref(enlace) : undefined;",
+      "  if (!href) notFound();",
+    ]);
+  });
+
+  it("el único enlace a Mercado Pago abre otra pestaña, con rel=\"noopener noreferrer\" y el href pasado por safeHref", () => {
+    const externos = [...pagina.matchAll(/<a\b[^>]*>/g)].map((m) => m[0]);
+    expect(externos).toHaveLength(1);
+    expect(externos[0]).toMatch(/href=\{href\}/);
+    expect(externos[0]).toMatch(/target="_blank"/);
+    expect(externos[0]).toMatch(/rel="noopener noreferrer"/);
+  });
+
+  it("nada de Mercado Pago se carga en el sitio: sin dominios fuera de la lista, iframes, scripts ni cambios en la CSP", () => {
+    const conDominio = fuentes.filter((r) => /mercadopago\.|mpago\./i.test(leer(r))).map(relativa);
+    expect(conDominio).toEqual(["src/lib/donaciones/enlace.ts"]);
+    const infractores = fuentes.filter((r) => /<iframe|next\/script|<script\s[^>]*src=/i.test(leer(r))).map(relativa);
+    expect(infractores).toEqual([]);
+    const csp = buildCsp("n", { dev: false });
+    expect(csp).not.toMatch(/mercadopago|mpago|frame-src|\*/);
+    expect(csp).toMatch(/default-src 'self'/);
+    expect(csp).toMatch(/connect-src 'self'/);
+    expect(csp).toMatch(/form-action 'self'/);
+  });
+
+  it("los puntos de entrada (pie, menú del teléfono y mapa del sitio) aparecen solo con el apartado activo", () => {
+    const conRuta = fuentes.filter((r) => /["']\/apoyar["']/.test(leer(r))).map(relativa);
+    expect(conRuta).toEqual([
+      "src/app/apoyar/page.tsx",
+      "src/components/layout/SiteFooter.tsx",
+      "src/components/layout/SiteHeader.tsx",
+      "src/lib/site.ts",
+    ]);
+    expect(leer(path.join(SRC, "components/layout/SiteFooter.tsx"))).toMatch(/donacionesActivas\(\) \? \(\n\s*<li>\n\s*<Link href="\/apoyar"/);
+    expect(leer(path.join(SRC, "components/layout/SiteHeader.tsx"))).toMatch(/donacionesActivas\(\) \? \(\n\s*<Link href="\/apoyar"/);
+    expect(leer(path.join(SRC, "lib/site.ts"))).toMatch(/donacionesActivas\(\) \? \[\.\.\.RUTAS_PUBLICAS, "\/apoyar"\] : \[\.\.\.RUTAS_PUBLICAS\]/);
+    expect(leer(path.join(SRC, "app/sitemap.ts"))).toMatch(/rutasPublicas\(\)\.map/);
+  });
+});
+
 describe("cuentas de personas usuarias", () => {
   const delaCuenta = fuentes.filter((r) => /^src\/lib\/(cuentas|correo)\//.test(relativa(r)));
   const paginasCuenta = fuentes.filter((r) => relativa(r).startsWith("src/app/cuenta/") && /\/(page|route)\.tsx?$/.test(r));

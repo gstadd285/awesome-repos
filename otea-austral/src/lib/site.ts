@@ -1,4 +1,4 @@
-import { env } from "@/lib/env";
+import { donacionesActivas, env } from "@/lib/env";
 
 export const SITIO = {
   nombre: "Otea Austral",
@@ -20,3 +20,8 @@ export const RUTAS_PUBLICAS = [
   "/terminos",
   "/aviso-legal",
 ] as const;
+
+/** Las rutas del mapa del sitio: las fijas y `/apoyar` solo con el apartado de aportes activo. */
+export function rutasPublicas(): string[] {
+  return donacionesActivas() ? [...RUTAS_PUBLICAS, "/apoyar"] : [...RUTAS_PUBLICAS];
+}

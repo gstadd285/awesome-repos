@@ -9,6 +9,7 @@ import { fuentesPorAmbito } from "@/lib/sources/registry";
 import { VERSION_CONSENTIMIENTO } from "@/lib/waitlist/schema";
 import { Cifra } from "./Cifra";
 import { Constelacion } from "./Constelacion";
+import { Desglose } from "./Desglose";
 import { DialCSF } from "./DialCSF";
 import { Radar } from "./Radar";
 import { Sello, fechaDeVersion } from "./Sello";
@@ -32,7 +33,7 @@ describe("cifras de rodillo", () => {
 describe("piezas de las interiores", () => {
   it("son SVG decorativos, sin atributos style", () => {
     const grupos = fuentesPorAmbito().map((g) => ({ titulo: g.titulo, fuentes: g.fuentes.map((f) => ({ id: f.id, tipo: f.tipo })) }));
-    for (const pieza of [<Radar key="r" rotulo="Sin alertas publicadas" />, <Constelacion key="c" grupos={grupos} />, <Sello key="s" documento="Privacidad" version={VERSION_CONSENTIMIENTO} />]) {
+    for (const pieza of [<Radar key="r" rotulo="Sin alertas publicadas" />, <Constelacion key="c" grupos={grupos} />, <Sello key="s" documento="Privacidad" version={VERSION_CONSENTIMIENTO} />, <Desglose key="d" filas={[{ concepto: "Dominio", cifra: "~US$ 12 al año" }]} />]) {
       const { container, unmount } = render(pieza);
       expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
       expect(container.querySelector("[style]")).toBeNull();
@@ -63,6 +64,18 @@ describe("piezas de las interiores", () => {
     expect(nudos.size).toBe(grupos.length);
     const distancias = new Set(vinculos.map(([x0, y0, x1, y1]) => Math.round(Math.hypot(x1 - x0, y1 - y0))));
     expect(distancias.size).toBe(1);
+  });
+
+  it("el desglose de /apoyar dibuja una fila por costo, con su cifra, rotulado como estimado y sin barras ni ejes", () => {
+    const filas = [
+      { concepto: "Dominio", cifra: "~US$ 12 al año" },
+      { concepto: "Tope de la IA", cifra: "US$ 5 al mes" },
+    ];
+    const { container } = render(<Desglose filas={filas} />);
+    const textos = [...container.querySelectorAll("text")].map((t) => t.textContent);
+    expect(textos).toEqual(expect.arrayContaining(["Dominio", "~US$ 12 al año", "Tope de la IA", "US$ 5 al mes"]));
+    expect(container.textContent).toContain("CIFRAS ESTIMADAS");
+    expect(container.querySelectorAll("rect, polyline")).toHaveLength(0);
   });
 
   it("el sello muestra la versión real del texto y la fecha que ella declara; sin versión, solo «provisional»", () => {
