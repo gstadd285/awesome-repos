@@ -79,6 +79,37 @@ export async function ultimaRespuestaDelAsistente(page: Page): Promise<string> {
 }
 
 /** Imagen decodificada de una captura: píxeles RGB(A) de 8 bits, fila a fila. */
+/**
+ * Guarda el cuerpo de cada respuesta a un POST hacia `url` (una Server Action va a la ruta de su página) **antes** de
+ * entregarla al navegador: la intercepta con `page.route`, la pide con `route.fetch()` y la devuelve tal cual con
+ * `route.fulfill({ response })`. Así no se usa `response.text()` de una respuesta del navegador, que pide el cuerpo a Chromium
+ * por CDP: si la página ya navegó o se volvió a pintar, Chromium lo descartó y falla al azar («Protocol error
+ * (Network.getResponseBody): No data found for resource with given identifier»). Los demás métodos siguen su curso.
+ * `siguiente()` espera el cuerpo de la próxima respuesta capturada (sirve llamarla antes o después del clic).
+ */
+export async function capturarCuerposPost(
+  page: Page,
+  url: string | RegExp | ((url: URL) => boolean),
+): Promise<{ siguiente: () => Promise<string> }> {
+  const listos: string[] = [];
+  const esperando: ((cuerpo: string) => void)[] = [];
+  await page.route(url, async (ruta) => {
+    if (ruta.request().method() !== "POST") return ruta.fallback();
+    const respuesta = await ruta.fetch();
+    const cuerpo = await respuesta.text();
+    const espera = esperando.shift();
+    if (espera) espera(cuerpo);
+    else listos.push(cuerpo);
+    await ruta.fulfill({ response: respuesta });
+  });
+  return {
+    siguiente: () => {
+      const cuerpo = listos.shift();
+      return cuerpo !== undefined ? Promise.resolve(cuerpo) : new Promise<string>((entregar) => esperando.push(entregar));
+    },
+  };
+}
+
 export type Pixeles = { ancho: number; alto: number; canales: number; datos: Uint8Array };
 
 /**

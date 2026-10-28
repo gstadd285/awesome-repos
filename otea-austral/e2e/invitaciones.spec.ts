@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto";
 import type { Browser, Page } from "@playwright/test";
 import pg from "pg";
 import { crearCifradorCuentas } from "../src/lib/cuentas/cifrado";
-import { SESION_ADMIN, vigilarErrores } from "./ayudas";
+import { capturarCuerposPost, SESION_ADMIN, vigilarErrores } from "./ayudas";
 import { CLAVE, correosPara, correoUnico, ESPERA_TRAMPA_MS, esperarCorreo, otroNavegador, rutaDelEnlace } from "./cuentas-ayudas";
 import { expect, test } from "./fixtures";
 import { URL_INVITACION } from "./puertos";
@@ -138,11 +138,11 @@ test("acceso privado: emitir en el panel, crear la cuenta con la invitación y v
       await p.getByLabel("Código de invitación").fill(codigo.toLowerCase());
       await p.getByLabel("Tu correo").fill(correo);
       await p.getByLabel(/Acepto las condiciones de uso/).check();
-      const [respuesta] = await Promise.all([
-        p.waitForResponse((r) => r.request().method() === "POST"),
-        p.getByRole("button", { name: "Crear mi cuenta" }).click(),
-      ]);
-      const cuerpo = await respuesta.text();
+      // El cuerpo de la Server Action se guarda al interceptarla (ver `capturarCuerposPost`), no se pide después a Chromium.
+      const capturas = await capturarCuerposPost(p, (u) => u.pathname === "/cuenta/crear");
+      const respuesta = capturas.siguiente();
+      await p.getByRole("button", { name: "Crear mi cuenta" }).click();
+      const cuerpo = await respuesta;
       expect(cuerpo).not.toContain(codigo.toLowerCase());
       expect(cuerpo).not.toContain(codigo);
       await expect(p.locator("main").getByRole("alert").first()).toContainText("Revisa los datos marcados.");
