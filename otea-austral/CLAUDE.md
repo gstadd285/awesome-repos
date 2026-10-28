@@ -457,6 +457,11 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
   (`src/lib/alertas/visibles.ts`), el **único** que llama a `repo.publicas({ ejemplo })`: sin sesión, solo ejemplos; con sesión, solo
   `es_ejemplo = false`. Nada real en metadatos, mapa del sitio, imagen OG ni feeds (no hay). El panel avisa quién verá lo publicado según
   `CUENTAS_MODO` (`AvisoAccesoPrivado`).
+- **Aportes por Mercado Pago** (`/apoyar`, `src/lib/donaciones/enlace.ts`; operación en `docs/despliegue.md` §15): **apagados por
+  omisión** (sin `DONACIONES_URL`, `/apoyar` y sus metadatos dan 404 y no hay enlace en el pie, el menú ni el mapa del sitio). Solo un
+  enlace hacia afuera (`target="_blank"`, `rel="noopener noreferrer"`, `safeHref`): nada de Mercado Pago se carga, el sitio no procesa
+  pagos y la CSP no cambia. `DOMINIOS_DONACIONES` es una lista cerrada de host exacto (`link.mercadopago.cl`, `mpago.la`); sumar uno
+  exige verificarlo en una fuente oficial y su caso en `enlace.test.ts`. Los textos de la página solo usan cifras reales, estimadas.
 - **Panel `/admin`** (`src/app/admin/`, `src/lib/admin/`): sin `ADMIN_*` y `DATABASE_URL` responde 404.
   Acceso con frase (PBKDF2) y código TOTP; la sesión es una cookie `__Host-` firmada **y registrada en
   la base** (`admin_sesiones`), así que «Salir» la revoca de verdad. Toda página privada llama a
@@ -549,7 +554,7 @@ contra la misma base dentro de los mismos 30 segundos pueden chocar (en la CI la
 
 ```
 src/
-  app/                 rutas: portada, metodologia, fuentes, seguridad, legales, 404, cuenta/ (cuentas),
+  app/                 rutas: portada, metodologia, fuentes, seguridad, legales, apoyar (aportes), 404, cuenta/ (cuentas),
                        lista-de-espera/confirmar, acciones/ (Server Actions), api/csp-report,
                        api/salud, api/asistente, error y global-error, admin/, alertas/, .well-known/security.txt,
                        sitemap, robots, manifest, íconos, imagen OG
@@ -586,6 +591,7 @@ src/
     ingesta/           ingesta de metadatos: descarga (único fetch), robots.txt, lector de feeds, deduplicación, servicio,
                        almacén Postgres y turno; agrupación en eventos candidatos (léxico) y cola del panel
     tareas/            puerta de las tareas programadas (`exigirTarea`)
+    donaciones/        lista cerrada de dominios del link de pago de Mercado Pago (aportes)
     db/                cliente de Postgres (pool, transacciones) y ayudante de pruebas
   app/admin/           panel interno (acceso y tablero, cola de eventos, invitaciones, listado, alta, detalle y acciones)
   app/alertas/         alertas publicadas; app/api/salud: sonda de Cloud Run
@@ -968,6 +974,15 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   de palabras con mayúscula inicial cuenta como una sola.
 - **Las herramientas de escritura convierten `\u00a0`, `\u200b` y `\u2028` en el carácter**, también en las pruebas: revisa los bytes
   (un U+2028 literal rompe la expresión regular; uno de U+00A0, la comparación).
+
+## Lo aprendido (aportes y e2e)
+
+- **Un `metadata` fijo sale también en la 404** cuando la página llama a `notFound()` (el `<title>` delataba el apartado apagado):
+  lo que no debe existir usa `generateMetadata` con el mismo `notFound()`. El flujo RSC de esa ruta responde 200 con la 404 dentro.
+- **`getByRole` no ve un popover cerrado** (el menú del teléfono): para comprobar que un enlace existe sin abrirlo, un selector CSS.
+- **`response.text()` de una respuesta del navegador falla al azar** si la página ya navegó o se volvió a pintar (Chromium descartó el
+  cuerpo: «No data found for resource with given identifier»). Para leer lo que devuelve una Server Action, `capturarCuerposPost`
+  (`e2e/ayudas.ts`: `page.route` + `route.fetch()` + `route.fulfill({ response })`). Las de `request.get/post` no tienen el problema.
 
 ## Notas de Next.js
 

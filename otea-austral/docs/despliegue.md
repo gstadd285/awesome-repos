@@ -632,3 +632,64 @@ sintéticos en `e2e/fixtures/fuentes/*/documentos/`) y el **Anthropic falso** (`
 sin flujo) contra el SDK oficial (`src/lib/borradores/integracion.test.ts`): qué recibe el modelo y qué no, que ningún texto queda en
 la base, la inyección, el tope agotado y la revisión en la cola. La e2e `e2e/borradores.spec.ts` corre la ingesta en el 3201 con los
 borradores activos y el registro real (al «proveedor» no le llega nada) y la revisión en el panel con un borrador sintético.
+
+## 15. Aportes voluntarios por Mercado Pago (opcional, apagados por omisión)
+
+`/apoyar` explica en qué se usa lo que se reúne (dominio ~US$ 12 al año, servidores y correo en planes gratuitos, tope de la IA
+de US$ 5 al mes; cifras estimadas), que el aporte es voluntario y no da recomendaciones, prioridad ni trato preferente, que no
+es deducible de impuestos, que el reembolso se rige por Mercado Pago y que Otea Austral no recibe ni guarda datos de pago. Su
+botón de latón es **solo un enlace** al «link de pago» de la dueña, en una pestaña nueva (`target="_blank"`,
+`rel="noopener noreferrer"`, `safeHref`): el pago ocurre en Mercado Pago y el sitio no carga nada suyo (ni scripts, ni marcos,
+ni widgets) ni procesa pagos o datos de tarjeta. **La CSP no cambia.**
+
+**Apagado** (sin `DONACIONES_URL`, como hoy): `/apoyar` responde 404 (también sus metadatos) y no aparece en ninguna parte: ni
+en el pie, ni en el menú del teléfono, ni en el mapa del sitio. **Activo**: la página, «Apoyar el proyecto» al final de la
+columna «Confianza» del pie y junto a la cuenta en el menú del teléfono, y `/apoyar` en `sitemap.xml`.
+
+**Dominios permitidos** (`src/lib/donaciones/enlace.ts`, host exacto, verificados el 2026-10-28):
+
+| Dominio | Qué es | Cómo se verificó |
+|---|---|---|
+| `link.mercadopago.cl` | El link de cobro de una cuenta de Chile (`https://link.mercadopago.cl/nombre`; con monto abierto muestra «Ingresa el monto a pagar») | Páginas de pago de cuentas chilenas indexadas en ese subdominio |
+| `mpago.la` | El dominio corto de los links de pago | Documentación oficial de Mercado Pago para desarrolladores (links de pago generados, p. ej. `https://mpago.la/…`) |
+
+**No** se admiten: subdominios de esos dominios, dominios parecidos (`mpago.co` es una herramienta de un tercero), otros
+dominios de Mercado Pago (`www.mercadopago.cl`) ni los que no se pudieron confirmar como de links de pago de Chile (`mpago.li`
+aparece en enlaces de promociones; `mpago.cl/link`, solo como dibujo en la página comercial). La URL debe ser https, sin puerto,
+sin credenciales, con su ruta y **sin parámetros ni ancla**. Si Mercado Pago te entrega un link corto de otro dominio, usa el
+largo de `link.mercadopago.cl` (en la sección «Link de pago» de tu cuenta); sumar un dominio exige verificarlo en una fuente
+oficial, agregarlo a `DOMINIOS_DONACIONES` con su caso en `enlace.test.ts` y desplegar una imagen nueva.
+
+### Activarlos
+
+1. **La dueña crea su link** en la sección «Link de pago» de su cuenta de Mercado Pago (para aportes, con monto abierto) y
+   revisa ahí sus comisiones, qué informa de cada pago y cómo se reembolsa. Abre el link en una ventana
+   privada y comprueba que es el suyo (nombre de la cuenta) antes de publicarlo.
+2. **Configura y despliega** (no es un secreto: se publica en la página):
+
+   ```bash
+   gcloud run services update otea-austral --region $REGION \
+     --update-env-vars "DONACIONES_URL=https://link.mercadopago.cl/‹nombre›"
+   ```
+
+   Un valor inválido (http, otro dominio, un subdominio, parámetros) hace fallar `/api/salud`: **la revisión no recibe tráfico**
+   y sigue la anterior. Corrígelo y vuelve a desplegar. En local, `DONACIONES_URL=… npm start`.
+3. **Comprueba**: `curl -sI "$URL/apoyar"` da 200, la página muestra el botón «Aportar en Mercado Pago», y el pie y
+   `$URL/sitemap.xml` incluyen `/apoyar`; el botón abre el link de la dueña en una pestaña nueva.
+
+Antes de anunciarlo, la revisión legal (`alertas-reales.md` §9): la política de privacidad ya menciona los aportes (versión
+`2026-10-borrador-5`), pero los textos siguen siendo borradores.
+
+### Apagarlos
+
+```bash
+gcloud run services update otea-austral --region $REGION --remove-env-vars DONACIONES_URL   # /apoyar vuelve a 404
+```
+
+### Probarlos sin salir a internet
+
+`npm test` cubre la lista (dominios permitidos, http, dominios parecidos, subdominios engañosos, parámetros) en
+`src/lib/donaciones/enlace.test.ts` y `src/lib/env.test.ts`, y `arquitectura.test.ts` vigila que nada de Mercado Pago se cargue,
+que la CSP no cambie y que los puntos de entrada dependan del apartado. La e2e `e2e/apoyar.spec.ts` lo prueba activo en el 3201
+(con el link **de prueba** `DONACIONES_URL_PRUEBA` de `e2e/puertos.ts`; la pestaña de Mercado Pago se responde en la propia
+prueba, sin red) y apagado en el 3200.

@@ -198,6 +198,12 @@ Diseño, costos, cumplimiento y plan en [`alertas-reales.md`](alertas-reales.md)
       preferencias, resumen diario y operación.
 - [ ] Decisiones de la dueña: `alertas-reales.md` §11.
 
+## Incremento · Aportes voluntarios por Mercado Pago ✅ (apagados)
+
+- [x] `/apoyar` (en qué se usa, qué no da, impuestos, reembolsos y datos de pago, con cifras reales estimadas) y «Apoyar el
+      proyecto» en el pie y el menú del teléfono, solo con `DONACIONES_URL`: un enlace a Mercado Pago, sin cargar nada suyo.
+- [ ] La dueña crea su link de pago y lo configura (`despliegue.md` §15).
+
 ## Falta para abrir al público (no es código)
 
 - [ ] Crear los proyectos en Google Cloud, Neon y Resend y desplegar siguiendo `docs/despliegue.md`.

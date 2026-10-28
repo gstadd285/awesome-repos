@@ -85,6 +85,7 @@ revisión de cada pull request, auditoría inmutable y este programa versionado.
 | Resend | Correo de doble opt-in y de las cuentas (confirmación, restablecimiento y avisos de seguridad) | Media | Correos de la lista de espera y de las cuentas | Elegido; por crear |
 | Neon | Base de datos: alertas, fuentes, lista de espera, sesiones del panel, cuentas de personas usuarias | Alta | Correos de la lista de espera y de las cuentas (cifrados), hashes de contraseñas | Elegido; por crear |
 | Anthropic | Redacta las respuestas del asistente de preguntas, **solo si se activa la IA** (de pago) | Baja | El texto de cada pregunta y de las preguntas frecuentes que se usan para responderla, sin IP | **Opcional; apagado por omisión.** Requiere la decisión de la persona responsable (`docs/asistente-ia.md`) |
+| Mercado Pago | Aportes voluntarios: `/apoyar` solo **enlaza** a su link de pago (pestaña nueva); el sitio no procesa pagos ni carga nada suyo | Baja | Nada desde el sitio: quien aporta le entrega sus datos de pago directamente; la dueña ve en su cuenta lo que Mercado Pago informa de cada aporte | **Opcional; apagado por omisión** (`DONACIONES_URL`, dominios en lista cerrada; `docs/despliegue.md` §15) |
 
 Para aceptar un proveedor: plan gratuito suficiente, verificación en dos pasos, cifrado en tránsito
 y en reposo, condiciones de tratamiento de datos legibles y posibilidad de exportar los datos.
@@ -105,7 +106,8 @@ y en reposo, condiciones de tratamiento de datos legibles y posibilidad de expor
 | Preguntas al asistente | Visitantes | No se guardan | Se usan solo para responder. Con IA activada, el texto viaja a Anthropic (sin IP). Las preguntas con datos personales no se procesan ni se envían. |
 | Gasto diario de IA | Aplicación | Base de datos (`asistente_uso`) | Solo totales por día (micros y llamadas); sin datos personales. |
 
-Conexiones permitidas: el navegador solo habla con el propio sitio (`connect-src 'self'`). El servidor
+Conexiones permitidas: el navegador solo habla con el propio sitio (`connect-src 'self'`); con los aportes activos, el enlace
+de `/apoyar` abre Mercado Pago en otra pestaña solo si la persona lo sigue (no es una petición del sitio). El servidor
 solo hace dos peticiones salientes automáticas, ambas a direcciones fijas: `https://api.resend.com/emails` y, solo
 si se activa la IA del asistente, `https://api.anthropic.com`. El servicio privado de tareas (`otea-tareas`, apagado por
 omisión) lee además los feeds **verificados** del registro de fuentes, y solo esos (`docs/alertas-reales.md` §2). Durante el build se
@@ -128,6 +130,7 @@ contacta npm y Google Fonts; la CI corre en GitHub.
 | R14 | Fuga de datos de las cuentas (base o copia robada) | Baja | Alto | Correo y secreto de dos pasos cifrados con `CUENTAS_SECRETO` (en Secret Manager, aparte de la base); contraseñas con scrypt; tokens y códigos solo en hash; permisos por columna y RLS | Mitigado; **`CUENTAS_SECRETO` no se puede rotar todavía** (falta el script de recifrado) |
 | R10 | Gasto descontrolado de IA (abuso del asistente, bucle, precio mal configurado) | Media | Medio | IA apagada por omisión; tope diario con reserva del peor caso en la base; cupo por persona; límites por IP; límite de gasto en la consola de Anthropic | Mitigado en parte; **falta el límite de la consola (acción de la persona responsable)** |
 | R11 | Respuesta de IA inadecuada: lenguaje de recomendación, enlaces, cifras inventadas, instrucciones filtradas | Media | Medio | Modelo sin herramientas ni secretos, solo texto público; políticas antes del modelo; salida revisada frase por frase; respaldo a la base | Mitigado en parte; probado contra un servidor falso, no contra la API real |
+| R15 | Enlace de aportes manipulado (configuración con un dominio parecido o un subdominio engañoso que lleve a una página falsa de pago) | Baja | Alto | Lista cerrada de dominios oficiales de Mercado Pago con host exacto, https, sin parámetros ni credenciales; validada al arrancar (la revisión no recibe tráfico) y otra vez al dibujar (`safeHref`); `rel="noopener noreferrer"`; el sitio nunca pide datos de pago | Mitigado; **apagado hasta que la dueña entregue su link** |
 | R12 | Datos personales enviados por una persona a un proveedor de IA | Media | Medio | Detección de correo, teléfono, RUT y números largos (la pregunta no se envía); aviso en la interfaz y en la política; no se guardan preguntas | Mitigado en parte; la detección es léxica |
 
 ## 8. Revisión y mejora (GV.OV-01, ID.IM)

@@ -103,6 +103,11 @@ spec:
             # - name: ANTHROPIC_API_KEY
             #   valueFrom:
             #     secretKeyRef: { name: otea-anthropic-api-key, key: latest }
+            # ── Aportes voluntarios por Mercado Pago (docs/despliegue.md §15) ──────────────────────────────────────
+            # Apagados sin esta variable (/apoyar da 404). Es el «link de pago» de la dueña, no un secreto: https,
+            # link.mercadopago.cl o mpago.la, con su ruta y sin parámetros; uno inválido hace fallar la sonda.
+            # - name: DONACIONES_URL
+            #   value: https://link.mercadopago.cl/‹nombre›
           # La sonda valida el proceso y la configuración (no toca la base de datos):
           # una revisión mal configurada no recibe tráfico.
           startupProbe:
