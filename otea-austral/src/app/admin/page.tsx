@@ -6,6 +6,7 @@ import { dolares } from "@/components/admin/BorradorIa";
 import { FormularioAcceso } from "@/components/admin/FormularioAcceso";
 import { ENLACE, TARJETA } from "@/components/admin/estilos";
 import { sesionActual } from "@/lib/admin/acceso";
+import { avisosDeOperacion } from "@/lib/ingesta/avisos";
 import { colaEventos } from "@/lib/ingesta/cola";
 import { formatearFechaHora } from "@/lib/format";
 import { env } from "@/lib/env";
@@ -38,15 +39,33 @@ export default async function PanelPage() {
 
   const cola = colaEventos();
   if (!cola) notFound();
-  const t = await cola.tablero(new Date());
+  const ahora = new Date();
+  const t = await cola.tablero(ahora);
   const c = t.ultimaCorrida;
   const g = t.gastoMes;
+  const r = t.resumen;
+  const avisos = avisosDeOperacion(t, ahora);
 
   return (
     <>
       <p className="micro text-apoyo">Panel interno</p>
       <h1 className="titular mt-3 text-titulo text-texto">Tablero</h1>
       <AvisoAccesoPrivado modo={env.CUENTAS_MODO} className="mt-6 max-w-[680px]" />
+      {/* Lo primero de la rutina de cada mañana (docs/rutina-diaria.md): qué revisar hoy. */}
+      <div role="note" aria-label="Avisos de operación" className="mt-6 max-w-[680px] rounded-badge bg-papel-alto p-4 text-sm leading-relaxed text-texto linea-fina">
+        {avisos.length > 0 ? (
+          <>
+            <p className="font-semibold">Revisa hoy:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {avisos.map((a) => (
+                <li key={a}>{a}</li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p>Sin avisos de operación.</p>
+        )}
+      </div>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:items-start">
         <section aria-labelledby="ingesta-titulo" className={TARJETA}>
@@ -84,6 +103,19 @@ export default async function PanelPage() {
           ) : (
             <p className="mt-4 text-sm text-texto-suave">Ningún feed en pausa ni con fallos.</p>
           )}
+          {t.feedsSinNovedades.length > 0 ? (
+            <div className="mt-4 text-sm text-texto-suave">
+              <p className="font-medium text-texto">Sin ítems nuevos en 14 días:</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {t.feedsSinNovedades.map((f) => (
+                  <li key={f.feedUrl}>
+                    {f.organismo} · último ítem{" "}
+                    {f.ultimoItem ? <time dateTime={f.ultimoItem}>{formatearFechaHora(f.ultimoItem)}</time> : "nunca"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
 
         <section aria-labelledby="cola-titulo" className={TARJETA}>
@@ -131,6 +163,28 @@ export default async function PanelPage() {
             Toda la IA (asistente y borradores) desde el primer día: {dolares(t.gastoTotalMicros)}. El tope mensual de los borradores
             no pasa de US$ 5; el límite del espacio de trabajo en la consola de Anthropic es la última barrera.
           </p>
+        </section>
+
+        <section aria-labelledby="resumen-titulo" className={TARJETA}>
+          <h2 id="resumen-titulo" className="titular text-xl text-texto">
+            Resumen diario
+          </h2>
+          <p className="mt-4 text-sm text-texto-suave">
+            <strong className="font-semibold text-texto">{r.suscritas}</strong> {r.suscritas === 1 ? "cuenta lo pidió" : "cuentas lo pidieron"} · hoy{" "}
+            {r.enviadosHoy} {r.enviadosHoy === 1 ? "enviado" : "enviados"}
+            {r.fallidosHoy > 0 ? ` · ${r.fallidosHoy} sin salir` : null}.
+          </p>
+          {r.ultimaCorrida ? (
+            <p className="mt-2 text-sm text-texto-suave">
+              Última corrida: <time dateTime={r.ultimaCorrida.inicio}>{formatearFechaHora(r.ultimaCorrida.inicio)}</time> ·{" "}
+              <strong className="font-semibold text-texto">{RESULTADO_ETIQUETA[r.ultimaCorrida.resultado] ?? r.ultimaCorrida.resultado}</strong> ·{" "}
+              {r.ultimaCorrida.enviados} {r.ultimaCorrida.enviados === 1 ? "enviado" : "enviados"} de {r.ultimaCorrida.cuentas}{" "}
+              {r.ultimaCorrida.cuentas === 1 ? "cuenta revisada" : "cuentas revisadas"} (sin alertas nuevas en sus temas, no se envía) ·{" "}
+              {r.ultimaCorrida.fallos} fallos
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-texto-suave">Todavía no corrió: el resumen está apagado por omisión (servicio de tareas).</p>
+          )}
         </section>
       </div>
     </>

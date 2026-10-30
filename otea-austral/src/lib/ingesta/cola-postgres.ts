@@ -134,10 +134,19 @@ export type Tablero = {
     pausadoHasta: string | null;
     ultimoError: string | null;
   }[];
+  /** Feeds que respondieron alguna vez pero no traen ítems nuevos hace 14 días (`docs/alertas-reales.md` §8.3). */
+  feedsSinNovedades: { feedUrl: string; organismo: string; ultimoItem: string | null }[];
   eventosPendientes: number;
   itemsSinEvento: number;
   borradoresPendientes: number;
   gastoMes: GastoBorradores;
+  /** El resumen diario por correo (lo envía `otea-tareas`): su última corrida, lo de hoy y cuántas cuentas lo pidieron. */
+  resumen: {
+    ultimaCorrida: { inicio: string; resultado: string; cuentas: number; enviados: number; fallos: number } | null;
+    enviadosHoy: number;
+    fallidosHoy: number;
+    suscritas: number;
+  };
   /** Todo lo gastado en IA (asistente y borradores) desde el primer día, para el tope acumulado. */
   gastoTotalMicros: number;
 };
@@ -569,7 +578,7 @@ export function crearColaEventos(db: BaseDeDatos, { fuentes }: { fuentes: readon
 
     /** Lo que mira la dueña al entrar: la última corrida, los feeds con problemas y lo pendiente. */
     async tablero(ahora: Date): Promise<Tablero> {
-      const [corridas, feeds, conteos, gasto, total] = await Promise.all([
+      const [corridas, feeds, conteos, gasto, total, silenciosos, resumenes, hoy] = await Promise.all([
         db.consulta<{ inicio: Date; fin: Date; resultado: string; feeds: number; nuevos: number; fallos: number }>(
           "select inicio, fin, resultado, feeds, nuevos, fallos from ingesta_corridas where tarea = 'ingesta' order by orden desc limit 1",
         ),
@@ -599,7 +608,25 @@ export function crearColaEventos(db: BaseDeDatos, { fuentes }: { fuentes: readon
            where mes = date_trunc('month', now() at time zone 'America/Santiago')::date`,
         ),
         db.consulta<{ micros: string }>(SQL_LEER_GASTO_TOTAL),
+        db.consulta<{ feed_url: string; organismo: string; ultimo_item: Date | null }>(
+          `select g.feed_url, f.organismo, (select max(i.visto) from fuente_items i where i.feed_url = g.feed_url) as ultimo_item
+           from ingesta_feeds g join fuentes f on f.id = g.source_id
+           where g.ultimo_ok is not null
+             and coalesce((select max(i.visto) from fuente_items i where i.feed_url = g.feed_url), '-infinity') < $1::timestamptz - interval '14 days'
+           order by g.feed_url limit 50`,
+          [ahora],
+        ),
+        db.consulta<{ inicio: Date; resultado: string; feeds: number; nuevos: number; fallos: number }>(
+          "select inicio, resultado, feeds, nuevos, fallos from ingesta_corridas where tarea = 'resumen' order by orden desc limit 1",
+        ),
+        db.consulta<{ enviados: number; fallidos: number; suscritas: number }>(
+          `select (select count(*)::int from resumen_envios where dia = ($1::timestamptz at time zone 'America/Santiago')::date and estado = 'enviado') as enviados,
+                  (select count(*)::int from resumen_envios where dia = ($1::timestamptz at time zone 'America/Santiago')::date and estado = 'fallido') as fallidos,
+                  (select count(*)::int from cuentas where resumen_previo) as suscritas`,
+          [ahora],
+        ),
       ]);
+      const rc = resumenes[0];
       const g = gasto[0];
       const c = corridas[0];
       return {
@@ -614,11 +641,19 @@ export function crearColaEventos(db: BaseDeDatos, { fuentes }: { fuentes: readon
           pausadoHasta: f.pausado_hasta ? iso(f.pausado_hasta) : null,
           ultimoError: f.ultimo_error,
         })),
+        feedsSinNovedades: silenciosos.map((f) => ({ feedUrl: f.feed_url, organismo: f.organismo, ultimoItem: f.ultimo_item ? iso(f.ultimo_item) : null })),
         eventosPendientes: conteos[0]?.eventos ?? 0,
         itemsSinEvento: conteos[0]?.items ?? 0,
         borradoresPendientes: conteos[0]?.borradores ?? 0,
         gastoMes: g ? { micros: Number(g.micros), llamadas: g.llamadas, topeMicros: Number(g.tope) } : { micros: 0, llamadas: 0, topeMicros: null },
         gastoTotalMicros: Number(total[0]?.micros ?? 0),
+        resumen: {
+          // En las corridas del resumen, `feeds` son las cuentas revisadas y `nuevos` los resúmenes enviados (migración 0011).
+          ultimaCorrida: rc ? { inicio: iso(rc.inicio), resultado: rc.resultado, cuentas: rc.feeds, enviados: rc.nuevos, fallos: rc.fallos } : null,
+          enviadosHoy: hoy[0]?.enviados ?? 0,
+          fallidosHoy: hoy[0]?.fallidos ?? 0,
+          suscritas: hoy[0]?.suscritas ?? 0,
+        },
       };
     },
   };

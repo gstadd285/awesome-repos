@@ -111,7 +111,7 @@ export type Control = z.infer<typeof ControlSchema>;
 export const PERFIL = {
   marco: "NIST Cybersecurity Framework (CSF) 2.0",
   alcance: "Sitio web, código y servicios de Otea Austral",
-  revisado: "2026-10-11",
+  revisado: "2026-10-30",
   proximaRevision: "2027-01-10",
   nivelActual: 1,
   nivelObjetivo: 2,
@@ -182,7 +182,7 @@ export const CONTROLES: Control[] = [
     id: "ID-02",
     titulo: "Inventario de datos y conexiones",
     descripcion:
-      "Sabemos qué datos van a dónde: el navegador, solo al sitio; el servidor, a la base, el correo y (con la IA del asistente) Anthropic; el servicio de tareas, a los feeds verificados y, con los borradores, a Anthropic con solo lo de fuentes con lectura_ia.",
+      "Sabemos qué datos van a dónde: el navegador, solo al sitio; el servidor, a la base, el correo y (con la IA) Anthropic; el servicio de tareas, a los feeds verificados, a Anthropic solo lo de fuentes con lectura_ia y a Resend el resumen.",
     estado: "implementado",
     subcategorias: ["ID.AM-03", "ID.AM-07"],
     evidencia: [PROGRAMA, "src/lib/security/csp.ts", "src/lib/ingesta/descarga.ts", "src/lib/borradores/lectura.ts"],
@@ -493,6 +493,22 @@ export const CONTROLES: Control[] = [
     ],
   },
   {
+    id: "PR-23",
+    titulo: "Resumen por correo solo a quien lo pidió, con baja de un clic",
+    descripcion:
+      "El resumen diario sale de la tarea privada solo a cuentas con consentimiento explícito y fechado: títulos de Otea y temas, sin texto de fuentes. Uno por día, cupo de Resend en la base y baja por POST con token con hash. Apagado por omisión.",
+    estado: "parcial",
+    subcategorias: ["PR.DS-02", "PR.AA-05"],
+    evidencia: [
+      "src/lib/resumen/servicio.ts",
+      "src/lib/resumen/correo.ts",
+      "src/lib/resumen/manejador-baja.ts",
+      "src/app/api/tareas/resumen/route.ts",
+      "db/migraciones/0011_resumen.sql",
+      "docs/alertas-reales.md",
+    ],
+  },
+  {
     id: "PR-14",
     titulo: "Reglas de seguridad que se comprueban solas",
     descripcion:
@@ -540,12 +556,12 @@ export const CONTROLES: Control[] = [
   },
   {
     id: "DE-05",
-    titulo: "Vigilancia de la ingesta y del gasto",
+    titulo: "Vigilancia de la ingesta, del resumen y del gasto",
     descripcion:
-      "Cada corrida de la ingesta deja un evento sin datos personales; una alerta avisará si pasan 3 horas sin corridas, y el panel mostrará los feeds en pausa y el gasto contra el tope.",
-    estado: "objetivo",
+      "Cada corrida de la ingesta y del resumen deja un evento sin datos personales; el tablero avisa de corridas paradas o fallidas, feeds en pausa o mudos y gasto ≥ 80 % del tope. La alerta por 3 h sin corridas está descrita; falta crearla.",
+    estado: "parcial",
     subcategorias: ["DE.CM-01", "DE.CM-09"],
-    evidencia: [],
+    evidencia: ["src/lib/ingesta/avisos.ts", "src/app/admin/page.tsx", "src/lib/security/log.ts", "docs/despliegue.md", "docs/rutina-diaria.md"],
   },
   {
     id: "DE-03",
