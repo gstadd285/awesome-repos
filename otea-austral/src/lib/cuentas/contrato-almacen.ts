@@ -124,6 +124,7 @@ export function pruebasDelContrato(nombre: string, preparar: () => Promise<Prepa
           aceptado: T(0),
           temas: [],
           resumenPrevio: false,
+          resumenDesde: null,
           creada: T(1),
           claveCambiada: T(1),
         });
@@ -195,6 +196,25 @@ export function pruebasDelContrato(nombre: string, preparar: () => Promise<Prepa
         expect(await a.buscarPorId(id)).toMatchObject({ nombre: "Catalina Pérez", temas: ["cobre", "divisas"], resumenPrevio: true });
         await a.actualizarPerfil(id, { nombre: null, temas: [], resumenPrevio: false }, T(6));
         expect(await a.buscarPorId(id)).toMatchObject({ nombre: null, temas: [], resumenPrevio: false });
+      });
+
+      it("pedir el resumen guarda desde cuándo (y lo conserva al volver a guardar); dejarlo lo borra", async () => {
+        const { id } = await crearCuenta();
+        await a.actualizarPerfil(id, { nombre: null, temas: ["cobre"], resumenPrevio: true }, T(5));
+        expect(await a.buscarPorId(id)).toMatchObject({ resumenPrevio: true, resumenDesde: T(5) });
+        await a.actualizarPerfil(id, { nombre: "Ana", temas: ["cobre"], resumenPrevio: true }, T(8));
+        expect(await a.buscarPorId(id)).toMatchObject({ resumenPrevio: true, resumenDesde: T(5) });
+        await a.actualizarPerfil(id, { nombre: "Ana", temas: ["cobre"], resumenPrevio: false }, T(9));
+        expect(await a.buscarPorId(id)).toMatchObject({ resumenPrevio: false, resumenDesde: null });
+      });
+
+      it("actualizar los temas no toca el resto del perfil", async () => {
+        const { id } = await crearCuenta();
+        await a.actualizarPerfil(id, { nombre: "Ana", temas: ["cobre"], resumenPrevio: true }, T(5));
+        await a.actualizarTemas(id, ["energia", "divisas"], T(6));
+        expect(await a.buscarPorId(id)).toMatchObject({ nombre: "Ana", temas: ["energia", "divisas"], resumenPrevio: true, resumenDesde: T(5) });
+        await a.actualizarTemas(id, [], T(7));
+        expect(await a.buscarPorId(id)).toMatchObject({ temas: [], resumenPrevio: true });
       });
 
       it("cambiar la contraseña la guarda, borra los fallos, deja la sesión actual y cierra las demás", async () => {

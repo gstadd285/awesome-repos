@@ -15,7 +15,11 @@ const GUARDAMOS: { dato: string; detalle: string }[] = [
   { dato: "Tu correo", detalle: "Cifrado. Sirve para entrar y para avisarte de cambios en tu cuenta." },
   { dato: "Tu contraseña", detalle: "Solo como un hash que no se puede revertir: ni nosotros podemos leerla." },
   { dato: "Tu nombre", detalle: "Solo si lo escribes. Se usa para saludarte." },
-  { dato: "Tus preferencias", detalle: "Los temas que sigues y si quieres el resumen de antes de la apertura." },
+  { dato: "Tus preferencias", detalle: "Los temas que sigues y, si pediste el resumen diario por correo, desde cuándo." },
+  {
+    dato: "Tus resúmenes",
+    detalle: "Si pediste el resumen diario: qué días se envió, qué período cubrió y cuántas alertas llevaba (90 días), sin su contenido; y el hash del enlace para dejarlo (60 días).",
+  },
   { dato: "La verificación en dos pasos", detalle: "Si la activas: el secreto de tu app (cifrado) y el hash de tus códigos de recuperación." },
   { dato: "Tus sesiones", detalle: "Un identificador que no sirve para entrar, el navegador y el sistema aproximados (por ejemplo «Chrome en Windows») y las fechas de uso." },
   { dato: "Tu actividad de seguridad", detalle: "Qué pasó y cuándo (entrar, cambiar la contraseña…), durante 90 días. Sin dirección IP." },

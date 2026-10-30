@@ -59,6 +59,7 @@ import {
   olvideAccion,
   restablecerAccion,
   salirAccion,
+  seguirTemasAccion,
   verificarSegundoPasoAccion,
   type EstadoFormulario,
 } from "./cuenta";
@@ -290,7 +291,7 @@ describe("entrar y salir", () => {
 describe("lo que se hace con la sesión iniciada", () => {
   it("sin sesión, toda acción redirige al formulario de entrada y no hace nada", async () => {
     const f = formulario({ csrf: "x", nombre: "Ana", actual: CLAVE, nueva: CLAVE_2, repetir: CLAVE_2, codigo: "123456", confirmar: "on" });
-    for (const accion of [guardarPerfilAccion, cambiarClaveAccion, iniciarDosPasosAccion, confirmarDosPasosAccion, cerrarOtrasSesionesAccion, eliminarCuentaAccion]) {
+    for (const accion of [guardarPerfilAccion, seguirTemasAccion, cambiarClaveAccion, iniciarDosPasosAccion, confirmarDosPasosAccion, cerrarOtrasSesionesAccion, eliminarCuentaAccion]) {
       expect(await redirige(accion(INICIAL, f)), accion.name).toBe("/cuenta/entrar");
     }
   });
@@ -298,7 +299,7 @@ describe("lo que se hace con la sesión iniciada", () => {
   it("con sesión pero sin el token anti-CSRF correcto, ninguna acción cambia nada", async () => {
     await conCuentaIniciada();
     const mal = formulario({ csrf: "falso", nombre: "Ana", actual: CLAVE, nueva: CLAVE_2, repetir: CLAVE_2, confirmar: "on" });
-    for (const accion of [guardarPerfilAccion, cambiarClaveAccion, iniciarDosPasosAccion, cerrarOtrasSesionesAccion, eliminarCuentaAccion]) {
+    for (const accion of [guardarPerfilAccion, seguirTemasAccion, cambiarClaveAccion, iniciarDosPasosAccion, cerrarOtrasSesionesAccion, eliminarCuentaAccion]) {
       expect(await accion(INICIAL, mal), accion.name).toMatchObject({ estado: "error", mensaje: expect.stringMatching(/venció/) });
     }
     const sesion = (await servicio().leerSesion(mundo.cookies.get(COOKIE_SESION_CUENTA)))!;
@@ -314,6 +315,21 @@ describe("lo que se hace con la sesión iniciada", () => {
     expect(mundo.revalidadas).toContain("/cuenta");
     const sesion = (await servicio().leerSesion(mundo.cookies.get(COOKIE_SESION_CUENTA)))!;
     expect(await servicio().perfil(sesion.cuentaId)).toMatchObject({ nombre: "Ana", temas: ["energia", "cobre"], resumenPrevio: true });
+  });
+
+  it("seguir temas desde la portada guarda solo los temas (validados con Zod) y no toca el nombre ni el resumen", async () => {
+    const { csrf } = await conCuentaIniciada();
+    await guardarPerfilAccion(INICIAL, formulario({ csrf, nombre: "Ana", temas: ["cobre"], resumen: "on" }));
+    const estado = await seguirTemasAccion(INICIAL, formulario({ csrf, temas: ["energia", "divisas", "energia"] }));
+    expect(estado).toMatchObject({ estado: "enviado", valores: { temas: ["energia", "divisas"] } });
+    const sesion = (await servicio().leerSesion(mundo.cookies.get(COOKIE_SESION_CUENTA)))!;
+    expect(await servicio().perfil(sesion.cuentaId)).toMatchObject({ nombre: "Ana", temas: ["energia", "divisas"], resumenPrevio: true });
+    expect(await seguirTemasAccion(INICIAL, formulario({ csrf, temas: ["energia", "inventado"] }))).toMatchObject({
+      estado: "error",
+      errores: { temas: expect.any(String) },
+    });
+    expect((await servicio().perfil(sesion.cuentaId))?.temas).toEqual(["energia", "divisas"]);
+    expect(await seguirTemasAccion(INICIAL, formulario({ csrf }))).toMatchObject({ estado: "enviado", valores: { temas: [] } });
   });
 
   it("un tema inventado se rechaza con su error y vuelve lo escrito", async () => {

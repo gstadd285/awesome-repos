@@ -37,7 +37,7 @@ import {
 import type { CorreoArmado } from "@/lib/correo/plantilla";
 import type { EnviarCorreo } from "@/lib/correo/resend";
 import { evaluarClave, MENSAJES_CLAVE } from "./politica-clave";
-import { AltaSchema, CodigoSchema, CorreoSchema, EntrarSchema, PerfilSchema, VERSION_TEXTOS } from "./schema";
+import { AltaSchema, CodigoSchema, CorreoSchema, EntrarSchema, PerfilSchema, TemasSchema, VERSION_TEXTOS } from "./schema";
 import { generarCodigoRecuperacion, generarToken, hashCodigoRecuperacion, hashToken } from "./tokens";
 import { generarSecretoTotp, uriTotp } from "./totp-cuenta";
 import { enmascararCorreo } from "./formato";
@@ -132,6 +132,8 @@ export type PerfilVista = {
   nombre: string | null;
   temas: string[];
   resumenPrevio: boolean;
+  /** Cuándo pidió el resumen diario, o `null`. */
+  resumenDesde: string | null;
   dosPasos: boolean;
   dosPasosDesde: string | null;
   creada: string;
@@ -150,6 +152,8 @@ export type DatosExportados = {
     claveCambiada: string;
     temas: string[];
     resumenPrevio: boolean;
+    /** Cuándo pidió el resumen diario por correo (su consentimiento), o `null`. */
+    resumenDesde: string | null;
     verificacionEnDosPasos: boolean;
     aceptaste: { versionDeLosTextos: string; fecha: string };
     /** La invitación con que se creó la cuenta (acceso anticipado), o `null`. Su alias es la etiqueta interna del panel. */
@@ -910,6 +914,7 @@ export function crearServicioCuentas({
         nombre: c.nombre,
         temas: c.temas,
         resumenPrevio: c.resumenPrevio,
+        resumenDesde: c.resumenDesde,
         dosPasos: c.totpActivado !== null,
         dosPasosDesde: c.totpActivado,
         creada: c.creada,
@@ -934,8 +939,27 @@ export function crearServicioCuentas({
         }
         return { estado: "invalida", errores };
       }
-      await almacen.actualizarPerfil(cuentaId, v.data, iso(ahora()));
+      const antes = await cuentaDe(cuentaId);
+      const instante = iso(ahora());
+      await almacen.actualizarPerfil(cuentaId, v.data, instante);
+      // Pedir o dejar el resumen diario queda en la actividad de la persona (es un consentimiento).
+      if (antes && antes.resumenPrevio !== v.data.resumenPrevio) {
+        await almacen.registrarEvento(cuentaId, v.data.resumenPrevio ? "resumen_activado" : "resumen_desactivado", instante).catch(() => {});
+      }
       return { estado: "ok", guardado: { nombre: v.data.nombre, temas: v.data.temas, resumenPrevio: v.data.resumenPrevio } };
+    },
+
+    /** Los temas que sigue la cuenta (la portada y /alertas); `null` si no existe. */
+    async temasSeguidos(cuentaId: string): Promise<string[] | null> {
+      return (await cuentaDe(cuentaId))?.temas ?? null;
+    },
+
+    /** Solo los temas (el selector de la portada), validados contra `TEMAS`; nombre y resumen no cambian. */
+    async guardarTemas(cuentaId: string, temas: unknown): Promise<{ estado: "ok"; temas: string[] } | { estado: "invalida"; errores: Errores }> {
+      const v = TemasSchema.safeParse(Array.isArray(temas) ? temas : []);
+      if (!v.success) return { estado: "invalida", errores: { temas: v.error.issues[0]?.message ?? "Revisa los temas." } };
+      await almacen.actualizarTemas(cuentaId, v.data, iso(ahora()));
+      return { estado: "ok", temas: v.data };
     },
 
     // ── Seguridad de la cuenta ─────────────────────────────────────────────────────────────────────────────────────
@@ -1117,6 +1141,7 @@ export function crearServicioCuentas({
           claveCambiada: c.claveCambiada,
           temas: c.temas,
           resumenPrevio: c.resumenPrevio,
+          resumenDesde: c.resumenDesde,
           verificacionEnDosPasos: c.totpActivado !== null,
           aceptaste: { versionDeLosTextos: c.versionTextos, fecha: c.aceptado },
           invitacion: invitacion ? { alias: invitacion.alias, emitida: invitacion.emitida, usada: invitacion.usada } : null,

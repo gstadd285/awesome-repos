@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TEMAS, TEMA_ETIQUETA } from "@/lib/domain/temas";
 import { vistaSinPrimaria } from "@/data/ejemplo";
 import { frasesProhibidas } from "@/lib/domain/lenguaje";
@@ -182,6 +182,29 @@ describe("TopicPicker", () => {
   it("aclara que es una vista previa que no guarda preferencias", () => {
     render(<Temas />);
     expect(screen.getByText(/aún no se guardan/)).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Guardar mis temas" })).toBeNull();
+  });
+
+  it("con sesión parte de los temas de la cuenta y envía la selección, con su token, a la acción que la guarda", async () => {
+    const user = userEvent.setup();
+    const guardar = vi.fn(async (_previo: unknown, datos: FormData) => ({
+      estado: "enviado" as const,
+      mensaje: "Tus temas quedaron guardados en tu cuenta.",
+      valores: { temas: datos.getAll("temas").map(String), csrf: String(datos.get("csrf")) },
+    }));
+    const { container } = render(<Temas cuenta={{ csrf: "token-csrf", temas: ["chips"], guardar }} />);
+    expect(screen.queryByText(/aún no se guardan/)).toBeNull();
+    expect(screen.getByRole("button", { name: new RegExp(TEMA_ETIQUETA.chips) })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: new RegExp(TEMA_ETIQUETA.cobre) })).toHaveAttribute("aria-pressed", "false");
+    const form = screen.getByRole("form", { name: "Guardar mis temas" });
+    expect(within(form).getByRole("status")).toHaveTextContent("Se guardan en tu cuenta");
+    await user.click(screen.getByRole("button", { name: new RegExp(TEMA_ETIQUETA.energia) }));
+    expect(within(form).getByRole("status")).toHaveTextContent("Tienes cambios sin guardar.");
+    expect([...container.querySelectorAll<HTMLInputElement>('form input[name="temas"]')].map((i) => i.value).sort()).toEqual(["chips", "energia"]);
+    expect(container.querySelector<HTMLInputElement>('form input[name="csrf"]')?.value).toBe("token-csrf");
+    await user.click(within(form).getByRole("button", { name: "Guardar mis temas" }));
+    expect(guardar).toHaveBeenCalledTimes(1);
+    expect(await within(form).findByText("Tus temas quedaron guardados en tu cuenta.")).toBeInTheDocument();
   });
 
   it("«Tu mañana» filtra los avisos de ejemplo por tema: el contador y la barra siguen a los visibles", async () => {

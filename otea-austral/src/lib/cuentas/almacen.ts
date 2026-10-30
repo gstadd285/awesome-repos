@@ -8,7 +8,7 @@
  * un correo en claro.
  */
 
-/** Los tipos de evento de actividad que guarda la base (la restricción de `cuenta_eventos` en la migración 0006 los repite). */
+/** Los tipos de evento de actividad que guarda la base (la restricción de `cuenta_eventos`, en las migraciones 0006 y 0011, los repite). */
 export const TIPOS_DE_EVENTO = [
   "alta",
   "acceso",
@@ -20,6 +20,8 @@ export const TIPOS_DE_EVENTO = [
   "codigo_recuperacion",
   "sesiones_cerradas",
   "alta_repetida",
+  "resumen_activado",
+  "resumen_desactivado",
 ] as const;
 
 export type TipoEvento = (typeof TIPOS_DE_EVENTO)[number];
@@ -42,6 +44,8 @@ export type CuentaGuardada = {
   aceptado: string;
   temas: string[];
   resumenPrevio: boolean;
+  /** Cuándo pidió el resumen diario (su consentimiento, migración 0011); `null` si no lo pidió. */
+  resumenDesde: string | null;
   creada: string;
 };
 
@@ -150,7 +154,10 @@ export interface AlmacenCuentas {
   /** Suma `puntos` de intentos fallidos a la ventana (la reinicia si empezó antes de `ventanaDesde`); devuelve cuántos lleva. */
   registrarFallo(cuentaId: string, ahora: string, ventanaDesde: string, puntos: number): Promise<number>;
   limpiarFallos(cuentaId: string): Promise<void>;
+  /** Guarda el perfil; al pedir el resumen fija `resumenDesde` (si ya estaba pedido, lo conserva) y al dejarlo lo borra. */
   actualizarPerfil(cuentaId: string, perfil: PerfilNuevo, ahora: string): Promise<void>;
+  /** Solo los temas que sigue (el selector de la portada); el resto del perfil no cambia. */
+  actualizarTemas(cuentaId: string, temas: string[], ahora: string): Promise<void>;
   /** Cambia la contraseña, borra los fallos y cierra las sesiones (todas menos `conservarSesion`, si se indica). */
   cambiarClave(a: { cuentaId: string; claveHash: string; ahora: string; conservarSesion?: string }): Promise<void>;
   /** Guarda la contraseña con parámetros nuevos, solo si sigue siendo `claveHashAnterior` (al entrar). */

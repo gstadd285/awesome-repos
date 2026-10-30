@@ -6,6 +6,9 @@ import { Radar } from "@/components/piezas/Radar";
 import { repositorioAlertas } from "@/lib/alertas/instancia";
 import { alertasVisibles } from "@/lib/alertas/visibles";
 import { sesionCuenta } from "@/lib/cuentas/acceso";
+import { servicioCuentas } from "@/lib/cuentas/instancia";
+import { TEMA_ETIQUETA, TEMAS } from "@/lib/domain/temas";
+import type { AlertView } from "@/lib/domain/view";
 import { env } from "@/lib/env";
 
 // Metadatos fijos: nunca salen de una alerta (sin sesión no puede asomar nada real, tampoco en el título o la vista previa).
@@ -21,12 +24,18 @@ const AVISO = "mb-8 max-w-[680px] rounded-badge bg-papel-alto p-4 text-sm leadin
  * Alertas (acceso privado, `docs/alertas-reales.md` §6). La página lee la cookie de la cuenta, así que es dinámica y
  * Next.js la sirve con `Cache-Control: private, no-store`: ninguna caché compartida guarda la versión con sesión.
  */
-export default async function AlertasPage() {
+export default async function AlertasPage({ searchParams }: PageProps<"/alertas">) {
   const sesion = await sesionCuenta();
   const visibles = await alertasVisibles(sesion, repositorioAlertas());
-  const { alertas } = visibles;
   const privado = visibles.acceso === "privado";
   const error = privado && visibles.error;
+  // Con sesión, por omisión solo los temas que sigue la cuenta (si eligió alguno); `?ver=todas` muestra todas.
+  const { ver } = await searchParams;
+  const seguidos = sesion && privado ? ((await servicioCuentas().temasSeguidos(sesion.cuentaId)) ?? []) : [];
+  const temas = TEMAS.filter((t) => seguidos.includes(t));
+  const todas = ver === "todas";
+  const filtro = privado && !todas && temas.length > 0 ? temas : null;
+  const alertas: AlertView[] = filtro ? visibles.alertas.filter((a) => filtro.includes(a.tema)) : visibles.alertas;
   const rotulo = error
     ? "Sin datos"
     : !privado
@@ -59,9 +68,19 @@ export default async function AlertasPage() {
         <AvisoPublico />
       )}
 
+      {privado && !error ? <FiltroTemas temas={temas} todas={todas} mostradas={alertas.length} total={visibles.alertas.length} /> : null}
+
       {error ? (
         <p role="alert" className="text-texto">
           No pudimos cargar las alertas. Intenta de nuevo en unos minutos.
+        </p>
+      ) : alertas.length === 0 && filtro && visibles.alertas.length > 0 ? (
+        <p className="max-w-[680px] leading-relaxed text-texto-suave">
+          No hay alertas publicadas en tus temas.{" "}
+          <Link href="/alertas?ver=todas" className="enlace text-texto">
+            Ver todas
+          </Link>
+          .
         </p>
       ) : alertas.length === 0 ? (
         <p className="max-w-[680px] leading-relaxed text-texto-suave">
@@ -85,6 +104,41 @@ export default async function AlertasPage() {
         </ul>
       )}
     </ContentPage>
+  );
+}
+
+/**
+ * Con sesión: qué se está mostrando (los temas de la cuenta o todas) y el enlace para cambiar. Es un enlace (GET) que no
+ * cambia nada guardado; los temas se eligen en la portada o en el perfil.
+ */
+function FiltroTemas({ temas, todas, mostradas, total }: { temas: string[]; todas: boolean; mostradas: number; total: number }) {
+  const nombres = temas.map((t) => TEMA_ETIQUETA[t as keyof typeof TEMA_ETIQUETA]).join(", ");
+  return (
+    <p role="note" aria-label="Temas que se muestran" className="mb-8 max-w-[680px] text-sm leading-relaxed text-texto-suave">
+      {temas.length === 0 ? (
+        <>
+          Sigues todos los temas.{" "}
+          <Link href="/cuenta" className="enlace text-texto">
+            Elige los tuyos en tu perfil
+          </Link>
+          .
+        </>
+      ) : todas ? (
+        <>
+          Mostrando todas ({total}).{" "}
+          <Link href="/alertas" className="enlace text-texto">
+            Solo mis temas
+          </Link>
+        </>
+      ) : (
+        <>
+          Mostrando tus temas: {nombres} ({mostradas} de {total}).{" "}
+          <Link href="/alertas?ver=todas" className="enlace text-texto">
+            Ver todas
+          </Link>
+        </>
+      )}
+    </p>
   );
 }
 

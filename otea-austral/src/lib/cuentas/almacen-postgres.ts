@@ -48,6 +48,7 @@ type FilaCuenta = {
   aceptado: Date;
   temas: string[];
   resumen_previo: boolean;
+  resumen_alta: Date | null;
   creada: Date;
 };
 
@@ -72,13 +73,14 @@ function aCuenta(f: FilaCuenta): CuentaGuardada {
     aceptado: iso(f.aceptado),
     temas: f.temas,
     resumenPrevio: f.resumen_previo,
+    resumenDesde: f.resumen_alta ? iso(f.resumen_alta) : null,
     creada: iso(f.creada),
   };
 }
 
 const SQL_COLUMNAS_CUENTA = `id, correo_indice, correo_cifrado, nombre, clave_hash, clave_cambiada, fallos, fallos_desde,
   totp_secreto_cifrado, totp_pendiente_cifrado, totp_activado, totp_ultimo_paso, version_textos, aceptado, temas,
-  resumen_previo, creada`;
+  resumen_previo, resumen_alta, creada`;
 
 const antes = (iso_: string, ms: number) => new Date(Date.parse(iso_) - ms).toISOString();
 
@@ -251,9 +253,15 @@ export function crearAlmacenPostgres(db: BaseDeDatos): AlmacenCuentas {
 
     async actualizarPerfil(cuentaId, perfil, ahora) {
       await db.consulta(
-        "update cuentas set nombre = $2, temas = $3::text[], resumen_previo = $4, actualizada = $5::timestamptz where id = $1",
+        `update cuentas set nombre = $2, temas = $3::text[], resumen_previo = $4,
+           resumen_alta = case when $4 then coalesce(resumen_alta, $5::timestamptz) else null end, actualizada = $5::timestamptz
+         where id = $1`,
         [cuentaId, perfil.nombre, perfil.temas, perfil.resumenPrevio, ahora],
       );
+    },
+
+    async actualizarTemas(cuentaId, temas, ahora) {
+      await db.consulta("update cuentas set temas = $2::text[], actualizada = $3::timestamptz where id = $1", [cuentaId, temas, ahora]);
     },
 
     async cambiarClave({ cuentaId, claveHash, ahora, conservarSesion }) {

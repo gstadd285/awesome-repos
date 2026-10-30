@@ -53,4 +53,6 @@ export const DESCRIPCION_EVENTO: Record<TipoEvento, string> = {
   codigo_recuperacion: "Entraste con un código de recuperación",
   sesiones_cerradas: "Cerraste las demás sesiones",
   alta_repetida: "Alguien intentó crear una cuenta con tu correo",
+  resumen_activado: "Pediste el resumen diario por correo",
+  resumen_desactivado: "Dejaste el resumen diario por correo",
 };

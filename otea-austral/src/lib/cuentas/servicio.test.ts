@@ -930,6 +930,37 @@ describe("la cuenta por dentro", () => {
       expect(await m.servicio.perfil(cuentaId)).toMatchObject({ nombre: null, temas: [], resumenPrevio: false });
     });
 
+    it("pedir o dejar el resumen queda en la actividad, con la fecha del consentimiento en el perfil y en «Tus datos»", async () => {
+      const m = montar();
+      const sesion = await crearCuenta(m);
+      const vigente = (await m.servicio.leerSesion(sesion.token))!;
+      const { cuentaId } = vigente;
+      await m.servicio.guardarPerfil(cuentaId, { nombre: "", temas: ["cobre"], resumenPrevio: true });
+      const pedido = await m.servicio.perfil(cuentaId);
+      expect(pedido?.resumenDesde).toEqual(expect.any(String));
+      // Guardar otra vez sin cambiar la casilla no deja otro evento ni mueve la fecha.
+      await m.servicio.guardarPerfil(cuentaId, { nombre: "Ana", temas: ["cobre"], resumenPrevio: true });
+      expect((await m.servicio.perfil(cuentaId))?.resumenDesde).toBe(pedido?.resumenDesde);
+      expect((await m.servicio.exportar(vigente))?.cuenta.resumenDesde).toBe(pedido?.resumenDesde);
+      await m.servicio.guardarPerfil(cuentaId, { nombre: "Ana", temas: ["cobre"], resumenPrevio: false });
+      expect((await m.servicio.perfil(cuentaId))?.resumenDesde).toBeNull();
+      const tipos = (await m.servicio.actividad(cuentaId)).map((e) => e.tipo);
+      expect(tipos.filter((t) => t.startsWith("resumen_"))).toEqual(["resumen_desactivado", "resumen_activado"]);
+    });
+
+    it("guardar solo los temas valida contra la lista del sitio y no toca lo demás", async () => {
+      const m = montar();
+      const sesion = await crearCuenta(m);
+      const { cuentaId } = (await m.servicio.leerSesion(sesion.token))!;
+      await m.servicio.guardarPerfil(cuentaId, { nombre: "Ana", temas: [], resumenPrevio: true });
+      expect(await m.servicio.guardarTemas(cuentaId, ["chips", "chips", "geopolitica"])).toEqual({ estado: "ok", temas: ["chips", "geopolitica"] });
+      expect(await m.servicio.temasSeguidos(cuentaId)).toEqual(["chips", "geopolitica"]);
+      expect(await m.servicio.guardarTemas(cuentaId, ["chips", "bitcoin"])).toMatchObject({ estado: "invalida", errores: { temas: expect.any(String) } });
+      expect(await m.servicio.guardarTemas(cuentaId, "chips")).toEqual({ estado: "ok", temas: [] });
+      expect(await m.servicio.perfil(cuentaId)).toMatchObject({ nombre: "Ana", temas: [], resumenPrevio: true });
+      expect(await m.servicio.temasSeguidos("00000000-0000-4000-8000-000000000000")).toBeNull();
+    });
+
     it("rechaza un nombre muy largo o con caracteres invisibles y los temas que no existen", async () => {
       const m = montar();
       const { cuentaId } = (await m.servicio.leerSesion(await crearCuenta(m).then((s) => s.token)))!;

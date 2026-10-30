@@ -188,6 +188,7 @@ export function crearAlmacenMemoria(): AlmacenCuentas & { cuentasGuardadas(): re
         aceptado: t.aceptado!,
         temas: [],
         resumenPrevio: false,
+        resumenDesde: null,
         creada: ahora,
       });
       porCorreo.set(t.correoIndice!, id);
@@ -233,13 +234,19 @@ export function crearAlmacenMemoria(): AlmacenCuentas & { cuentasGuardadas(): re
       }
     },
 
-    async actualizarPerfil(cuentaId, perfil) {
+    async actualizarPerfil(cuentaId, perfil, ahora) {
       const c = cuentas.get(cuentaId);
       if (c) {
         c.nombre = perfil.nombre;
         c.temas = [...perfil.temas];
+        c.resumenDesde = perfil.resumenPrevio ? (c.resumenDesde ?? ahora) : null;
         c.resumenPrevio = perfil.resumenPrevio;
       }
+    },
+
+    async actualizarTemas(cuentaId, temas) {
+      const c = cuentas.get(cuentaId);
+      if (c) c.temas = [...temas];
     },
 
     async cambiarClave({ cuentaId, claveHash, ahora, conservarSesion }) {

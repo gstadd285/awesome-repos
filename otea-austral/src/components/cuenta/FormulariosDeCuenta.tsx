@@ -33,17 +33,20 @@ import {
 
 const Csrf = ({ valor }: { valor: string }) => <input type="hidden" name="csrf" value={valor} />;
 
-/** Nombre, temas que sigue y si quiere el resumen de antes de la apertura. */
+/** Nombre, temas que sigue y si quiere el resumen diario por correo (consentimiento explícito, en su propia casilla). */
 export function FormularioPerfil({
   csrf,
   nombre,
   temas,
   resumen,
+  resumenDesde,
 }: {
   csrf: string;
   nombre: string | null;
   temas: string[];
   resumen: boolean;
+  /** Desde cuándo lo pidió, ya escrito para la persona (p. ej. «28 de octubre de 2026»), o `null`. */
+  resumenDesde?: string | null;
 }) {
   const f = useFormularioCuenta(guardarPerfilAccion);
   // Tras guardar, el servidor devuelve lo guardado; antes, lo que ya había.
@@ -67,7 +70,9 @@ export function FormularioPerfil({
       />
       <fieldset className="mt-6">
         <legend className={CLASE_ETIQUETA}>Temas que sigues</legend>
-        <p className="mt-2 text-sm leading-relaxed text-apoyo">Cuando abramos, las alertas de estos temas serán las primeras que veas.</p>
+        <p className="mt-2 text-sm leading-relaxed text-apoyo">
+          En Alertas verás las de estos temas (con la opción de ver todas) y el resumen diario trae solo estos. Si no eliges ninguno, ves todos.
+        </p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {TEMAS.map((tema) => (
             <li key={tema}>
@@ -84,8 +89,10 @@ export function FormularioPerfil({
         {f.error("temas") ? <p className="mt-2 text-sm font-medium text-texto">⚠ {f.error("temas")}</p> : null}
       </fieldset>
       <Casilla nombre="resumen" marcada={resumenActual} requerida={false} className="mt-6">
-        Quiero recibir por correo el resumen de antes de la apertura del mercado, cuando esté disponible.
+        Quiero recibir por correo un resumen diario con las alertas publicadas en mis temas, antes de la apertura del mercado.
+        Solo títulos, temas y confianza; lo dejo con un clic desde cada correo o desmarcando esta casilla.
       </Casilla>
+      {resumenActual && resumenDesde ? <p className="mt-2 text-sm text-apoyo">Lo pediste el {resumenDesde}.</p> : null}
       <BotonEnviar enviando="Guardando…" className="mt-6">
         Guardar cambios
       </BotonEnviar>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
+import type { EstadoFormulario } from "@/app/acciones/cuenta";
 import { CHIP_SECTOR, ESTILO_DIRECCION } from "@/components/alert-card/DirectionBadge";
 import { DIRECCION_ETIQUETA } from "@/components/alert-card/labels";
+import { buttonClasses } from "@/components/ui/button";
 import { TEMAS, TEMA_ETIQUETA, type Tema } from "@/lib/domain/temas";
 import { TEMA_BREVE, type AvisoPrevia } from "./temas";
 import { TopicIcon } from "./TopicIcon";
@@ -16,13 +18,24 @@ const MAXIMO_TELEFONO = 1;
 const BARRA = ["barra-0", "barra-1", "barra-2", "barra-3", "barra-4", "barra-5", "barra-6", "barra-7", "barra-8", "barra-9", "barra-10", "barra-11", "barra-12"];
 
 /**
+ * Con sesión, los temas de la cuenta y la Server Action que los guarda (`seguirTemasAccion`, con su token anti-CSRF). La
+ * pasa la portada: este componente no importa nada del servidor.
+ */
+export type CuentaTemas = {
+  csrf: string;
+  temas: Tema[];
+  guardar: (previo: EstadoFormulario, datos: FormData) => Promise<EstadoFormulario>;
+};
+
+/**
  * «Elige qué seguir» y «Tu mañana»: los seis temas como interruptores compactos (`aria-pressed`) y, al lado, la vista
  * previa en tinta de los avisos de ejemplo de los temas elegidos, con su contador y una barra por dirección. Los avisos
- * que no corresponden se pliegan (`data-oculto`, `inert`, `aria-hidden`), no se desmontan, para animar su salida. Aún
- * no se guarda nada (llegará con las cuentas). Sin JavaScript se ve la selección por defecto ya filtrada.
+ * que no corresponden se pliegan (`data-oculto`, `inert`, `aria-hidden`), no se desmontan, para animar su salida. Sin
+ * sesión es solo una vista previa (no se guarda nada); **con sesión** parte de los temas de la cuenta y «Guardar mis temas»
+ * los guarda (los usan /alertas y el resumen diario). Sin JavaScript se ve la selección inicial ya filtrada.
  */
-export function TopicPicker({ avisos }: { avisos: AvisoPrevia[] }) {
-  const [elegidos, setElegidos] = useState<Tema[]>(["cobre", "divisas"]);
+export function TopicPicker({ avisos, cuenta }: { avisos: AvisoPrevia[]; cuenta?: CuentaTemas }) {
+  const [elegidos, setElegidos] = useState<Tema[]>(cuenta ? cuenta.temas : ["cobre", "divisas"]);
 
   function alternar(tema: Tema) {
     setElegidos((actual) => (actual.includes(tema) ? actual.filter((t) => t !== tema) : [...actual, tema]));
@@ -83,8 +96,9 @@ export function TopicPicker({ avisos }: { avisos: AvisoPrevia[] }) {
           <p className="text-base font-medium text-texto" aria-live="polite">
             {resumen}
           </p>
-          <p className="text-sm text-apoyo">Tus preferencias aún no se guardan: es una vista previa.</p>
+          {cuenta ? null : <p className="text-sm text-apoyo">Tus preferencias aún no se guardan: es una vista previa.</p>}
         </div>
+        {cuenta ? <GuardarTemas cuenta={cuenta} elegidos={elegidos} /> : null}
       </div>
 
       <aside aria-label="Tu mañana, vista previa" className="tm-manana en-tinta">
@@ -157,5 +171,33 @@ export function TopicPicker({ avisos }: { avisos: AvisoPrevia[] }) {
         <p className="mt-4 text-xs leading-normal text-niebla">Escenarios ficticios para mostrar el formato. Información, no asesoría.</p>
       </aside>
     </div>
+  );
+}
+
+const mismos = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((t) => b.includes(t));
+
+/** Con sesión: guarda la selección en la cuenta (una Server Action; sin JavaScript también envía los temas iniciales). */
+function GuardarTemas({ cuenta, elegidos }: { cuenta: CuentaTemas; elegidos: Tema[] }) {
+  const [estado, despachar, pendiente] = useActionState(cuenta.guardar, { estado: "inicial" });
+  const guardados = estado.estado === "enviado" && Array.isArray(estado.valores?.temas) ? estado.valores.temas : cuenta.temas;
+  const aviso =
+    estado.estado === "error"
+      ? estado.mensaje
+      : !mismos(guardados, elegidos)
+        ? "Tienes cambios sin guardar."
+        : (estado.mensaje ?? "Se guardan en tu cuenta: los usan tus alertas y el resumen diario.");
+  return (
+    <form action={despachar} aria-label="Guardar mis temas" className="mt-4 flex flex-wrap items-center gap-3">
+      <input type="hidden" name="csrf" value={cuenta.csrf} />
+      {elegidos.map((t) => (
+        <input key={t} type="hidden" name="temas" value={t} />
+      ))}
+      <button type="submit" disabled={pendiente} className={buttonClasses("outline", "", "sm")}>
+        {pendiente ? "Guardando…" : "Guardar mis temas"}
+      </button>
+      <p className="text-sm text-apoyo" role="status">
+        {aviso}
+      </p>
+    </form>
   );
 }

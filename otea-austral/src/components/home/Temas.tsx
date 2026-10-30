@@ -3,7 +3,7 @@ import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
 import { vistasEjemplo } from "@/data/ejemplo";
 import { formatearDiaMes, formatearHora } from "@/lib/format";
 import type { AvisoPrevia } from "./temas";
-import { TopicPicker } from "./TopicPicker";
+import { TopicPicker, type CuentaTemas } from "./TopicPicker";
 
 /** Los avisos de ejemplo de «Tu mañana», del más reciente al más antiguo, con la hora real de cada dato. */
 function avisosDeEjemplo(): AvisoPrevia[] {
@@ -20,8 +20,11 @@ function avisosDeEjemplo(): AvisoPrevia[] {
     }));
 }
 
-/** «Elige qué seguir»: los seis temas como interruptores y, al lado, cómo llegaría tu mañana con esos temas. */
-export function Temas() {
+/**
+ * «Elige qué seguir»: los seis temas como interruptores y, al lado, cómo llegaría tu mañana con esos temas. Con `cuenta`
+ * (la portada con sesión), la selección parte de los temas de la cuenta y se guarda.
+ */
+export function Temas({ cuenta }: { cuenta?: CuentaTemas }) {
   return (
     <section id="temas" aria-labelledby="temas-titulo" className="mx-auto max-w-[1440px] scroll-mt-24 px-6 py-16 sm:py-20 lg:py-[120px]">
       <SectionEyebrow>Temas</SectionEyebrow>
@@ -43,7 +46,7 @@ export function Temas() {
         />
       </div>
       <div className="anim-revelar mt-12">
-        <TopicPicker avisos={avisosDeEjemplo()} />
+        <TopicPicker avisos={avisosDeEjemplo()} cuenta={cuenta} />
       </div>
     </section>
   );

@@ -309,7 +309,7 @@ test.describe("cuentas abiertas", () => {
     await page.getByLabel(/Cómo te llamamos/).fill("  Ana   María ");
     await page.getByLabel(/Energía/).check();
     await page.getByLabel(/Cobre/).check();
-    await page.getByLabel(/Quiero recibir por correo el resumen/).check();
+    await page.getByLabel(/Quiero recibir por correo un resumen diario/).check();
     await enviar(page, page.getByRole("button", { name: "Guardar cambios" }));
     await expect(page.getByText("Cambios guardados.")).toBeVisible();
     // Lo guardado vuelve al formulario (React vacía los campos al terminar la acción).
@@ -322,7 +322,7 @@ test.describe("cuentas abiertas", () => {
     await expect(page.getByLabel(/Energía/)).toBeChecked();
     await expect(page.getByLabel(/Cobre/)).toBeChecked();
     await expect(page.getByLabel(/Chips/)).not.toBeChecked();
-    await expect(page.getByLabel(/Quiero recibir por correo el resumen/)).toBeChecked();
+    await expect(page.getByLabel(/Quiero recibir por correo un resumen diario/)).toBeChecked();
 
     // Un nombre con caracteres invisibles se rechaza con su mensaje y sin perder lo escrito.
     await page.getByLabel(/Cómo te llamamos/).fill("Ana‮oña");

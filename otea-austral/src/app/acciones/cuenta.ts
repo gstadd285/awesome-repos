@@ -218,6 +218,22 @@ export async function guardarPerfilAccion(_previo: EstadoFormulario, f: FormData
   return enviado("Cambios guardados.", { valores: { nombre: r.guardado.nombre ?? "", temas: r.guardado.temas, resumen: r.guardado.resumenPrevio } });
 }
 
+/**
+ * «Elige qué seguir» de la portada, con sesión: guarda solo los temas (validados contra `TEMAS` con Zod en el servicio). Los
+ * usan /alertas («tus temas», con la opción de ver todas) y el resumen diario.
+ */
+export async function seguirTemasAccion(_previo: EstadoFormulario, f: FormData): Promise<EstadoFormulario> {
+  const s = await conSesion(f);
+  if ("falla" in s) return s.falla;
+  const temas = f.getAll("temas").filter((t): t is string => typeof t === "string").slice(0, 20);
+  const r = await servicioCuentas().guardarTemas(s.sesion.cuentaId, temas);
+  if (r.estado === "invalida") return error("Hay un tema que no existe. Recarga la página.", { errores: r.errores });
+  revalidatePath("/cuenta");
+  return enviado(r.temas.length > 0 ? "Tus temas quedaron guardados en tu cuenta." : "Guardado: sin temas elegidos, ves todos.", {
+    valores: { temas: r.temas },
+  });
+}
+
 export async function cambiarClaveAccion(_previo: EstadoFormulario, f: FormData): Promise<EstadoFormulario> {
   const s = await conSesion(f);
   if ("falla" in s) return s.falla;

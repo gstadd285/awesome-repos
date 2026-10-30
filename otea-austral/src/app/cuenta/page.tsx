@@ -26,7 +26,13 @@ export default async function PerfilPage({ searchParams }: PageProps<"/cuenta">)
       <NavegacionCuenta actual="perfil" csrf={sesion.csrf} />
       {perfil ? (
         <div className="grid gap-12 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <FormularioPerfil csrf={sesion.csrf} nombre={perfil.nombre} temas={perfil.temas} resumen={perfil.resumenPrevio} />
+          <FormularioPerfil
+            csrf={sesion.csrf}
+            nombre={perfil.nombre}
+            temas={perfil.temas}
+            resumen={perfil.resumenPrevio}
+            resumenDesde={perfil.resumenDesde ? formatearDia(perfil.resumenDesde) : null}
+          />
           <aside aria-labelledby="resumen-cuenta" className="self-start rounded-card bg-papel-alto p-6 linea-fina">
             <h2 id="resumen-cuenta" className="titular text-lg text-texto">
               Tu cuenta
