@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import { headers } from "next/headers";
 import { connection } from "next/server";
 import { DirectorEscena } from "@/components/motion/DirectorEscena";
@@ -7,31 +6,8 @@ import { MovimientoSync } from "@/components/motion/MovimientoSync";
 import { ScriptMovimiento } from "@/components/motion/ScriptMovimiento";
 import { env } from "@/lib/env";
 import { SITIO } from "@/lib/site";
+import "./_tipografias";
 import "./globals.css";
-
-// Source Serif 4 conserva la precarga: la usa la entrada del héroe (primer pintado).
-const serif = Source_Serif_4({
-  variable: "--font-source-serif",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  display: "swap",
-});
-
-// Inter variable: texto, interfaz y titulares en mayúsculas.
-const sans = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-// Contadores y cotas: fuera de la ruta crítica (21,5 KB menos antes del primer pintado).
-const mono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400"],
-  display: "swap",
-  preload: false,
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
@@ -65,12 +41,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     // data-scroll-behavior: al navegar entre páginas el salto es inmediato; el scroll suave
     // (globals.css) queda para los enlaces dentro de la misma página.
     // suppressHydrationWarning: el script de cabecera añade `data-movimiento` y compañía antes de hidratar.
-    <html
-      lang="es-CL"
-      data-scroll-behavior="smooth"
-      className={`${serif.variable} ${sans.variable} ${mono.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="es-CL" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <ScriptMovimiento nonce={nonce} />
       </head>

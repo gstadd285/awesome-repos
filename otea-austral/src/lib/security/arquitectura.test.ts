@@ -6,6 +6,7 @@
  * Cuando una de estas pruebas falla porque agregaste algo a propósito (una ruta, una acción, un archivo
  * en `public/`), no la silencies: revisa la superficie nueva, documéntala y actualiza el inventario.
  */
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -726,6 +727,23 @@ describe("contenido y archivos (controles 15 y 16)", () => {
     for (const ruta of todos) {
       expect(ruta, ruta).toMatch(/^(brand|icons)\/[a-z0-9-]+\.(svg|png)$/);
       expect(statSync(path.join(publico, ruta)).size, ruta).toBeLessThan(200_000);
+    }
+  });
+
+  it("las tipografías van en el repositorio: nada descarga fuentes al construir y cada archivo tiene su aviso OFL", () => {
+    // `next/font/google` baja los archivos de Google al compilar: la CI falló dos veces sin red hacia fonts.gstatic.com.
+    const conGoogle = fuentes.filter((r) => /from ["']next\/font\/google["']|fonts\.(googleapis|gstatic)\.com/.test(leer(r))).map(relativa);
+    expect(conGoogle).toEqual([]);
+    expect(fuentes.filter((r) => /["']next\/font\/local["']/.test(leer(r))).map(relativa)).toEqual(["src/app/_tipografias/index.ts"]);
+    const carpeta = path.join(SRC, "app/_tipografias");
+    const woff2 = archivos(carpeta, (r) => r.endsWith(".woff2"));
+    expect(woff2.length).toBe(6);
+    const avisos = leer(path.join(RAIZ, "AVISOS-DE-TERCEROS.md"));
+    expect(avisos).toMatch(/SIL OPEN FONT LICENSE Version 1\.1/);
+    for (const ruta of woff2) {
+      const hash = createHash("sha256").update(readFileSync(ruta)).digest("hex");
+      expect(avisos, path.basename(ruta)).toContain(`| \`${path.basename(ruta)}\` |`);
+      expect(avisos, path.basename(ruta)).toContain(hash);
     }
   });
 

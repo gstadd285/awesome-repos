@@ -107,6 +107,35 @@
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
+/* ── Tipografías ───────────────────────────────────────────────────────────
+   Las caras de Inter, Source Serif 4 y JetBrains Mono las declara `src/app/_tipografias/` (next/font/local, archivos en el
+   repositorio). Aquí, sus variables (en `:root`, más abajo) y los respaldos métricos: una fuente del sistema ajustada a las
+   medidas de cada familia mientras esta llega (display: swap), con los valores exactos que calculaba next/font/google. */
+@font-face {
+  font-family: "Source Serif 4 Fallback";
+  src: local("Times New Roman");
+  ascent-override: 87.87%;
+  descent-override: 28.41%;
+  line-gap-override: 0%;
+  size-adjust: 117.91%;
+}
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+@font-face {
+  font-family: "JetBrains Mono Fallback";
+  src: local("Arial");
+  ascent-override: 75.79%;
+  descent-override: 22.29%;
+  line-gap-override: 0%;
+  size-adjust: 134.59%;
+}
+
 /* ── Sistema de movimiento ─────────────────────────────────────────────────
  * Tokens de duración, curva y escalonado (en `:root`, no en `@theme`, para no generar utilidades `animate-*`).
  * Las curvas: `salida` para lo que aterriza (entradas, hover), `enfasis` para cámara, medidores y cambios de
@@ -114,6 +143,10 @@
  * de un `cubic-bezier` de respaldo, porque `var()` con `linear()` no tiene respaldo posible.
  */
 :root {
+  /* Las familias, en el mismo orden que ponía next/font/google en <html>. */
+  --font-source-serif: "Source Serif 4", "Source Serif 4 Fallback";
+  --font-inter: "Inter", "Inter Fallback";
+  --font-jetbrains-mono: "JetBrains Mono", "JetBrains Mono Fallback";
   --dur-1: 120ms; /* pulsado, cambio de color pequeño */
   --dur-2: 200ms; /* hover, foco, chevrones, salidas cortas */
   --dur-3: 320ms; /* cambios de estado, cabecera, paneles, view transitions de entrada */
