@@ -71,6 +71,20 @@ const borradores: Record<string, string> = hayBase
     }
   : {};
 
+/**
+ * Con base de datos, el servicio de tareas (3201) también envía el resumen diario (`RESUMEN_MODO=activo`), al servidor que
+ * imita a Resend y con el mismo secreto de las cuentas que la principal (3200): así lee el correo cifrado de las cuentas que
+ * se crean allí. Nada sale a internet.
+ */
+const resumen: Record<string, string> = hayBase
+  ? {
+      RESUMEN_MODO: "activo",
+      CUENTAS_SECRETO: process.env.E2E_CUENTAS_SECRETO!,
+      RESEND_API_KEY: CLAVE_RESEND_FALSA,
+      RESEND_URL_API_PRUEBA: `${URL_CORREO}/emails`,
+    }
+  : {};
+
 const panel: Record<string, string> = hayBase
   ? {
       ADMIN_CLAVE_HASH: process.env.E2E_ADMIN_HASH!,
@@ -104,7 +118,7 @@ export default defineConfig({
     },
     // El panel es una herramienta interna de escritorio: se prueba una vez. Las pruebas de movimiento abren
     // sus propias ventanas (estrecha, teléfono, sin soporte…): tampoco se repiten en el móvil.
-    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec|tareas\.spec|invitaciones\.spec|borradores\.spec/ },
+    { name: "movil", use: { ...devices["Pixel 7"] }, testIgnore: /admin|movimiento\.spec|tareas\.spec|invitaciones\.spec|borradores\.spec|resumen\.spec/ },
   ],
   webServer: [
     {
@@ -156,6 +170,7 @@ export default defineConfig({
         DONACIONES_URL: DONACIONES_URL_PRUEBA,
         ...tareas,
         ...borradores,
+        ...resumen,
       },
     },
     // Con base de datos, una tercera instancia con las cuentas por invitación (acceso anticipado privado). Sin panel: los

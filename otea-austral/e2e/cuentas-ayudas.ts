@@ -18,7 +18,16 @@ export function correoUnico(prefijo = "e2e"): string {
   return `${prefijo}.${Date.now().toString(36)}${randomBytes(4).toString("hex")}@example.org`;
 }
 
-export type CorreoRecibido = { para: string; de: string; asunto: string; texto: string; html: string; recibido: string };
+export type CorreoRecibido = {
+  para: string;
+  de: string;
+  asunto: string;
+  texto: string;
+  html: string;
+  /** Las cabeceras del mensaje (solo las de la baja de un clic del resumen diario). */
+  cabeceras: Record<string, string>;
+  recibido: string;
+};
 
 export async function correosPara(request: APIRequestContext, para: string): Promise<CorreoRecibido[]> {
   const respuesta = await request.get(`${URL_CORREO}/__correos`, { params: { para } });
