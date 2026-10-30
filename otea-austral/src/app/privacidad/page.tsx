@@ -43,8 +43,9 @@ export default function PrivacidadPage() {
           </li>
           <li>
             <strong>Cuenta (cuando abra):</strong> tu correo (cifrado) y tu contraseña (guardada solo como un hash que
-            no se puede revertir); si quieres, tu nombre, los temas que sigues y si deseas el resumen de antes de la
-            apertura; si activas la verificación en dos pasos, el secreto de tu app (cifrado) y el hash de tus códigos
+            no se puede revertir); si quieres, tu nombre, los temas que sigues y si pediste el resumen diario por correo
+            (con la fecha en que lo pediste, qué días se envió, qué período cubrió y cuántas alertas llevaba, sin su
+            contenido, durante 90 días, y el hash del enlace para dejarlo, durante 60 días); si activas la verificación en dos pasos, el secreto de tu app (cifrado) y el hash de tus códigos
             de recuperación; tus sesiones abiertas (un identificador que no sirve para entrar, el navegador y el
             sistema aproximados, por ejemplo «Chrome en Windows», y las fechas de uso); tu actividad de seguridad
             (entrar, cambiar la contraseña…) durante 90 días; si la creaste con una invitación del acceso anticipado,
@@ -85,8 +86,10 @@ export default function PrivacidadPage() {
         <p>
           Para verificar tu inscripción en dos pasos (dejas tu correo y haces clic en el enlace que te enviamos),
           avisarte del lanzamiento, responder tus preguntas en el asistente y, si creas una cuenta, permitirte
-          entrar, recordar tus temas y preferencias, y avisarte por correo de los cambios de seguridad de tu
-          cuenta (por ejemplo, un cambio de contraseña). No vendemos ni cedemos tus datos, y no los usamos para
+          entrar, recordar tus temas y preferencias, avisarte por correo de los cambios de seguridad de tu
+          cuenta (por ejemplo, un cambio de contraseña) y, solo si lo pides en tu perfil, enviarte un resumen diario
+          con los títulos de las alertas publicadas en tus temas. El resumen se deja con un clic desde cada correo o
+          desmarcando la casilla del perfil. No vendemos ni cedemos tus datos, y no los usamos para
           publicidad.
         </p>
       </Apartado>
@@ -108,7 +111,7 @@ export default function PrivacidadPage() {
       <Apartado numero="05" titulo="Quién más los ve">
         <p>
           Los proveedores previstos, que solo reciben lo necesario para prestar su servicio: Google Cloud Run
-          (alojamiento del sitio), Neon (base de datos) y Resend (envío de los correos de confirmación y de aviso de la cuenta), con
+          (alojamiento del sitio), Neon (base de datos) y Resend (envío de los correos de confirmación, de aviso de la cuenta y del resumen diario, si lo pides), con
           servidores en Estados Unidos. Antes de abrir la lista de espera confirmaremos aquí sus regiones y
           condiciones. Si se activa la IA del asistente, Anthropic (el proveedor del modelo) recibirá el texto de
           cada pregunta y los textos del sitio con que se redacta la respuesta; antes de activarla confirmaremos
