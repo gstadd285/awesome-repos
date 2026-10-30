@@ -138,9 +138,9 @@ endurecimiento, todas atendidas o documentadas. No quedan hallazgos abiertos de 
   (`images.unoptimized`), con lo que desaparece ese endpoint público y la imagen pierde 46 MB de binarios.
 - **A02 · Superficie del contenedor.** La imagen corre sin privilegios (UID 10001), con base fijada por
   digest, sin `.env` ni código fuente; la CI lo comprueba.
-- **A03 · Dependencia de compilación de Google Fonts.** `next/font/google` descarga las tipografías al
-  construir (quedan autoalojadas; el navegador nunca contacta a Google). Si se quisiera construir sin red,
-  habría que pasar a `next/font/local` con archivos versionados.
+- **A03 · Dependencia de compilación de Google Fonts.** `next/font/google` descargaba las tipografías al
+  construir (quedaban autoalojadas; el navegador nunca contactaba a Google). **Corregido el 2026-10-30:** la CI falló dos
+  veces sin poder bajar Source Serif 4; ahora son archivos versionados con `next/font/local` (`src/app/_tipografias/`).
 
 ## Seguimiento: plan de los 20 controles (2026-10-10)
 

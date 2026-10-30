@@ -194,8 +194,8 @@ publiques detalles en issues abiertos.
 - **Límites por IP en memoria de cada instancia.** Son una primera barrera; con `maxScale` instancias
   el tope real es ese número de veces mayor. Lo que no puede depender de la memoria (códigos TOTP
   gastados, sesiones revocadas, tope diario de correos) vive en la base.
-- **El build descarga las tipografías de Google Fonts** (`next/font/google`) y las deja autoalojadas;
-  los visitantes nunca contactan a Google. Construir sin red exigiría `next/font/local`.
+- **Las tipografías van dentro del repositorio** (`next/font/local`, `src/app/_tipografias/`, OFL 1.1): el build no sale a
+  internet por ellas y los visitantes nunca contactan a Google.
 - **Un solo administrador.** La regla «aprobación posterior a la última edición» existe, pero no hay
   cuatro ojos (decisión pendiente en `docs/plan.md`).
 

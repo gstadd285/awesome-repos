@@ -129,9 +129,8 @@ O en tu máquina: `docker build -t …` y `docker push …` al mismo repositorio
 secretos (`.dockerignore` excluye `.env*`) y se construye igual para cualquier dominio. Etiqueta
 cada versión con el commit: así el reverso es inmediato.
 
-> El build de Next.js descarga las tres tipografías de Google Fonts (`next/font/google`) y las
-> incluye en la imagen, de modo que **en producción el navegador no contacta a Google**. Requiere
-> salida a internet durante el build.
+> Las tres tipografías van en el repositorio (`src/app/_tipografias/`, `next/font/local`): el build no necesita salir a
+> internet por ellas (solo `npm ci` usa la red) y **en producción el navegador no contacta a Google**.
 
 ## 6. Desplegar
 

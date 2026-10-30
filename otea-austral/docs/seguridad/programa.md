@@ -79,7 +79,7 @@ revisión de cada pull request, auditoría inmutable y este programa versionado.
 |---|---|---|---|---|
 | GitHub | Código, CI, reporte privado de vulnerabilidades | Alta | Código (público) | En uso |
 | Registro npm | Dependencias | Alta | Ninguno | En uso |
-| Google Fonts | Descarga de tipografías **durante el build**; los visitantes no se conectan a Google | Baja | Ninguno | En uso |
+| Google Fonts | Origen de las tres tipografías, copiadas al repositorio (`src/app/_tipografias/`, OFL 1.1): ni el build ni los visitantes se conectan | Baja | Ninguno | Sin conexión |
 | Google Cloud (Cloud Run, Artifact Registry, Secret Manager, Cloud Logging) | Servir el sitio, imagen y secretos | Alta | IP y navegador de los visitantes en los registros de solicitudes (retención de 30 días) | Elegido; por crear |
 | Registrador del dominio | oteaustral.com | Alta | Datos de la persona titular | Por comprar |
 | Resend | Correo de doble opt-in y de las cuentas (confirmación, restablecimiento y avisos de seguridad) | Media | Correos de la lista de espera y de las cuentas | Elegido; por crear |
@@ -110,8 +110,8 @@ Conexiones permitidas: el navegador solo habla con el propio sitio (`connect-src
 de `/apoyar` abre Mercado Pago en otra pestaña solo si la persona lo sigue (no es una petición del sitio). El servidor
 solo hace dos peticiones salientes automáticas, ambas a direcciones fijas: `https://api.resend.com/emails` y, solo
 si se activa la IA del asistente, `https://api.anthropic.com`. El servicio privado de tareas (`otea-tareas`, apagado por
-omisión) lee además los feeds **verificados** del registro de fuentes, y solo esos (`docs/alertas-reales.md` §2). Durante el build se
-contacta npm y Google Fonts; la CI corre en GitHub.
+omisión) lee además los feeds **verificados** del registro de fuentes, y solo esos (`docs/alertas-reales.md` §2). Durante el build solo se
+contacta npm (las tipografías van en el repositorio); la CI corre en GitHub.
 
 ## 7. Registro de riesgos (ID.RA-03, ID.RA-04, ID.RA-06)
 

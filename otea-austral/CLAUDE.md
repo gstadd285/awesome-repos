@@ -45,7 +45,8 @@ reales (ingesta, borradores con IA, acceso privado; plan F2–F6): [`docs/alerta
 - **Colores de estado:** gana `#7FBF9E`, condicionado `#B08D57`, pierde `#E08A72`. Se usan **solo**
   en alertas y en las piezas que las representan (cinta, tablero), siempre como relleno con texto
   tinta.
-- **Tipografía** (autoalojada con `next/font`, `display: swap`): titulares en **Inter** mayúscula
+- **Tipografía** (archivos en el repositorio, `src/app/_tipografias/` con `next/font/local`, `display: swap`; el build no
+  sale a internet por ellas): titulares en **Inter** mayúscula
   (utilidad `titular`, peso 500); logo y títulos de alertas en **Source Serif 4**; contadores en
   **JetBrains Mono**.
 
@@ -619,8 +620,8 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
   `export const dynamic = "force-dynamic"` para que una imagen sirva a cualquier dominio. Cualquier ruta
   nueva que lea `env` y sea estática tiene el mismo problema.
 - **El contenedor no se puede probar solo con `docker build` si hay un proxy que re-firma TLS** (entornos
-  de desarrollo en la nube): el build necesita la CA del proxy y `next/font/google` baja fuentes durante
-  el build. En la CI de GitHub no hay problema.
+  de desarrollo en la nube): el build necesita la CA del proxy para `npm ci`. Las tipografías ya no se descargan
+  (`next/font/local`: la CI falló dos veces cuando `next/font/google` no pudo bajar Source Serif 4).
 - **Pruebas e2e y sesión compartida:** todas las pruebas con sesión comparten la cookie guardada por
   `admin.setup.ts`. Como «Salir» ahora la revoca en la base, una prueba que cierre sesión debe crear su
   propia sesión (ver «sesiones del panel» en `e2e/admin.spec.ts`), nunca usar `SESION_ADMIN`.
@@ -983,6 +984,13 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **`response.text()` de una respuesta del navegador falla al azar** si la página ya navegó o se volvió a pintar (Chromium descartó el
   cuerpo: «No data found for resource with given identifier»). Para leer lo que devuelve una Server Action, `capturarCuerposPost`
   (`e2e/ayudas.ts`: `page.route` + `route.fetch()` + `route.fulfill({ response })`). Las de `request.get/post` no tienen el problema.
+
+## Lo aprendido (tipografías locales)
+
+- **Con Turbopack, la familia de `variable` y `className` de `next/font/local` es el nombre de la constante** («serif»), no la
+  `font-family` de `declarations`, y las opciones deben ser literales. Las caras van en `src/app/_tipografias/` (una llamada por
+  subconjunto, con su `unicode-range`) y las variables `--font-*` y los respaldos métricos, en el bloque «Tipografías» de
+  `globals.css`. Comprobado con 16 capturas idénticas byte a byte y un build con `HTTPS_PROXY` a un puerto cerrado.
 
 ## Notas de Next.js
 
