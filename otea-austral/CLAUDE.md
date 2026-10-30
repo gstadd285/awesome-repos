@@ -15,7 +15,8 @@ fuentes. El usuario elige los temas que sigue.
 - Dominio previsto: oteaustral.com (no comprado). La URL base sale de `NEXT_PUBLIC_SITE_URL`.
 
 Estado y próximos pasos: [`docs/plan.md`](docs/plan.md). Despliegue: [`docs/despliegue.md`](docs/despliegue.md). Alertas
-reales (ingesta, borradores con IA, acceso privado; plan F2–F6): [`docs/alertas-reales.md`](docs/alertas-reales.md).
+reales (ingesta, borradores con IA, acceso privado, temas y resumen diario; F2–F6 hechas y apagadas):
+[`docs/alertas-reales.md`](docs/alertas-reales.md); antes de lanzar: [`docs/lanzamiento-privado.md`](docs/lanzamiento-privado.md).
 
 ## Reglas que no se negocian
 
@@ -419,45 +420,24 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
     (si la migración ya se aplicó en algún lugar, en una migración nueva).
   - Los componentes de cliente de `components/cuenta/` solo importan `@/lib/cuentas/formato-secreto` (el resto de `lib/cuentas` y
     `lib/correo` es del servidor).
-  - **Acceso anticipado por invitación** (`CUENTAS_MODO=invitacion`, apagado; `invitaciones.ts`, `/admin/invitaciones`, migración
-    `0009`; `docs/cuentas.md` §13): una cuenta solo se crea con un código de un solo uso (100 bits, solo su HMAC en la base, vence, se
-    revoca, auditoría de solo agregar) que se gasta en la transacción que crea la cuenta. **Un código que no sirve responde igual que
-    uno bueno y no envía nada** (el formulario solo valida su forma): no agregues un mensaje que lo distinga. El código nunca vuelve en
-    `valores`; los límites cuentan todos los pedidos (IP, código y 5 correos por invitación en la base).
-- **Ingesta de metadatos** (`src/lib/ingesta/`, `src/lib/tareas/`, `POST /api/tareas/ingesta`, migración `0007`; diseño en
-  `docs/alertas-reales.md` §2 y §2.4, operación en `docs/despliegue.md` §13). Reglas:
-  - **Apagada por omisión** (`TAREAS_MODO=inactivo`: la ruta da 404 a los siete métodos). Solo la activa el servicio privado
-    `otea-tareas` (Cloud Scheduler con OIDC + `X-Otea-Tarea`); nunca el sitio público. Hoy ningún feed está verificado.
-  - `descarga.ts` es el **único** `fetch` de la ingesta: valida contra el feed verificado del registro **antes de conectar** y en
-    cada redirección (https, 443, sin IP, dominio de la fuente), corta a los 10 s y a 1 MB en flujo, exige el tipo y declara
-    `INGESTA_CONTACTO` en el User-Agent; `robots.txt` se respeta (`robots.ts`). No agregues otra salida ni la saltes.
-  - **Solo metadatos** (título, enlace, fecha, organismo, identificador): ninguna columna para el texto de la fuente (una prueba compara
-    las columnas). `fuente_items` e `ingesta_corridas` son de solo agregar. El lector (`feeds.ts`) rechaza DTD y entidades **antes**
-    de analizar y no lee `description`: no lo cambies por un analizador con DTD.
-  - Un feed entra al registro solo con `verificado`, en el dominio de `url_base` y con condiciones «Verificadas el …»
-    (`registry.test.ts`). Los fixtures de prueba son sintéticos y marcados (`e2e/fixtures/fuentes/`, example.org, «(ejemplo)»).
-  - **Eventos candidatos y cola manual** (`agrupar.ts`, `lexico.ts`, `eventos-postgres.ts`, `cola-postgres.ts`, `/admin/eventos`,
-    migración `0008`; `docs/alertas-reales.md` §3.1): la agrupación es pura y determinista y corre al final de cada corrida, sin
-    red ni IA. Una alerta creada desde un evento nace en borrador, **nunca de ejemplo**, por `crearConFuentes` (reglas de
-    `rules.ts`, una transacción) y con sus fuentes leídas de `fuente_items` (del formulario solo llegan ids). `evento_auditoria`
-    es de solo agregar.
-- **Borradores con IA** (F5, `src/lib/borradores/`, `src/lib/ia/`, migración `0010`; diseño en `docs/alertas-reales.md` §4 y §4.8,
-  operación en `docs/despliegue.md` §14). Reglas:
-  - **Apagados por omisión** (`BORRADORES_MODO=apagado`). `ia` solo en `otea-tareas` (exige `TAREAS_MODO=activo`) y con todo lo de pago
-    explícito: clave propia (distinta de la del asistente), modelo (`claude-haiku-5-5`), precios y tope del mes **≤ US$ 5** (esquema,
-    sentencia y base). Es de pago: **nunca lo actives ni cambies modelo, precios, topes, claves ni `lectura_ia` sin que la dueña lo pida.**
-  - Corre al final de la corrida de la ingesta, con el turno tomado; solo la ruta arma el redactor. El panel y la cola **nunca** importan el
-    proveedor, el servicio, la lectura ni el prompt (solo `borradores/esquema`); `proveedor-borrador.ts` es el único que llama al modelo:
-    sin herramientas, todo explícito en el cliente del SDK, `messages.create` + `zodOutputFormat`.
-  - **Nada de una fuente sin `lectura_ia` llega al modelo**; el texto se lee con `descarga.ts`, vive en memoria y **nunca se guarda ni se
-    registra** (ninguna columna lo admite). Marcas de inyección ⇒ no se llama. Reserva del peor caso antes de llamar; si la base falla, no se
-    llama. La salida se revisa en orden (Zod estricto, forma, lenguaje, cifras, anticopia, reglas) y la confianza la calcula el código.
-  - La dueña acepta (alerta en borrador por `crearConFuentes`, con el borrador aceptado en la misma transacción), descarta con motivo o pide un
-    borrador en `/admin/eventos`; nada se publica solo. `borrador_intentos` es de solo agregar.
-- **Alertas reales solo con sesión** (F4, `docs/alertas-reales.md` §6.1): `/alertas` pasa la sesión de la cuenta a `alertasVisibles`
-  (`src/lib/alertas/visibles.ts`), el **único** que llama a `repo.publicas({ ejemplo })`: sin sesión, solo ejemplos; con sesión, solo
-  `es_ejemplo = false`. Nada real en metadatos, mapa del sitio, imagen OG ni feeds (no hay). El panel avisa quién verá lo publicado según
-  `CUENTAS_MODO` (`AvisoAccesoPrivado`).
+- **Alertas reales (F2–F6), todo apagado por omisión.** Diseño y decisiones: [`docs/alertas-reales.md`](docs/alertas-reales.md);
+  operación: [`docs/despliegue.md`](docs/despliegue.md) §12–§17; rutina de la dueña: [`docs/rutina-diaria.md`](docs/rutina-diaria.md);
+  lo que solo ella puede hacer: [`docs/lanzamiento-privado.md`](docs/lanzamiento-privado.md). Lo que no se rompe:
+  - **Tareas** (`src/lib/tareas/`, `POST /api/tareas/{ingesta,resumen}`): solo en el servicio privado `otea-tareas` (`TAREAS_MODO=activo`,
+    OIDC + `X-Otea-Tarea` en tiempo constante); en el sitio público, 404 a los siete métodos.
+  - **Ingesta** (`src/lib/ingesta/`, `0007`–`0008`): `descarga.ts` es el **único** `fetch` (feeds verificados del registro, validados antes
+    de conectar y en cada redirección, 10 s, 1 MB, `robots.txt`); **solo metadatos**, nunca el texto; XML sin DTD. Agrupar en eventos es
+    puro y sin IA; una alerta desde un evento nace en borrador (`crearConFuentes`), nunca de ejemplo.
+  - **Borradores con IA** (`src/lib/borradores/`, `src/lib/ia/`, `0010`): de pago; **nunca los actives ni cambies modelo, precios, topes,
+    claves ni `lectura_ia` sin que la dueña lo pida**. Tope ≤ US$ 5 al mes en la base; nada de una fuente sin `lectura_ia` llega al modelo y
+    el texto nunca se guarda; solo `proveedor-borrador.ts` llama al modelo, sin herramientas.
+  - **Acceso privado** (`CUENTAS_MODO=invitacion`, `0009`, `docs/cuentas.md` §13): códigos de un solo uso (solo su HMAC); uno que no sirve
+    responde igual que uno bueno. `/alertas` muestra lo real **solo con sesión**; `alertasVisibles` es el único que llama a `repo.publicas`.
+  - **Temas y resumen diario** (`src/lib/resumen/`, `0011`, `RESUMEN_MODO`; `docs/cuentas.md` §14): `seguirTemasAccion` guarda los temas
+    desde la portada con sesión y `/alertas` filtra por ellos. El resumen va solo a quien marcó la casilla (con fecha), uno por cuenta y
+    día, con el cupo en la base; `WAITLIST_` + `CUENTAS_` + `RESUMEN_ENVIOS_DIARIOS` ≤ 100. La baja es un **POST con token con hash**; un
+    GET nunca cambia nada.
+  - **Nada se publica sin la dueña**: todo espera en `/admin/eventos`; el tablero de `/admin` abre con los avisos de operación.
 - **Aportes por Mercado Pago** (`/apoyar`, `src/lib/donaciones/enlace.ts`; operación en `docs/despliegue.md` §15): **apagados por
   omisión** (sin `DONACIONES_URL`, `/apoyar` y sus metadatos dan 404 y no hay enlace en el pie, el menú ni el mapa del sitio). Solo un
   enlace hacia afuera (`target="_blank"`, `rel="noopener noreferrer"`, `safeHref`): nada de Mercado Pago se carga, el sitio no procesa
@@ -511,7 +491,8 @@ npm run build && npm start   # `output: "standalone"`: start corre `node .next/s
 npm run test:e2e     # Playwright sobre el build (servidor en el 3200, con las cuentas abiertas si hay DATABASE_URL y el correo
                      # yendo a un servidor que imita a Resend en el 3298: `scripts/resend-falso.mjs`; el modo IA del asistente,
                      # en el 3201 contra un servidor que imita a Anthropic en el 3299: `scripts/anthropic-falso.mjs`; con base, el
-                     # 3201 también corre la ingesta y los borradores con IA, y las cuentas por invitación van en el 3202. Libera antes
+                     # 3201 también corre la ingesta, los borradores con IA y el resumen diario, y las cuentas por invitación van en
+                     # el 3202. Libera antes
                      # 3200, 3201, 3202, 3298 y 3299)
 npm run db:migrar    # DATABASE_URL_ADMIN (rol dueño): aplica db/migraciones y la semilla de fuentes
 npm run db:rol-app   # crea el usuario de la aplicación e imprime su URL una sola vez
@@ -556,8 +537,9 @@ contra la misma base dentro de los mismos 30 segundos pueden chocar (en la CI la
 ```
 src/
   app/                 rutas: portada, metodologia, fuentes, seguridad, legales, apoyar (aportes), 404, cuenta/ (cuentas),
-                       lista-de-espera/confirmar, acciones/ (Server Actions), api/csp-report,
-                       api/salud, api/asistente, error y global-error, admin/, alertas/, .well-known/security.txt,
+                       lista-de-espera/confirmar, acciones/ (Server Actions), api/csp-report, api/salud, api/asistente,
+                       api/tareas/ (ingesta, resumen), api/resumen/baja y resumen/baja, error y global-error, admin/, alertas/,
+                       .well-known/security.txt,
                        sitemap, robots, manifest, íconos, imagen OG
   components/
     alert-card/        AlertCard y sus insignias
@@ -585,6 +567,7 @@ src/
     ia/                gasto común de la IA (precios, micros, reserva del peor caso, tope acumulado en la base)
     borradores/        borradores con IA: esquema, prompt e inyección, lectura transitoria, anticopia, revisión, proveedor, tope
                        mensual, almacén, servicio e instancia
+    resumen/           resumen diario por correo: selección, correo, servicio, almacén Postgres, baja de un clic
     cuentas/           cuentas de personas usuarias: servicio, almacenes (memoria y Postgres), contraseñas, cifrado, tokens,
                        TOTP, código QR propio, correos, acceso (cookie y CSRF)
     correo/            envío con Resend y plantilla de los correos (compartidos por la lista de espera y las cuentas)
@@ -599,15 +582,16 @@ src/
   proxy.ts             nonce + CSP por solicitud
 data/sources.seed.json registro inicial de fuentes
 db/migraciones/        SQL numerado (0001 esquema, 0002 sesiones del panel, 0003 RLS, 0004 correos cifrados, 0005 gasto del asistente,
-                       0006 cuentas, 0007 ingesta, 0008 eventos candidatos, 0009 invitaciones, 0010 borradores con IA)
+                       0006 cuentas, 0007 ingesta, 0008 eventos candidatos, 0009 invitaciones, 0010 borradores con IA,
+                       0011 resumen diario)
 scripts/               migrar, rol de la aplicación, credenciales del panel, preparar standalone, lista de espera
                        (secreto, exportar, recifrar), escáner de secretos, canarios, auditoría de dependencias
 seguridad/             avisos de npm aceptados (con motivo y fecha de revisión)
 despliegue/            plantilla del servicio de Cloud Run
 Dockerfile             imagen multi-etapa sin privilegios
 e2e/                   pruebas de navegador (Playwright); fixtures/fuentes/: feeds y robots.txt sintéticos de prueba
-docs/                  plan, despliegue, fuentes pendientes, seguridad/ (programa, incidentes,
-                       auditoría OWASP), referencia de estilo anterior
+docs/                  plan, despliegue, alertas reales, rutina diaria, lanzamiento privado, cuentas, fuentes pendientes,
+                       seguridad/ (programa, incidentes, auditoría OWASP), referencia de estilo anterior
 ```
 
 ## Lo aprendido (tercio 3)
@@ -984,6 +968,15 @@ docs/                  plan, despliegue, fuentes pendientes, seguridad/ (program
 - **`response.text()` de una respuesta del navegador falla al azar** si la página ya navegó o se volvió a pintar (Chromium descartó el
   cuerpo: «No data found for resource with given identifier»). Para leer lo que devuelve una Server Action, `capturarCuerposPost`
   (`e2e/ayudas.ts`: `page.route` + `route.fetch()` + `route.fulfill({ response })`). Las de `request.get/post` no tienen el problema.
+
+## Lo aprendido (temas y resumen diario)
+
+- **Una función con un parámetro opcional pasada directo a `.map` recibe el índice**: `ids.map(reserva)` le dio a cada reserva un tope
+  de 0, 1, 2… (la prueba de cupo «falló» con 8 de 10). Envuelve siempre: `ids.map((id) => reserva(id))`.
+- **Deshacer la reserva del cupo si el resumen del día ya existía**: el `insert … on conflict do nothing` sin filas lanza un error propio
+  dentro de la transacción (`YaEnviado`), así el contador no sube (como `InvitacionNoVale`).
+- **La baja de un clic no puede ser una Server Action**: los programas de correo hacen un POST simple a la dirección de
+  `List-Unsubscribe`. Va en un Route Handler; la página `/resumen/baja` solo muestra un `<form method="post">` corriente.
 
 ## Lo aprendido (tipografías locales)
 

@@ -195,8 +195,10 @@ Diseño, costos, cumplimiento y plan en [`alertas-reales.md`](alertas-reales.md)
       todavía) · **F4** acceso privado por invitación (hecho, apagado: `/alertas` muestra lo real solo con sesión; pasar a
       `CUENTAS_MODO=invitacion` es decisión de la dueña) · **F5** borradores con IA (hechos, apagados: `claude-haiku-5-5`, tope de US$ 5
       al mes en la base, revisión en `/admin/eventos`; activarlos y elegir las fuentes con `lectura_ia` es decisión de la dueña) · **F6**
-      preferencias, resumen diario y operación.
-- [ ] Decisiones de la dueña: `alertas-reales.md` §11.
+      temas seguidos, `/alertas` filtrado, resumen diario con baja de un clic y operación (hecho, apagado: `RESUMEN_MODO=apagado`;
+      tablero con avisos, [`rutina-diaria.md`](rutina-diaria.md), `despliegue.md` §16–§17).
+- [ ] Lo que solo la dueña puede hacer para el lanzamiento privado: [`lanzamiento-privado.md`](lanzamiento-privado.md) (incluye las
+      decisiones de `alertas-reales.md` §11).
 
 ## Incremento · Aportes voluntarios por Mercado Pago ✅ (apagados)
 
@@ -229,7 +231,7 @@ Tomé valores por defecto razonables para no bloquear el avance; confírmalos o 
    Cloud Run exige una cuenta de facturación aunque haya cuota gratuita: la guía fija un presupuesto de
    40 USD con alertas y `maxScale: 3`. Si prefieres otro alojamiento sin facturación, hay que adaptar
    `Dockerfile` y `docs/despliegue.md`.
-3. **Correo para el doble opt-in.** ✅ Resend (plan gratuito, 100 al día; la aplicación se limita a 80).
+3. **Correo para el doble opt-in.** ✅ Resend (plan gratuito, 100 al día, repartidos 50 lista + 20 cuentas + 30 resumen diario).
 4. **Base de datos.** ✅ Neon (solo Postgres), con usuario de mínimos privilegios.
 5. **Confianza por fila.** Cada fila guarda la confianza que declara el analista, pero se muestra
    acotada a la que respaldan las fuentes (nunca la supera). ¿Te sirve así?

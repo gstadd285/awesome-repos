@@ -32,7 +32,7 @@ cuentas de equipo, y avisos personalizados (las alertas por tema llegan cuando s
 | `/cuenta/entrar` | Correo y contraseña | No |
 | `/cuenta/verificar` | Segundo paso al entrar (código de la app o de recuperación) | Sesión «a medias» |
 | `/cuenta/olvide`, `/cuenta/restablecer?token=` | Pedir el enlace y elegir una contraseña nueva | No (token) |
-| `/cuenta` | Perfil: nombre, temas, resumen previo a la apertura | Sí |
+| `/cuenta` | Perfil: nombre, temas y la casilla del resumen diario por correo (§14) | Sí |
 | `/cuenta/seguridad` | Contraseña, verificación en dos pasos, sesiones, actividad | Sí |
 | `/cuenta/datos` | Qué se guarda, descarga y eliminación | Sí |
 | `/cuenta/exportar` | `GET`: descarga JSON (`attachment`, `no-store`; rechaza `Sec-Fetch-Site: cross-site`) | Sí |
@@ -265,3 +265,17 @@ almacenes de siempre, `src/app/admin/invitaciones/` y `db/migraciones/0009_invit
 - **Pasar a invitación** (decisión de la persona responsable, con la revisión legal): aplicar `0009`, emitir los códigos y desplegar
   con `CUENTAS_MODO=invitacion` (`despliegue.md` §12). Volver a `abiertas` deja de pedir el código; a `cerradas`, cierra todo.
 
+## 14. Temas seguidos y resumen diario por correo
+
+Diseño y decisiones en [`alertas-reales.md`](alertas-reales.md) §7.1; operación en [`despliegue.md`](despliegue.md) §16.
+
+- **Temas**: los guarda el perfil y, con sesión, el selector de la portada (`seguirTemasAccion`, sesión y CSRF, Zod contra `TEMAS`;
+  solo cambia los temas). `/alertas` muestra por omisión los de la cuenta, con «Ver todas»; sin temas elegidos, todos.
+- **Resumen diario**: solo con la casilla separada del perfil, que guarda **desde cuándo** (`resumen_alta`, migración `0011`; la base
+  exige la casilla y la fecha juntas). Pedirlo o dejarlo queda en la actividad (`resumen_activado`, `resumen_desactivado`) y en
+  «Descargar mis datos» (`resumenDesde`). Lo envía `otea-tareas` (apagado por omisión); el sitio solo guarda la preferencia.
+- **Baja de un clic**: cada correo trae un enlace con un token al azar (en `resumen_bajas` solo su hash, 60 días). Abrirlo no cambia nada:
+  `/resumen/baja` pide confirmar; el POST a `/api/resumen/baja` (el botón, o el programa de correo con `List-Unsubscribe-Post`) apaga el
+  resumen y borra los tokens de la cuenta. También se deja desmarcando la casilla.
+- **Qué se guarda de cada resumen**: el día, el período que cubrió, cuántas alertas llevaba y si salió (90 días), nunca su contenido.
+  La privacidad lo dice (versión `2026-10-borrador-6`). Al eliminar la cuenta se borra todo en cascada.

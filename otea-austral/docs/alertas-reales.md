@@ -6,7 +6,10 @@ implementada, probada contra fuentes falsas y **apagada por omisión** (§2.4); 
 todavía. Fase **F4** (2026-10-25): el acceso privado por invitación (§6.1), **apagado por omisión** (`CUENTAS_MODO=cerradas`); desde
 ya, `/alertas` muestra lo real solo con sesión. Fase **F5** (2026-10-28): los borradores con IA y su revisión en `/admin/eventos`
 (§4.8), **apagados por omisión** (`BORRADORES_MODO=apagado`) y, aunque se activen, sin nada que redactar hasta que alguna fuente tenga
-`lectura_ia`. F6 sigue sin implementar. El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
+`lectura_ia`. Fase **F6** (2026-10-30): temas seguidos por cuenta, `/alertas` filtrado por ellos, el resumen diario por correo con baja de
+un clic (§7.1, **apagado por omisión**: `RESUMEN_MODO=apagado`) y la operación: tablero con avisos, [`rutina-diaria.md`](rutina-diaria.md),
+guía de puesta en marcha (`despliegue.md` §16–§17) y la lista de lo que solo la dueña puede hacer:
+[`lanzamiento-privado.md`](lanzamiento-privado.md). El plan está en §10; cada fase deja el sitio desplegable y con las pruebas en verde.
 
 Encargo de la dueña: un sistema lee las fuentes oficiales del registro y arma borradores; Claude redacta **un borrador por
 evento** con un tope duro de **US$ 5 al mes** (autorizado solo para esto); ella aprueba o descarta cada uno en `/admin` y
@@ -509,6 +512,44 @@ Código en `src/lib/cuentas/{invitaciones,servicio,almacen,almacen-memoria,almac
 - **Cuota de Resend** (100 al día en el plan gratuito, compartida): `WAITLIST_ENVIOS_DIARIOS` + `CUENTAS_ENVIOS_DIARIOS` +
   `RESUMEN_ENVIOS_DIARIOS` ≤ 100, comprobado en `env.ts`. Propuesta para el lanzamiento privado: 50 + 20 + 30.
 
+### 7.1 Implementado en F6 (lo que se precisó al construirlo)
+
+Código en `src/lib/resumen/` (`seleccion`, `correo`, `servicio`, `almacen-postgres`, `baja`, `manejador-baja`, `instancia`),
+`src/app/api/tareas/resumen/route.ts`, `src/app/api/resumen/baja/route.ts`, `src/app/resumen/baja/page.tsx`, `seguirTemasAccion` en
+`src/app/acciones/cuenta.ts`, `src/components/home/TopicPicker.tsx`, `src/app/alertas/page.tsx`, `src/lib/ingesta/avisos.ts` y
+`db/migraciones/0011_resumen.sql`; operación en `despliegue.md` §16–§17 y [`rutina-diaria.md`](rutina-diaria.md). Sobre lo escrito arriba:
+
+- **Temas seguidos**: la columna `cuentas.temas` (0006, restricción con la lista del sitio) ya existía y el perfil ya la guardaba. La
+  portada, **con sesión**, deja de ser una vista previa: parte de los temas de la cuenta y «Guardar mis temas» llama a `seguirTemasAccion`
+  (`conSesion` → `exigirAccionCuenta`, Zod contra `TEMAS` en `guardarTemas`; solo cambia los temas). La portada le pasa la acción al
+  selector como propiedad: el componente de cliente no importa nada del servidor. **Sin temas elegidos se ven todos** (en `/alertas` y en
+  el resumen).
+- **`/alertas`** con sesión muestra por omisión solo los temas de la cuenta, con «Ver todas» (`?ver=todas`, un GET que no guarda nada) y
+  «Solo mis temas». El filtro va después de `alertasVisibles`, que sigue siendo el único que llama a `repo.publicas`.
+- **Cambió una decisión: la ventana es «desde el último resumen enviado», no «las últimas 24 h».** La primera vez cubre desde que la
+  cuenta lo pidió o las últimas 24 h (lo que sea antes), y nunca más de 7 días. Así nada se pierde si un día se agotó el cupo, falló Resend
+  o no hubo novedades; un resumen `fallido` no se reintenta ese día (un correo que quizá salió no se repite) y al día siguiente su ventana
+  empieza en el último que sí salió. Sin alertas nuevas en sus temas, no se envía nada.
+- **Consentimiento explícito con fecha**: la casilla separada del perfil (texto nuevo) fija `cuentas.resumen_alta`; una restricción exige
+  `resumen_previo` y la fecha juntos, y la `0011` se la puso a quien ya la había marcado. Pedirlo o dejarlo queda en la actividad
+  (`resumen_activado`, `resumen_desactivado`), en «Descargar mis datos» y en la privacidad (`2026-10-borrador-6`).
+- **Cambió una decisión: la baja es de un clic desde cada correo** (antes, solo desde el perfil). Cada correo lleva un token al azar (32
+  bytes; en `resumen_bajas` solo su SHA-256, 60 días) en el texto y en las cabeceras `List-Unsubscribe` y `List-Unsubscribe-Post`
+  (RFC 8058). **Solo el POST** a `/api/resumen/baja?t=…` da de baja (sin cuerpo que leer, 1 KB, límites por IP); un GET lleva a
+  `/resumen/baja`, que pide confirmar con un formulario HTML corriente (funciona sin JavaScript). Dar de baja apaga el resumen y borra
+  todos los tokens de la cuenta. La baja vive en el sitio público y sigue funcionando con el resumen apagado.
+- **Cupo**: `resumen_envios_diarios` (solo sube, el disparador de `cuentas_envios_diarios`) y la reserva de todo o nada (cupo, el
+  resumen del día con clave `(cuenta, día)` y el token) en una transacción; con el cupo agotado la corrida para y las que faltaron lo
+  reciben mañana. **`WAITLIST_ENVIOS_DIARIOS` pasa de 80 a 50 por omisión** para que los tres cupos sumen 100; `env.ts` no arranca si
+  pasan de 100 (salvo con el Resend falso de las pruebas, `RESEND_URL_API_PRUEBA`).
+- **Lo publicado lo lee su propia consulta** (no `repo.publicas`): solo `es_ejemplo = false`, publicadas o corregidas, y de cada alerta
+  solo título, tema, fecha y el tipo y organismo de sus fuentes, para calcular la confianza con `calcularConfianza`. El correo no lleva
+  el resumen de la alerta, sus fuentes, nombres ni datos de pago, y dice «Información y análisis; no es asesoría».
+- **Corridas**: en `ingesta_corridas` con `tarea = 'resumen'` (`feeds` = cuentas revisadas, `nuevos` = enviados) y en el registro
+  (`"tipo":"tarea","tarea":"resumen"`, solo conteos). Turno propio (`tareas_turnos`, `resumen`): dos corridas a la vez, una sale «omitida».
+- **Operación**: el tablero suma «Avisos de operación» (ingesta parada más de 3 h o fallida, feeds en pausa o sin ítems en 14 días,
+  gasto ≥ 80 %, resúmenes que no salieron o que no corrieron en un día) y la tarjeta «Resumen diario».
+
 ## 8. Despliegue y operación
 
 ### 8.1 Programación (planes gratuitos; confirmar cuotas en las páginas de precios)
@@ -543,16 +584,19 @@ dentro de la capa gratuita de Cloud Run. Sin Cloud SQL, balanceador ni Cloud Arm
 ### 8.3 Canarios y vigilancia
 
 - **Canarios de secretos**: `TAREAS_SECRETO` y `BORRADORES_ANTHROPIC_API_KEY` entran en `scripts/lib/canarios.mjs` (y los
-  ajustes `TAREAS_MODO=activo`, `BORRADORES_MODO=ia`, `CUENTAS_MODO=invitacion` en `AJUSTES`): `npm run seguridad:canarios` debe
-  seguir sin encontrarlos en `.next/`; `canarios.test.ts` lo exige.
+  ajustes `TAREAS_MODO=activo`, `BORRADORES_MODO=ia`, `CUENTAS_MODO=invitacion` y `RESUMEN_MODO=activo` en `AJUSTES`; el resumen no
+  agrega secretos): `npm run seguridad:canarios` debe seguir sin encontrarlos en `.next/`; `canarios.test.ts` lo exige.
 - **Vigilancia de la operación**: feed con 3 fallos seguidos, en pausa o sin ítems nuevos en 14 días ⇒ aviso en `/admin`; sin
   evento `tarea` de ingesta en 3 h ⇒ alerta de Cloud Monitoring basada en registros (como la del panel, `docs/despliegue.md` §9);
   gasto ≥ 80 % del tope ⇒ aviso en `/admin`. Los registros (`logSecurityEvent`) llevan solo códigos y conteos.
 
 ### 8.4 Inventario para `arquitectura.test.ts`
 
-- **Endpoints**: + `src/app/api/tareas/ingesta/route.ts`, + `src/app/api/tareas/resumen/route.ts` (F6). Prueba nueva: ambas
-  llaman primero a `exigirTarea(request)` (modo, método y secreto en tiempo constante) y no leen cuerpo.
+- **Endpoints**: + `src/app/api/tareas/ingesta/route.ts`, + `src/app/api/tareas/resumen/route.ts` (F6), + `src/app/api/resumen/baja/route.ts`
+  (F6, la baja de un clic: solo el POST cambia algo, sin leer el cuerpo, 1 KB, límites por IP, token con hash). Las dos tareas llaman
+  primero a `exigirTarea` (modo, método y secreto en tiempo constante; el resumen además `resumenActivo()`) y no leen cuerpo.
+- **Server Actions**: `seguirTemasAccion` (F6) va en `acciones/cuenta.ts`, bajo la regla de que toda acción de la cuenta pasa por
+  `conSesion` → `exigirAccionCuenta`.
 - **Server Actions**: + `src/app/admin/eventos/acciones.ts`, + `src/app/admin/invitaciones/acciones.ts` (ambas en la regla de
   «toda acción del panel exige `exigirAccionAdmin`»). `acciones/cuenta.ts` no suma acciones (el código va en `crearCuentaAccion`).
 - **Reglas nuevas**: en `src/lib/ingesta/` y `src/lib/borradores/` solo `descarga.ts` hace `fetch`; ninguno lee `process.env` ni
@@ -567,9 +611,14 @@ Actualizar ID-02 (inventario de datos y conexiones: salidas a las fuentes y a An
 (proveedores: espacio de trabajo de Anthropic para borradores; condiciones de cada fuente). Nuevos, como `objetivo` en F2 y con
 su evidencia al implementarse: **PR-19** «Ingesta limitada al registro de fuentes», **PR-20** «Borradores con IA revisados y gasto
 mensual acotado», **PR-21** «Acceso anticipado por invitación», **DE-05** «Vigilancia de la ingesta y del gasto» (≤ 280
-caracteres cada descripción).
+caracteres cada descripción). **Al cerrar F6**: PR-19 a PR-21 quedan «parcial» con su evidencia (código listo y apagado), **PR-23**
+«Resumen por correo solo a quien lo pidió, con baja de un clic» (parcial) y DE-05 pasa a «parcial» (eventos y avisos del tablero; la
+alerta de Cloud Monitoring está descrita y falta crearla en el proyecto real). ID-02 suma el resumen a Resend.
 
 ### 8.6 Rutina diaria de la dueña (estimación, a medir en el lanzamiento privado)
+
+La versión práctica, con qué hacer si algo falla, está en [`rutina-diaria.md`](rutina-diaria.md); el tablero de `/admin` abre con los
+«Avisos de operación» de lo que hay que mirar hoy.
 
 | Cuándo | Qué | Tiempo estimado |
 |---|---|---|
@@ -674,7 +723,7 @@ se publica antes de cerrar F4.
   estimador por encima de `countTokens` (**pendiente**: sin clave en este entorno); con el tope agotado no hay llamadas;
   ningún texto de fuente queda en la base ni en los registros; ninguna alerta nace sin la acción de la dueña (probados).
 
-### F6 · Preferencias, resumen diario y operación
+### F6 · Preferencias, resumen diario y operación (hecha el 2026-10-30, apagada; ver §7.1)
 
 - **Archivos**: `src/app/alertas/page.tsx` («Solo mis temas»), `src/lib/resumen/{seleccion,correo,servicio}.ts`,
   `src/app/api/tareas/resumen/route.ts`, `db/migraciones/0011_resumen.sql`, `env.ts` (`RESUMEN_*`, suma de cupos),
@@ -683,9 +732,12 @@ se publica antes de cerrar F4.
 - **Pruebas**: selección por temas y 24 h; un correo por cuenta y día aunque la tarea corra dos veces; respeto del cupo;
   plantilla sin texto de fuentes; `arquitectura.test.ts` (segundo endpoint); `nist-csf.test.ts`.
 - **Aceptación**: con `RESUMEN_MODO=activo` contra el Resend falso, cada cuenta con resumen recibe uno y solo uno; la suma de
-  cupos > 100 no arranca; tablero y avisos de operación visibles; la rutina de §8.6 medida una semana.
+  cupos > 100 no arranca; tablero y avisos de operación visibles; la rutina de §8.6 medida una semana (**pendiente**: se mide en el
+  lanzamiento privado, con datos reales).
 
 ## 11. Decisiones pendientes de la dueña
+
+Junto con las cuentas, claves, dominio y abogado, en una lista para marcar: [`lanzamiento-privado.md`](lanzamiento-privado.md).
 
 1. Permitir los dominios de las fuentes en el entorno (o comprobarlas a mano) para cerrar la verificación (entrada de F2).
 2. `IA_TOPE_TOTAL_USD`: tope acumulado de toda la IA para no pasar del presupuesto del proyecto (§4.1). Sugerencia: US$ 15.

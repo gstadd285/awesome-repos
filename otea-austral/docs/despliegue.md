@@ -245,8 +245,9 @@ notificación a tu correo o teléfono. Es el objetivo `DE-04` del perfil de segu
   ```
 
 - **Tope diario de correos.** La lista de espera envía como máximo `WAITLIST_ENVIOS_DIARIOS` enlaces de
-  confirmación cada 24 horas (80 por defecto, bajo el límite de 100 al día del plan gratuito de Resend); al
-  alcanzarlo responde «vuelve mañana». Súbelo solo si cambias de plan.
+  confirmación cada 24 horas (50 por defecto); al alcanzarlo responde «vuelve mañana». Los 100 correos al día del plan
+  gratuito de Resend se reparten entre la lista, las cuentas y el resumen diario (50 + 20 + 30): si la suma pasa de 100, la
+  revisión no arranca (§17). Súbelo solo si cambias de plan.
 - **Cifrado de los correos de la lista de espera.** La aplicación guarda cada correo cifrado y no puede leerlo
   de vuelta; lo descifra solo el dueño, desde su computador, con el secreto de la lista:
 
@@ -364,8 +365,10 @@ abren con el lanzamiento y **no guardan nada**, y el sitio no ofrece entrar. Abr
 3. **Aplica las migraciones `0006` y `0009`** (tablas de cuentas, sesiones, códigos, actividad e invitaciones, con permisos por
    columna y seguridad por fila) **antes** de desplegar: `npm run db:migrar` con el rol dueño.
 4. **Reparte la cuota de correo.** El plan gratuito de Resend permite 100 correos al día **en total**; la lista de espera usa hasta
-   `WAITLIST_ENVIOS_DIARIOS` (80) y las cuentas hasta `CUENTAS_ENVIOS_DIARIOS` (20 por omisión: confirmaciones, restablecimientos y
-   avisos de seguridad; las altas pueden usar como mucho el 60 % de ese cupo y el resto queda para restablecer contraseñas y avisos). Que la suma no pase de 100; si el tráfico lo pide, subir de plan es una decisión de gasto (regla 1).
+   `WAITLIST_ENVIOS_DIARIOS` (50), las cuentas hasta `CUENTAS_ENVIOS_DIARIOS` (20 por omisión: confirmaciones, restablecimientos y
+   avisos de seguridad; las altas pueden usar como mucho el 60 % de ese cupo y el resto queda para restablecer contraseñas y avisos)
+   y el resumen diario hasta `RESUMEN_ENVIOS_DIARIOS` (30). `env.ts` no arranca si la suma pasa de 100; si el tráfico lo pide,
+   subir de plan es una decisión de gasto (regla 1).
 5. **Descomenta el bloque «Cuentas»** de `despliegue/cloud-run.yaml` (`CUENTAS_MODO`, `CUENTAS_ENVIOS_DIARIOS`,
    `CUENTAS_SECRETO`) y despliega como en el paso 7: una revisión con etiqueta y sin tráfico. Si falta algo (base, clave de Resend o
    secreto) la sonda `/api/salud` falla y la revisión no recibe tráfico.
@@ -676,8 +679,8 @@ oficial, agregarlo a `DOMINIOS_DONACIONES` con su caso en `enlace.test.ts` y des
 3. **Comprueba**: `curl -sI "$URL/apoyar"` da 200, la página muestra el botón «Aportar en Mercado Pago», y el pie y
    `$URL/sitemap.xml` incluyen `/apoyar`; el botón abre el link de la dueña en una pestaña nueva.
 
-Antes de anunciarlo, la revisión legal (`alertas-reales.md` §9): la política de privacidad ya menciona los aportes (versión
-`2026-10-borrador-5`), pero los textos siguen siendo borradores.
+Antes de anunciarlo, la revisión legal (`alertas-reales.md` §9): la política de privacidad ya menciona los aportes (desde la
+versión `2026-10-borrador-5`), pero los textos siguen siendo borradores.
 
 ### Apagarlos
 
@@ -692,3 +695,158 @@ gcloud run services update otea-austral --region $REGION --remove-env-vars DONAC
 que la CSP no cambie y que los puntos de entrada dependan del apartado. La e2e `e2e/apoyar.spec.ts` lo prueba activo en el 3201
 (con el link **de prueba** `DONACIONES_URL_PRUEBA` de `e2e/puertos.ts`; la pestaña de Mercado Pago se responde en la propia
 prueba, sin red) y apagado en el 3200.
+
+## 16. Resumen diario por correo (en `otea-tareas`, apagado por omisión)
+
+Una vez al día (**07:41**, hora de Chile), cada cuenta que **lo pidió de forma explícita** en su perfil (una casilla separada; la base
+guarda desde cuándo) recibe los títulos de Otea de las alertas reales publicadas **en sus temas** desde su último resumen (la primera
+vez, desde que lo pidió o las últimas 24 h; nunca más de 7 días), con su tema, su confianza calculada y un enlace a `/alertas`. Sin
+alertas nuevas en sus temas no se le envía nada. Nunca lleva texto de una fuente, datos de pago ni nada sensible, y dice «Información
+y análisis; no es asesoría». Diseño: [`alertas-reales.md`](alertas-reales.md) §7 y §7.1.
+
+**Qué protege a quién:**
+
+| Barrera | Dónde |
+|---|---|
+| `RESUMEN_MODO=activo` solo con `TAREAS_MODO=activo`, `RESEND_API_KEY` y `CUENTAS_SECRETO`; si no, `/api/tareas/resumen` da 404 a los siete métodos (también en el sitio público) | `src/lib/env.ts`, `src/app/api/tareas/resumen/route.ts` |
+| IAM de Cloud Run (OIDC) y `X-Otea-Tarea` en tiempo constante, como la ingesta; turno propio en la base (`tareas_turnos`, `resumen`) | `src/lib/tareas/exigir.ts`, `src/lib/ingesta/turno.ts` |
+| Un resumen por cuenta y día (clave `(cuenta, día)`), aunque la tarea corra dos veces; cupo del día en la base (`resumen_envios_diarios`, solo sube); la suma de los tres cupos de Resend ≤ 100 o no arranca | `db/migraciones/0011_resumen.sql`, `src/lib/resumen/almacen-postgres.ts` |
+| Solo cuentas con `resumen_previo` **y** su fecha de consentimiento (una restricción exige las dos); solo alertas `es_ejemplo = false` publicadas o corregidas | `0011`, `src/lib/resumen/seleccion.ts` |
+| Baja de un clic (RFC 8058): cabeceras `List-Unsubscribe` y `List-Unsubscribe-Post`; token al azar por correo, solo su hash en la base (60 días); **solo el POST da de baja** (un GET lleva a una página que pide confirmar); 1 KB, límites por IP | `src/lib/resumen/manejador-baja.ts`, `src/app/resumen/baja/page.tsx` |
+| Registros solo con conteos (`"tipo":"tarea","tarea":"resumen"`, `"tipo":"resumen_baja"`); nunca el correo ni el contenido | `src/lib/security/log.ts` |
+
+### Activarlo
+
+1. **Migra** con el rol dueño (`npm run db:migrar`): la `0011` agrega `cuentas.resumen_alta` (y la fecha a quien ya había marcado la
+   casilla), dos tipos de actividad (`resumen_activado`, `resumen_desactivado`), `resumen_envios`, `resumen_envios_diarios` y
+   `resumen_bajas`, con grants por columna, RLS y disparadores.
+2. **Reparte la cuota de Resend** (decisión 6 de `alertas-reales.md` §11): por omisión 50 (lista) + 20 (cuentas) + 30 (resumen). Declara
+   los **tres** valores, iguales, en los dos servicios: cada uno comprueba la suma al arrancar.
+3. **Dale a `otea-tareas` lo que necesita** (la clave de Resend y el secreto de las cuentas ya existen; solo se comparten con `sa-tareas`):
+
+   ```bash
+   for s in otea-resend-api-key otea-cuentas-secreto; do
+     gcloud secrets add-iam-policy-binding $s --role=roles/secretmanager.secretAccessor \
+       --member="serviceAccount:sa-tareas@$PROYECTO.iam.gserviceaccount.com"
+   done
+   gcloud run services update otea-tareas --region $REGION \
+     --update-env-vars "RESUMEN_MODO=activo,WAITLIST_ENVIOS_DIARIOS=50,CUENTAS_ENVIOS_DIARIOS=20,RESUMEN_ENVIOS_DIARIOS=30" \
+     --update-secrets "RESEND_API_KEY=otea-resend-api-key:latest,CUENTAS_SECRETO=otea-cuentas-secreto:latest"
+   ```
+
+   El servicio público necesita la base para la baja de un clic (`/api/resumen/baja`, `/resumen/baja`), que ya tiene con las cuentas.
+4. **Programa el envío** (segundo trabajo de Cloud Scheduler, con la misma cuenta `sa-programador` y el mismo secreto):
+
+   ```bash
+   printf 'TAREAS_SECRETO: '; read -rs SECRETO; echo
+   gcloud scheduler jobs create http otea-resumen --location $REGION \
+     --schedule="41 7 * * *" --time-zone="America/Santiago" --attempt-deadline=300s \
+     --http-method=POST --uri="$URL_TAREAS/api/tareas/resumen" \
+     --oidc-service-account-email="sa-programador@$PROYECTO.iam.gserviceaccount.com" --oidc-token-audience="$URL_TAREAS" \
+     --headers="X-Otea-Tarea=$SECRETO"
+   unset SECRETO
+   ```
+
+5. **Prueba con tu cuenta**: pide el resumen en tu perfil, publica una alerta en uno de tus temas y ejecuta el trabajo a mano
+   (`gcloud scheduler jobs run otea-resumen --location $REGION`). La respuesta lleva solo conteos
+   (`{"resultado":"ok","cuentas":1,"enviados":1,"sin_novedades":0,"fallos":0,"cupo_agotado":false}`); una segunda ejecución el
+   mismo día no envía nada. En el correo, «Dejar de recibir el resumen» debe abrir la página que pide confirmar; en Gmail, el
+   enlace «Anular suscripción» junto al remitente usa la baja de un clic.
+
+### Vigilarlo
+
+- **Panel**: tarjeta «Resumen diario» (cuentas que lo pidieron, enviados y sin salir hoy, última corrida) y los avisos de operación.
+- **Registros**: `gcloud logging read 'resource.labels.service_name="otea-tareas" AND jsonPayload.tarea="resumen"' --limit 5`;
+  `limite_excedido` con `resumen_envios_diarios` = se agotó el cupo (las cuentas que faltaron lo reciben mañana, con todo lo pendiente).
+- **Resend**: rebotes y quejas en su panel, una vez por semana ([`rutina-diaria.md`](rutina-diaria.md)).
+
+### Apagarlo de inmediato
+
+```bash
+gcloud scheduler jobs pause otea-resumen --location $REGION                                    # no vuelve a llamar
+gcloud run services update otea-tareas --region $REGION --update-env-vars RESUMEN_MODO=apagado   # la ruta vuelve a dar 404
+```
+
+Apagado, la baja de un clic **sigue funcionando** en el sitio público (un correo ya enviado debe poder darse de baja). Para que una
+cuenta deje de recibirlo sin su enlace, con el rol dueño:
+`update cuentas set resumen_previo = false, resumen_alta = null where id = '…';`.
+
+### Probarlo sin salir a internet
+
+`npm test` con `PRUEBAS_DATABASE_URL` corre la corrida completa contra Postgres (`src/lib/resumen/almacen-postgres.test.ts`: solo lo
+real y publicado, una por cuenta y día con dos corridas a la vez, cupo atómico con diez reservas simultáneas, baja de un clic, columnas
+sin contenido). La e2e `e2e/resumen.spec.ts` sigue temas en la portada, ve `/alertas` filtrado, pide el resumen, lo recibe en el
+servidor que imita a Resend desde el 3201 y se da de baja con el POST de un clic.
+
+## 17. Alertas reales: puesta en marcha, de punta a punta
+
+Todo lo de las alertas reales (F2 a F6) **nace apagado** y se activa por piezas, cada una con su interruptor y su forma de apagarla al
+instante. Antes de empezar, la lista de lo que solo la dueña puede hacer: [`lanzamiento-privado.md`](lanzamiento-privado.md).
+
+### Orden de las migraciones
+
+Con el rol dueño y **antes** de desplegar la imagen que las usa (`npm run db:migrar` aplica las que falten, en orden, y registra su
+hash; una aplicada no se edita):
+
+| Migración | Qué agrega | La usa |
+|---|---|---|
+| `0007_ingesta.sql` | `fuente_items`, `ingesta_feeds`, `ingesta_corridas`, `tareas_turnos` | Ingesta (§13) |
+| `0008_eventos.sql` | `eventos_candidatos`, `evento_auditoria`, `fuente_items.evento_id` | Cola de `/admin/eventos` |
+| `0009_invitaciones.sql` | `invitaciones`, `invitacion_auditoria`, `cuenta_tokens.invitacion_id` | Acceso por invitación (§12) |
+| `0010_borradores.sql` | `borradores_uso`, `borradores`, `borrador_intentos` | Borradores con IA (§14) |
+| `0011_resumen.sql` | `cuentas.resumen_alta`, `resumen_envios`, `resumen_envios_diarios`, `resumen_bajas` | Resumen diario (§16) |
+
+Todas son compatibles hacia atrás: la revisión anterior sigue funcionando contra el esquema nuevo.
+
+### Variables nuevas
+
+| Variable | Servicio | Por omisión | Para qué |
+|---|---|---|---|
+| `TAREAS_MODO`, `TAREAS_SECRETO` (secreto), `INGESTA_CONTACTO` | `otea-tareas` | `inactivo` | Ingesta y puerta de las tareas (§13) |
+| `BORRADORES_MODO`, `BORRADORES_ANTHROPIC_API_KEY` (secreto), `BORRADORES_MODELO`, `BORRADORES_PRECIO_ENTRADA`, `BORRADORES_PRECIO_SALIDA`, `BORRADORES_TOPE_MENSUAL_USD` (≤ 5), `BORRADORES_LLAMADAS_MES`, `BORRADORES_POR_CORRIDA` | `otea-tareas` | `apagado` | Borradores con IA, de pago (§14) |
+| `IA_TOPE_TOTAL_USD` | los dos | sin tope | Tope acumulado de toda la IA (decisión 2 de §11) |
+| `CUENTAS_MODO=invitacion` | sitio | `cerradas` | Acceso anticipado privado (§12) |
+| `RESUMEN_MODO`, `RESUMEN_ENVIOS_DIARIOS` | `otea-tareas` (el cupo, en los dos) | `apagado`, 30 | Resumen diario (§16) |
+| `WAITLIST_ENVIOS_DIARIOS` | los dos | **50** (antes 80) | Su parte del cupo de Resend: la suma de los tres ≤ 100 |
+| `DONACIONES_URL` | sitio | sin enlace | Aportes (§15) |
+
+Las de prueba (`INGESTA_URL_PRUEBA`, `BORRADORES_URL_API_PRUEBA`, `RESEND_URL_API_PRUEBA`) solo se admiten con `OTEA_E2E=1`: nunca en
+producción. Una variable inválida o incompleta hace fallar `/api/salud` y la revisión no recibe tráfico.
+
+### Cloud Scheduler
+
+| Trabajo | Horario (America/Santiago) | Destino | Qué hace |
+|---|---|---|---|
+| `otea-ingesta` | `17 * * * *` | `POST $URL_TAREAS/api/tareas/ingesta` | Lee los feeds verificados, agrupa en eventos y, con `BORRADORES_MODO=ia`, **redacta los borradores al final de la misma corrida** (§13, §14) |
+| `otea-resumen` | `41 7 * * *` | `POST $URL_TAREAS/api/tareas/resumen` | Envía el resumen diario (§16) |
+
+Los **borradores no tienen trabajo propio**: corren dentro de la corrida de la ingesta, con su turno tomado y el plazo de 270 s (un
+borrador que la dueña pide en el panel lo redacta la corrida siguiente). Son dos de los tres trabajos gratuitos por cuenta de
+facturación; los dos usan `sa-programador` (OIDC, solo `run.invoker` sobre `otea-tareas`) y el encabezado `X-Otea-Tarea`. Al rotar
+`TAREAS_SECRETO`, actualiza el secreto, despliega `otea-tareas` y los **dos** trabajos (`--update-headers=X-Otea-Tarea=…`).
+
+### Activar cada pieza (en este orden)
+
+1. **Acceso privado** (§12): migración `0009`, `CUENTAS_SECRETO`, emitir códigos y `CUENTAS_MODO=invitacion`. Desde ya, `/alertas`
+   muestra lo real solo con sesión.
+2. **Ingesta** (§13): al menos un feed verificado en `data/sources.seed.json`, migraciones `0007` y `0008`, `otea-tareas` con
+   `TAREAS_MODO=activo` y el trabajo `otea-ingesta`. La cola de `/admin/eventos` funciona a mano desde la primera corrida.
+3. **Borradores con IA** (§14, de pago): migración `0010`, espacio de trabajo de Anthropic con límite de US$ 5, `npm run
+   borradores:probar`, `lectura_ia` en las fuentes que la permitan y `BORRADORES_MODO=ia`.
+4. **Resumen diario** (§16): migración `0011`, reparto de la cuota, `RESUMEN_MODO=activo` y el trabajo `otea-resumen`.
+5. **Alertas de Cloud Monitoring**: sin corridas de la ingesta en 3 h (§13, «Vigilarla») y accesos fallidos al panel (§9). Después,
+   la rutina de cada mañana: [`rutina-diaria.md`](rutina-diaria.md).
+
+### Apagar de inmediato
+
+| Pieza | Comando (el efecto es inmediato en la revisión nueva) |
+|---|---|
+| Resumen diario | `gcloud scheduler jobs pause otea-resumen --location $REGION` y `gcloud run services update otea-tareas --region $REGION --update-env-vars RESUMEN_MODO=apagado` |
+| Borradores con IA | `gcloud run services update otea-tareas --region $REGION --update-env-vars BORRADORES_MODO=apagado`; si se sospecha de la clave, revocarla en la consola de Anthropic |
+| Ingesta (y con ella los borradores) | `gcloud scheduler jobs pause otea-ingesta --location $REGION` y `--update-env-vars TAREAS_MODO=inactivo` (también apaga el resumen: sus rutas dan 404) |
+| Acceso privado | `gcloud run services update otea-austral --region $REGION --update-env-vars CUENTAS_MODO=cerradas` (nadie entra; `/alertas` vuelve a solo ejemplos) |
+| Una alerta publicada con un error | Corregirla o retractarla en `/admin/alertas/[id]` (queda la corrección pública; nada se borra) |
+| Aportes | `gcloud run services update otea-austral --region $REGION --remove-env-vars DONACIONES_URL` |
+
+Todo de una vez (incidente): pausa los dos trabajos, `TAREAS_MODO=inactivo` en `otea-tareas` y `CUENTAS_MODO=cerradas` en el sitio;
+después sigue `docs/seguridad/respuesta-incidentes.md`.

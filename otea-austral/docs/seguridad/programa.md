@@ -82,7 +82,7 @@ revisión de cada pull request, auditoría inmutable y este programa versionado.
 | Google Fonts | Origen de las tres tipografías, copiadas al repositorio (`src/app/_tipografias/`, OFL 1.1): ni el build ni los visitantes se conectan | Baja | Ninguno | Sin conexión |
 | Google Cloud (Cloud Run, Artifact Registry, Secret Manager, Cloud Logging) | Servir el sitio, imagen y secretos | Alta | IP y navegador de los visitantes en los registros de solicitudes (retención de 30 días) | Elegido; por crear |
 | Registrador del dominio | oteaustral.com | Alta | Datos de la persona titular | Por comprar |
-| Resend | Correo de doble opt-in y de las cuentas (confirmación, restablecimiento y avisos de seguridad) | Media | Correos de la lista de espera y de las cuentas | Elegido; por crear |
+| Resend | Correo de doble opt-in, de las cuentas (confirmación, restablecimiento y avisos de seguridad) y del resumen diario (desde `otea-tareas`, apagado) | Media | Correos de la lista de espera y de las cuentas; títulos de alertas publicadas | Elegido; por crear |
 | Neon | Base de datos: alertas, fuentes, lista de espera, sesiones del panel, cuentas de personas usuarias | Alta | Correos de la lista de espera y de las cuentas (cifrados), hashes de contraseñas | Elegido; por crear |
 | Anthropic | Redacta las respuestas del asistente de preguntas, **solo si se activa la IA** (de pago) | Baja | El texto de cada pregunta y de las preguntas frecuentes que se usan para responderla, sin IP | **Opcional; apagado por omisión.** Requiere la decisión de la persona responsable (`docs/asistente-ia.md`) |
 | Mercado Pago | Aportes voluntarios: `/apoyar` solo **enlaza** a su link de pago (pestaña nueva); el sitio no procesa pagos ni carga nada suyo | Baja | Nada desde el sitio: quien aporta le entrega sus datos de pago directamente; la dueña ve en su cuenta lo que Mercado Pago informa de cada aporte | **Opcional; apagado por omisión** (`DONACIONES_URL`, dominios en lista cerrada; `docs/despliegue.md` §15) |
@@ -110,7 +110,8 @@ Conexiones permitidas: el navegador solo habla con el propio sitio (`connect-src
 de `/apoyar` abre Mercado Pago en otra pestaña solo si la persona lo sigue (no es una petición del sitio). El servidor
 solo hace dos peticiones salientes automáticas, ambas a direcciones fijas: `https://api.resend.com/emails` y, solo
 si se activa la IA del asistente, `https://api.anthropic.com`. El servicio privado de tareas (`otea-tareas`, apagado por
-omisión) lee además los feeds **verificados** del registro de fuentes, y solo esos (`docs/alertas-reales.md` §2). Durante el build solo se
+omisión) lee además los feeds **verificados** del registro de fuentes, y solo esos (`docs/alertas-reales.md` §2), llama a Anthropic solo
+con los borradores activos y envía el resumen diario por la misma API de Resend. Durante el build solo se
 contacta npm (las tipografías van en el repositorio); la CI corre en GitHub.
 
 ## 7. Registro de riesgos (ID.RA-03, ID.RA-04, ID.RA-06)
@@ -131,6 +132,7 @@ contacta npm (las tipografías van en el repositorio); la CI corre en GitHub.
 | R10 | Gasto descontrolado de IA (abuso del asistente, bucle, precio mal configurado) | Media | Medio | IA apagada por omisión; tope diario con reserva del peor caso en la base; cupo por persona; límites por IP; límite de gasto en la consola de Anthropic | Mitigado en parte; **falta el límite de la consola (acción de la persona responsable)** |
 | R11 | Respuesta de IA inadecuada: lenguaje de recomendación, enlaces, cifras inventadas, instrucciones filtradas | Media | Medio | Modelo sin herramientas ni secretos, solo texto público; políticas antes del modelo; salida revisada frase por frase; respaldo a la base | Mitigado en parte; probado contra un servidor falso, no contra la API real |
 | R15 | Enlace de aportes manipulado (configuración con un dominio parecido o un subdominio engañoso que lleve a una página falsa de pago) | Baja | Alto | Lista cerrada de dominios oficiales de Mercado Pago con host exacto, https, sin parámetros ni credenciales; validada al arrancar (la revisión no recibe tráfico) y otra vez al dibujar (`safeHref`); `rel="noopener noreferrer"`; el sitio nunca pide datos de pago | Mitigado; **apagado hasta que la dueña entregue su link** |
+| R16 | Resumen diario mal enviado: a quien no lo pidió, repetido, con alertas no publicadas o sin forma de dejarlo | Baja | Medio | Apagado por omisión; solo cuentas con la casilla y su fecha (restricción en la base); un resumen por cuenta y día (clave primaria) y cupo diario en la base; solo alertas reales publicadas; baja de un clic por POST con token con hash (un GET no cambia nada); registros solo con conteos | Mitigado; **apagado hasta que la dueña lo active con la revisión legal** |
 | R12 | Datos personales enviados por una persona a un proveedor de IA | Media | Medio | Detección de correo, teléfono, RUT y números largos (la pregunta no se envía); aviso en la interfaz y en la política; no se guardan preguntas | Mitigado en parte; la detección es léxica |
 
 ## 8. Revisión y mejora (GV.OV-01, ID.IM)
