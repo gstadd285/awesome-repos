@@ -38,6 +38,15 @@ describe("envío de correo con Resend", () => {
     });
   });
 
+  it("solo agrega las cabeceras de la baja de un clic, y rechaza un salto de línea en ellas", async () => {
+    const { enviar, fetchFn } = enviador(async () => new Response("{}", { status: 200 }));
+    const baja = { "List-Unsubscribe": "<https://oteaustral.com/api/resumen/baja?t=abc>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
+    await enviar({ ...CORREO, cabeceras: { ...baja, ...({ Bcc: "otra@persona.cl" } as object) } });
+    expect(JSON.parse(String(fetchFn.mock.calls[0][1]?.body)).headers).toEqual(baja);
+    await expect(enviar({ ...CORREO, cabeceras: { "List-Unsubscribe": "<https://x.cl>\r\nBcc: otra@persona.cl" } })).rejects.toThrow();
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
   it("usa otra dirección solo si se la dan (las pruebas e2e)", async () => {
     const { enviar, fetchFn } = enviador(async () => new Response("{}", { status: 200 }), "http://127.0.0.1:3298/emails");
     await enviar(CORREO);

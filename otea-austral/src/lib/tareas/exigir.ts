@@ -23,6 +23,7 @@ export function exigirTarea(
   request: Request,
   configuracion: Configuracion = env,
   registrar: (evento: SecurityEvent) => void = logSecurityEvent,
+  tarea: "ingesta" | "resumen" = "ingesta",
 ): boolean {
   // En el servicio público las tareas no existen: ni siquiera se anota el intento (sería ruido de escáneres).
   if (!tareasActivas(configuracion) || !configuracion.TAREAS_SECRETO) return false;
@@ -35,7 +36,7 @@ export function exigirTarea(
 
   if (request.method !== "POST" || conCuerpo || !secretoValido) {
     // Aquí ya pasó la barrera de la plataforma (IAM): un rechazo es raro y merece quedar anotado (sin detalles).
-    registrar({ tipo: "tarea", tarea: "ingesta", resultado: "rechazada" });
+    registrar({ tipo: "tarea", tarea, resultado: "rechazada" });
     return false;
   }
   return true;

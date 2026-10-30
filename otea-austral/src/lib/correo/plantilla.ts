@@ -7,7 +7,9 @@ export type Bloque =
   | { tipo: "parrafo"; texto: string }
   /** Enlace principal: un botón en el HTML y «texto: dirección» en el texto plano. */
   | { tipo: "enlace"; texto: string; url: string }
-  | { tipo: "lista"; items: readonly string[] };
+  | { tipo: "lista"; items: readonly string[] }
+  /** Enlace secundario y discreto (la baja de un correo que se pidió): un enlace de texto en el HTML, no un botón. */
+  | { tipo: "nota"; texto: string; url: string };
 
 export type CorreoArmado = { asunto: string; texto: string; html: string };
 
@@ -40,6 +42,12 @@ export function componerCorreo(asunto: string, bloques: readonly Bloque[]): Corr
       html.push(
         `<p style="margin:0 0 8px"><a href="${escapar(url)}" style="display:inline-block;background:#B08D57;color:#0F1B2D;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:999px">${escapar(b.texto)}</a></p>`,
         `<p style="margin:0 0 16px;font-size:13px;color:#4C5665">Si el botón no funciona, copia esta dirección en tu navegador:<br><span style="word-break:break-all">${escapar(url)}</span></p>`,
+      );
+    } else if (b.tipo === "nota") {
+      const url = urlSegura(b.url);
+      texto.push(`${b.texto}:`, url, "");
+      html.push(
+        `<p style="margin:0 0 16px;font-size:13px;color:#4C5665">${escapar(b.texto)}: <a href="${escapar(url)}" style="color:#0F1B2D;word-break:break-all">${escapar(url)}</a></p>`,
       );
     } else {
       for (const item of b.items) texto.push(`- ${item}`);

@@ -49,11 +49,12 @@ export type SecurityEvent =
   | { tipo: "asistente"; resultado: "ia" | "sin_respuesta" | "negativa" | "degradada"; motivo?: string }
   /**
    * Una corrida de una tarea programada (`otea-tareas`): resultado y conteos, nunca URLs, títulos ni textos. Cada
-   * corrida deja uno; sin eventos de ingesta en 3 h, la alerta de Cloud Monitoring avisa (`docs/despliegue.md` §13).
+   * corrida deja uno; sin eventos de ingesta en 3 h, la alerta de Cloud Monitoring avisa (`docs/despliegue.md` §13); el
+   * resumen diario deja otro por día (§16).
    */
   | {
       tipo: "tarea";
-      tarea: "ingesta";
+      tarea: "ingesta" | "resumen";
       resultado: "ok" | "parcial" | "fallida" | "omitida" | "sin_feeds" | "rechazada";
       feeds?: number;
       nuevos?: number;
@@ -62,7 +63,12 @@ export type SecurityEvent =
       agrupados?: number;
       /** Borradores con IA que dejó la corrida en la cola. */
       borradores?: number;
+      /** Resumen diario: cuentas que lo pidieron y que la corrida revisó, y cuántos resúmenes salieron. */
+      cuentas?: number;
+      enviados?: number;
     }
+  /** La baja de un clic del resumen diario: solo si sirvió el enlace, nunca el token ni de qué cuenta. */
+  | { tipo: "resumen_baja"; resultado: "baja" | "enlace_invalido" | "limite" }
   /**
    * Un intento de redactar un borrador con IA (`otea-tareas`): el resultado y un código, nunca el texto de una fuente, el
    * borrador, un título ni una URL. `sin_presupuesto`: el tope (o la base) no dejó llamar al modelo.

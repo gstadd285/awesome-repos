@@ -15,6 +15,7 @@ const MAX_CUERPO = 256 * 1024;
  * @property {string} asunto
  * @property {string} texto
  * @property {string} html
+ * @property {Record<string, string>} cabeceras Las `headers` del mensaje (p. ej. la baja de un clic del resumen).
  * @property {string} recibido Instante ISO.
  */
 
@@ -78,6 +79,10 @@ export async function crearServidorResendFalso({ puerto, clave = CLAVE_RESEND_FA
         asunto: cuerpo.subject,
         texto: String(cuerpo.text ?? ""),
         html: String(cuerpo.html ?? ""),
+        cabeceras:
+          cuerpo.headers && typeof cuerpo.headers === "object" && !Array.isArray(cuerpo.headers)
+            ? Object.fromEntries(Object.entries(cuerpo.headers).map(([k, v]) => [k, String(v)]))
+            : {},
         recibido: new Date().toISOString(),
       });
       responder(200, { id: `falso-${correos.length}` });

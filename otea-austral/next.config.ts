@@ -38,6 +38,8 @@ const nextConfig: NextConfig = {
       { source: "/cuenta/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       { source: "/cuenta/activar", headers: [{ key: "Referrer-Policy", value: "strict-origin" }] },
       { source: "/cuenta/restablecer", headers: [{ key: "Referrer-Policy", value: "strict-origin" }] },
+      // La baja del resumen diario: también llega con un token en la dirección desde un correo.
+      { source: "/resumen/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Referrer-Policy", value: "strict-origin" }] },
     ];
   },
 };

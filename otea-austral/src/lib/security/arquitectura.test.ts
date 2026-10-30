@@ -593,10 +593,87 @@ describe("inventario de la superficie expuesta", () => {
       "src/app/.well-known/security.txt/route.ts",
       "src/app/api/asistente/route.ts",
       "src/app/api/csp-report/route.ts",
+      "src/app/api/resumen/baja/route.ts",
       "src/app/api/salud/route.ts",
       "src/app/api/tareas/ingesta/route.ts",
+      "src/app/api/tareas/resumen/route.ts",
       "src/app/cuenta/exportar/route.ts",
     ]);
+  });
+});
+
+describe("resumen diario por correo y temas seguidos (docs/alertas-reales.md §7 y §8.4)", () => {
+  const delResumen = fuentes.filter((r) => /^src\/lib\/resumen\//.test(relativa(r)));
+  const ruta = leer(path.join(SRC, "app/api/tareas/resumen/route.ts"));
+  const rutaBaja = leer(path.join(SRC, "app/api/resumen/baja/route.ts"));
+  const manejadorBaja = leer(path.join(SRC, "lib/resumen/manejador-baja.ts"));
+  const almacen = leer(path.join(SRC, "lib/resumen/almacen-postgres.ts"));
+  const configuracion = leer(path.join(SRC, "lib/env.ts"));
+
+  it("hay código del resumen (la prueba vigila algo)", () => {
+    expect(delResumen.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it("nace apagado y solo en el servicio de tareas: la ruta pasa primero por exigirTarea y resumenActivo, con 404 a todo lo demás", () => {
+    expect(configuracion).toMatch(/RESUMEN_MODO: z\.enum\(\["apagado", "activo"\]\)\.default\("apagado"\)/);
+    expect(configuracion).toMatch(/RESUMEN_MODO=activo solo en el servicio de tareas/);
+    const metodos = [...ruta.matchAll(/^export const ([A-Z]+) = manejar;$/gm)].map((m) => m[1]);
+    expect(metodos).toEqual(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
+    const manejar = /async function manejar\(request: Request\): Promise<Response> \{\n([\s\S]*?)\n\}/.exec(ruta)?.[1] ?? "";
+    expect(manejar.trim().split("\n")[0]).toBe('if (!exigirTarea(request, env, logSecurityEvent, "resumen") || !resumenActivo()) notFound();');
+    expect(ruta).not.toMatch(/request\.(json|text|formData|arrayBuffer|blob|body)\b|cookies\(|headers\(\)/);
+    expect(ruta).toMatch(/"Cache-Control": "no-store"/);
+  });
+
+  it("nada del resumen sale a internet por su cuenta, lee el entorno o escribe en la consola: el correo va por Resend", () => {
+    const infractores: string[] = [];
+    for (const archivo of delResumen) {
+      const texto = leer(archivo);
+      const rel = relativa(archivo);
+      if (/\bfetch\(|XMLHttpRequest|\bWebSocket\b|node:(http|https|net|tls|dgram|child_process)/.test(texto)) infractores.push(`${rel}: red`);
+      if (/process\.env/.test(texto)) infractores.push(`${rel}: process.env`);
+      if (/\bconsole\./.test(texto)) infractores.push(`${rel}: console`);
+    }
+    expect(infractores).toEqual([]);
+    expect(delResumen.filter((r) => /crearEnviadorResend\(/.test(leer(r))).map(relativa)).toEqual(["src/lib/resumen/instancia.ts"]);
+  });
+
+  it("de lo publicado lee solo lo real, publicado o corregido, y nunca el texto de la alerta ni sus fuentes", () => {
+    const sql = /const SQL_PUBLICADAS = `([\s\S]*?)`;/.exec(almacen)?.[1] ?? "";
+    expect(sql).toMatch(/a\.es_ejemplo = false and a\.estado in \('publicada', 'corregida'\)/);
+    expect(sql).not.toMatch(/\b(resumen|filas|url|titulo_documento|nombre_fuente|identificador)\b/);
+    expect(delResumen.filter((r) => /\.publicas\(/.test(leer(r)))).toEqual([]);
+    const correo = leer(path.join(SRC, "lib/resumen/correo.ts"));
+    expect(correo).toMatch(/AVISO_NO_ASESORIA = "Información y análisis; no es asesoría\."/);
+    expect(correo).toMatch(/"List-Unsubscribe-Post": "List-Unsubscribe=One-Click"/);
+  });
+
+  it("la baja es un POST con un token del que solo se busca su hash; un GET solo lleva a la página que pide confirmar", () => {
+    expect([...rutaBaja.matchAll(/^export const ([A-Z]+) = manejar;$/gm)].map((m) => m[1])).toEqual(["GET", "HEAD", "POST"]);
+    const cuerpo = /return async function manejar[\s\S]*$/.exec(manejadorBaja)?.[0] ?? "";
+    // El GET responde antes de que aparezca la llamada a la base, y el POST no lee el cuerpo.
+    expect(cuerpo.indexOf('request.method === "GET"')).toBeGreaterThan(-1);
+    expect(cuerpo.indexOf('request.method === "GET"')).toBeLessThan(cuerpo.indexOf("deps.darDeBaja(token)"));
+    expect(manejadorBaja).not.toMatch(/request\.(json|text|formData|arrayBuffer|blob|body)\b|cookies\(/);
+    expect(manejadorBaja).toMatch(/MAX_CUERPO_BYTES = 1024/);
+    expect(manejadorBaja).toMatch(/porIp\.tryConsume\(huella\)/);
+    expect(leer(path.join(SRC, "lib/resumen/baja.ts"))).toMatch(/almacen\.darDeBaja\(hashToken\(token\), ahora\)/);
+    // La página no cambia nada al abrirse: no llama a la baja ni tiene Server Actions; su formulario hace el POST.
+    const pagina = leer(path.join(SRC, "app/resumen/baja/page.tsx"));
+    expect(pagina).not.toMatch(/darDeBaja|bajaResumen\(|use server/);
+    expect(pagina).toMatch(/<form method="post" action=\{`\$\{RUTA_BAJA\}\?t=\$\{token\}`\}/);
+    expect(pagina).toMatch(/robots: \{ index: false, follow: false \}/);
+    expect(leer(path.join(RAIZ, "next.config.ts"))).toMatch(/source: "\/resumen\/:path\*"[^\n]*strict-origin/);
+  });
+
+  it("los temas se guardan con una acción de la cuenta (sesión y CSRF) y la portada la entrega al selector como propiedad", () => {
+    const acciones = leer(path.join(SRC, "app/acciones/cuenta.ts"));
+    const seguir = funcionesExportadas(acciones).find((f) => f.nombre === "seguirTemasAccion")?.cuerpo ?? "";
+    expect(seguir.replace(/^\{/, "").trim().split("\n")[0]).toBe("const s = await conSesion(f);");
+    expect(leer(path.join(SRC, "lib/cuentas/servicio.ts"))).toMatch(/TemasSchema\.safeParse\(/);
+    const selector = leer(path.join(SRC, "components/home/TopicPicker.tsx"));
+    expect(selector).toMatch(/^import type \{ EstadoFormulario \} from "@\/app\/acciones\/cuenta";$/m);
+    expect(selector).not.toMatch(/^import \{[^}]*\} from "@\/app\/acciones/m);
   });
 });
 

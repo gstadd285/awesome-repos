@@ -62,4 +62,12 @@ describe("armado de correos", () => {
     expect(() => componerCorreo("Asunto\r\nBcc: otra@persona.cl", [])).toThrow();
     expect(() => componerCorreo("Asunto\nBcc: otra@persona.cl", [])).toThrow();
   });
+
+  it("la nota es un enlace de texto discreto (no un botón) que también se valida y se escapa", () => {
+    const c = componerCorreo("a", [{ tipo: "nota", texto: "Dejar <de> recibirlo", url: "https://oteaustral.com/api/resumen/baja?t=ABC" }]);
+    expect(c.texto).toContain("Dejar <de> recibirlo:\nhttps://oteaustral.com/api/resumen/baja?t=ABC");
+    expect(c.html).toContain("Dejar &lt;de&gt; recibirlo: <a href=\"https://oteaustral.com/api/resumen/baja?t=ABC\"");
+    expect(c.html).not.toContain("border-radius:999px");
+    expect(() => componerCorreo("a", [{ tipo: "nota", texto: "x", url: "javascript:alert(1)" }])).toThrow();
+  });
 });

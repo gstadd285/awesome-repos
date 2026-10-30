@@ -50,4 +50,11 @@ describe("exigirTarea", () => {
     expect(r.pasa).toBe(false);
     expect(r.eventos).toEqual([{ tipo: "tarea", tarea: "ingesta", resultado: "rechazada" }]);
   });
+
+  it("anota la tarea que se rechazó (el resumen diario usa la misma puerta)", () => {
+    const eventos: SecurityEvent[] = [];
+    expect(exigirTarea(solicitud("GET"), ACTIVA, (e) => eventos.push(e), "resumen")).toBe(false);
+    expect(eventos).toEqual([{ tipo: "tarea", tarea: "resumen", resultado: "rechazada" }]);
+    expect(exigirTarea(solicitud(), ACTIVA, (e) => eventos.push(e), "resumen")).toBe(true);
+  });
 });
