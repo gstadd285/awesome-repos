@@ -53,6 +53,9 @@ describe.skipIf(!HAY_BASE_DE_PRUEBAS)("Row-Level Security (Postgres)", () => {
           "ingesta_feeds",
           "lista_espera",
           "otea_migraciones",
+          "resumen_bajas",
+          "resumen_envios",
+          "resumen_envios_diarios",
           "tareas_turnos",
         ]),
       );

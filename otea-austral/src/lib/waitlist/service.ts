@@ -45,7 +45,7 @@ export const ESPERA_REENVIO_MS = 10 * 60_000;
  * formulario para enviar correo no pedido. Se cuenta en la base, así que vale
  * para todas las instancias y sobrevive a los reinicios.
  */
-export const MAXIMO_ENVIOS_DIARIOS = 80;
+export const MAXIMO_ENVIOS_DIARIOS = 50;
 const DIA_MS = 24 * 60 * 60_000;
 /** Las inscripciones sin confirmar se borran a los 30 días. */
 export const PLAZO_PENDIENTES_MS = 30 * 24 * 60 * 60_000;

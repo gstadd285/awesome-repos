@@ -62,7 +62,8 @@ spec:
             # la persona responsable (docs/cuentas.md, «Abrir las cuentas»): aplicar antes las migraciones 0006 y 0009,
             # crear el secreto `otea-cuentas-secreto` (npm run cuentas:secreto) y descomentar TODO este bloque. Si falta
             # algo, la sonda de /api/salud falla y la revisión no recibe tráfico. La cuota gratuita de Resend (100 correos
-            # al día) se reparte con la lista de espera: WAITLIST_ENVIOS_DIARIOS + CUENTAS_ENVIOS_DIARIOS <= 100.
+            # al día) se reparte con la lista y el resumen diario: WAITLIST_ENVIOS_DIARIOS + CUENTAS_ENVIOS_DIARIOS +
+            # RESUMEN_ENVIOS_DIARIOS <= 100 (por omisión 50 + 20 + 30; los mismos valores en otea-tareas).
             # `invitacion` es el lanzamiento privado (docs/alertas-reales.md §6): solo se crean cuentas con los códigos
             # de /admin/invitaciones y las alertas reales se ven solo con sesión. `abiertas`: cualquiera crea su cuenta.
             # - name: CUENTAS_MODO

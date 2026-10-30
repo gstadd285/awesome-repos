@@ -30,7 +30,7 @@ export const CANARIOS = {
 
 /**
  * Ajustes que no son secretos, pero que el build necesita junto a los canarios para recorrer el camino de la IA
- * (el asistente en modo `ia`, las cuentas por invitación, las tareas activas y los borradores con IA): así las claves pasan por el
+ * (el asistente en modo `ia`, las cuentas por invitación, las tareas activas, los borradores con IA y el resumen diario): así las claves pasan por el
  * mismo código que usan en producción.
  */
 export const AJUSTES = {
@@ -50,6 +50,9 @@ export const AJUSTES = {
   BORRADORES_PRECIO_ENTRADA: "0.1",
   BORRADORES_PRECIO_SALIDA: "0.5",
   BORRADORES_TOPE_MENSUAL_USD: "5",
+  // El resumen diario (solo en `otea-tareas`): así la clave de Resend y el secreto de las cuentas recorren su camino. No
+  // agrega secretos: el token de la baja de un clic es al azar por correo y en la base solo queda su hash.
+  RESUMEN_MODO: "activo",
 };
 
 const MAX_BYTES = 100_000_000;

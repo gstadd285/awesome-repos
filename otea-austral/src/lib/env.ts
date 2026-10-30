@@ -30,6 +30,9 @@ export const MODELOS_ASISTENTE = ["claude-haiku-5-5", "claude-sonnet-5-5", "clau
 /** Techo del gasto en borradores que autorizó la dueña: US$ 5 al mes. El esquema no admite un tope mayor. */
 export const TOPE_MENSUAL_BORRADORES_MAXIMO_USD = 5;
 
+/** Correos al día del plan gratuito de Resend: lo reparten la lista de espera, las cuentas y el resumen diario. */
+export const CUPO_DIARIO_RESEND = 100;
+
 /** Iteraciones mínimas de PBKDF2-SHA256 (recomendación OWASP 2023). */
 export const ITERACIONES_MINIMAS = 600_000;
 
@@ -95,8 +98,11 @@ export const EnvSchema = z
     DATABASE_URL: urlPostgres.optional(),
     RESEND_API_KEY: z.string().regex(/^re_[A-Za-z0-9_-]{10,200}$/, "Clave de Resend inválida").optional(),
     EMAIL_REMITENTE: remitente.default(REMITENTE_POR_DEFECTO),
-    /** Tope diario de correos de confirmación (Resend gratuito permite 100 al día). */
-    WAITLIST_ENVIOS_DIARIOS: z.coerce.number().int().min(1).max(5000).default(80),
+    /**
+     * Tope diario de correos de confirmación. Resend gratuito permite 100 al día entre todos: la lista de espera, las cuentas y
+     * el resumen diario (`CUPO_DIARIO_RESEND`; por omisión 50 + 20 + 30, `docs/alertas-reales.md` §7).
+     */
+    WAITLIST_ENVIOS_DIARIOS: z.coerce.number().int().min(1).max(5000).default(50),
     /**
      * Secreto maestro de la lista de espera: 256 bits en base64url (`npm run lista:secreto`). De él se derivan,
      * con HKDF, la clave de la marca de tiempo del formulario y las del cifrado de correos y su índice. Debe
@@ -123,7 +129,7 @@ export const EnvSchema = z
       .string()
       .regex(/^[A-Za-z0-9_-]{43,}$/, "Secreto de las cuentas demasiado corto (256 bits en base64url)")
       .optional(),
-    /** Tope diario de correos de cuentas (confirmación, restablecimiento y avisos). Con la lista de espera, que sume 100 o menos. */
+    /** Tope diario de correos de cuentas (confirmación, restablecimiento y avisos). Con la lista y el resumen, 100 o menos. */
     CUENTAS_ENVIOS_DIARIOS: z.coerce.number().int().min(1).max(5000).default(20),
     /** Solo pruebas e2e: dirección de un servidor que imita la API de Resend (el correo de las cuentas no sale a internet). */
     RESEND_URL_API_PRUEBA: z.string().url().optional(),
@@ -205,6 +211,15 @@ export const EnvSchema = z
      * el pago ocurre en Mercado Pago y aquí no se procesa nada. Uno inválido hace fallar el arranque.
      */
     DONACIONES_URL: linkDonaciones.optional(),
+    /**
+     * Resumen diario por correo (`POST /api/tareas/resumen`, `docs/alertas-reales.md` §7). `apagado` (por omisión): la ruta
+     * responde 404 y no sale ningún correo. `activo`: solo en `otea-tareas` (exige TAREAS_MODO=activo), Cloud Scheduler lo
+     * llama una vez al día y cada cuenta que lo pidió recibe las alertas publicadas en sus temas; exige RESEND_API_KEY y
+     * CUENTAS_SECRETO (para leer el correo cifrado de cada cuenta).
+     */
+    RESUMEN_MODO: z.enum(["apagado", "activo"]).default("apagado"),
+    /** Resúmenes por día (su parte del cupo de Resend, contada en la base). Con la lista y las cuentas, 100 o menos. */
+    RESUMEN_ENVIOS_DIARIOS: z.coerce.number().int().min(1).max(100).default(30),
   })
   .superRefine((e, ctx) => {
     // `next build` también corre con NODE_ENV=production, pero la configuración del servidor llega al
@@ -331,6 +346,27 @@ export const EnvSchema = z
         "Solo se admite con OTEA_E2E=1: en cualquier otro caso la clave de los borradores podría viajar a un servidor ajeno.",
       );
     }
+    if (e.RESUMEN_MODO === "activo") {
+      if (e.TAREAS_MODO !== "activo") {
+        problema(
+          "RESUMEN_MODO",
+          "RESUMEN_MODO=activo solo en el servicio de tareas (TAREAS_MODO=activo): el sitio público nunca envía el resumen.",
+        );
+      }
+      if (!e.RESEND_API_KEY) problema("RESEND_API_KEY", "RESUMEN_MODO=activo necesita RESEND_API_KEY (el resumen sale por correo).");
+      if (!e.CUENTAS_SECRETO) {
+        problema("CUENTAS_SECRETO", "RESUMEN_MODO=activo necesita CUENTAS_SECRETO: el correo de cada cuenta está cifrado con él.");
+      }
+    }
+    // El cupo de Resend es uno para todos los correos: cada servicio declara los tres repartos (los mismos en los dos) y la
+    // suma no puede pasarlo. Solo se exime cuando el correo va al servidor que imita a Resend (pruebas e2e, OTEA_E2E=1).
+    const cupos = e.WAITLIST_ENVIOS_DIARIOS + e.CUENTAS_ENVIOS_DIARIOS + e.RESUMEN_ENVIOS_DIARIOS;
+    if (cupos > CUPO_DIARIO_RESEND && !e.RESEND_URL_API_PRUEBA) {
+      problema(
+        "RESUMEN_ENVIOS_DIARIOS",
+        `WAITLIST_ENVIOS_DIARIOS + CUENTAS_ENVIOS_DIARIOS + RESUMEN_ENVIOS_DIARIOS suman ${cupos}: el plan gratuito de Resend envía ${CUPO_DIARIO_RESEND} al día.`,
+      );
+    }
     if (e.ASISTENTE_URL_API_PRUEBA && e.OTEA_E2E !== "1") {
       problema(
         "ASISTENTE_URL_API_PRUEBA",
@@ -388,6 +424,8 @@ export const env: Env = EnvSchema.parse({
   IA_TOPE_TOTAL_USD: leer("IA_TOPE_TOTAL_USD"),
   BORRADORES_URL_API_PRUEBA: leer("BORRADORES_URL_API_PRUEBA"),
   DONACIONES_URL: leer("DONACIONES_URL"),
+  RESUMEN_MODO: leer("RESUMEN_MODO"),
+  RESUMEN_ENVIOS_DIARIOS: leer("RESUMEN_ENVIOS_DIARIOS"),
 });
 
 /** El panel interno existe solo si está configurado por completo; si no, responde 404. */
@@ -415,6 +453,22 @@ export function borradoresActivos(e: Env = env): boolean {
     e.BORRADORES_PRECIO_SALIDA !== undefined &&
     e.BORRADORES_TOPE_MENSUAL_USD !== undefined
   );
+}
+
+/**
+ * El resumen diario existe solo en el servicio de tareas activo y con lo que necesita (correo y secreto de las cuentas). En
+ * cualquier otro caso `POST /api/tareas/resumen` responde 404 y no sale ningún correo.
+ */
+export function resumenActivo(e: Env = env): boolean {
+  return e.RESUMEN_MODO === "activo" && tareasActivas(e) && Boolean(e.RESEND_API_KEY && e.CUENTAS_SECRETO);
+}
+
+/**
+ * La baja de un clic del resumen (`POST /api/resumen/baja` y `/resumen/baja`) vive en el sitio público y solo necesita la base:
+ * un enlace de un correo ya enviado debe seguir sirviendo aunque se apague el resumen. Sin base, 404.
+ */
+export function bajaResumenDisponible(e: Pick<Env, "DATABASE_URL"> = env): boolean {
+  return Boolean(e.DATABASE_URL);
 }
 
 /** Las cuentas guardan datos solo si no están cerradas (también en modo `invitacion`: quien tiene cuenta entra). */

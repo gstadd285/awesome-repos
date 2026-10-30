@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  bajaResumenDisponible,
   borradoresActivos,
   cuentasAbiertas,
   cuentasPorInvitacion,
   donacionesActivas,
   enlaceDonaciones,
   EnvSchema,
+  resumenActivo,
   MODELOS_ASISTENTE,
   tareasActivas,
 } from "./env";
@@ -108,8 +110,8 @@ describe("EnvSchema · tercio 3", () => {
   });
 
   it("el tope diario de correos tiene un valor por omisión y límites", () => {
-    expect(EnvSchema.parse({}).WAITLIST_ENVIOS_DIARIOS).toBe(80);
-    expect(EnvSchema.parse({ WAITLIST_ENVIOS_DIARIOS: "50" }).WAITLIST_ENVIOS_DIARIOS).toBe(50);
+    expect(EnvSchema.parse({}).WAITLIST_ENVIOS_DIARIOS).toBe(50);
+    expect(EnvSchema.parse({ WAITLIST_ENVIOS_DIARIOS: "40" }).WAITLIST_ENVIOS_DIARIOS).toBe(40);
     for (const malo of ["0", "-1", "10000", "mucho"]) {
       expect(EnvSchema.safeParse({ WAITLIST_ENVIOS_DIARIOS: malo }).success).toBe(false);
     }
@@ -286,7 +288,7 @@ describe("EnvSchema · cuentas de personas usuarias", () => {
   });
 
   it("el tope diario de correos es un entero positivo", () => {
-    expect(EnvSchema.parse({ CUENTAS_ENVIOS_DIARIOS: "30" }).CUENTAS_ENVIOS_DIARIOS).toBe(30);
+    expect(EnvSchema.parse({ CUENTAS_ENVIOS_DIARIOS: "15" }).CUENTAS_ENVIOS_DIARIOS).toBe(15);
     for (const malo of ["0", "-1", "2.5", "abc", "5001"]) expect(EnvSchema.safeParse({ CUENTAS_ENVIOS_DIARIOS: malo }).success, malo).toBe(false);
   });
 
@@ -468,5 +470,52 @@ describe("EnvSchema · aportes por Mercado Pago (docs/despliegue.md §15)", () =
   it("las funciones de ayuda no confían en un objeto armado a mano: vuelven a validar", () => {
     expect(donacionesActivas({ DONACIONES_URL: "https://mpago.co/2AbC9xZ" })).toBe(false);
     expect(enlaceDonaciones({ DONACIONES_URL: "" })).toBeUndefined();
+  });
+});
+
+describe("EnvSchema · resumen diario y cupo de Resend", () => {
+  const DB = "postgresql://otea_web:clave@ep-ejemplo-pooler.neon.tech/neondb?sslmode=verify-full";
+  const tareas = { TAREAS_MODO: "activo", TAREAS_SECRETO: "t".repeat(43), INGESTA_CONTACTO: "mailto:ingesta@example.org", DATABASE_URL: DB };
+  const completo = { ...tareas, RESUMEN_MODO: "activo", RESEND_API_KEY: "re_1234567890ab", CUENTAS_SECRETO: "c".repeat(43) };
+
+  it("nace apagado, con 30 resúmenes al día, y la baja solo existe con base", () => {
+    const e = EnvSchema.parse({});
+    expect(e.RESUMEN_MODO).toBe("apagado");
+    expect(e.RESUMEN_ENVIOS_DIARIOS).toBe(30);
+    expect(resumenActivo(e)).toBe(false);
+    expect(bajaResumenDisponible(e)).toBe(false);
+    expect(bajaResumenDisponible(EnvSchema.parse({ DATABASE_URL: DB }))).toBe(true);
+    // Con las tareas activas pero sin pedirlo, tampoco.
+    expect(resumenActivo(EnvSchema.parse(tareas))).toBe(false);
+  });
+
+  it("activo solo en el servicio de tareas y con correo y el secreto de las cuentas", () => {
+    expect(EnvSchema.safeParse(completo).success).toBe(true);
+    expect(resumenActivo(EnvSchema.parse(completo))).toBe(true);
+    const { TAREAS_MODO: _modo, ...sinTareas } = completo;
+    void _modo;
+    expect(EnvSchema.safeParse(sinTareas).error?.issues.map((i) => i.path[0])).toContain("RESUMEN_MODO");
+    for (const falta of ["RESEND_API_KEY", "CUENTAS_SECRETO"] as const) {
+      const { [falta]: _omitida, ...incompleto } = completo;
+      void _omitida;
+      const r = EnvSchema.safeParse(incompleto);
+      expect(r.success, falta).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0]), falta).toContain(falta);
+    }
+    for (const malo of ["si", "on", "activa", "1"]) expect(EnvSchema.safeParse({ ...completo, RESUMEN_MODO: malo }).success, malo).toBe(false);
+  });
+
+  it("los tres cupos de Resend suman 100 o menos (por omisión 50 + 20 + 30); si no, no arranca", () => {
+    const e = EnvSchema.parse({});
+    expect(e.WAITLIST_ENVIOS_DIARIOS + e.CUENTAS_ENVIOS_DIARIOS + e.RESUMEN_ENVIOS_DIARIOS).toBe(100);
+    for (const exceso of [{ WAITLIST_ENVIOS_DIARIOS: "80" }, { CUENTAS_ENVIOS_DIARIOS: "21" }, { RESUMEN_ENVIOS_DIARIOS: "31" }]) {
+      const r = EnvSchema.safeParse(exceso);
+      expect(r.success, JSON.stringify(exceso)).toBe(false);
+      expect(r.error?.issues.map((i) => i.path[0])).toContain("RESUMEN_ENVIOS_DIARIOS");
+    }
+    expect(EnvSchema.safeParse({ WAITLIST_ENVIOS_DIARIOS: "70", CUENTAS_ENVIOS_DIARIOS: "20", RESUMEN_ENVIOS_DIARIOS: "10" }).success).toBe(true);
+    for (const malo of ["0", "101", "2.5", "x"]) expect(EnvSchema.safeParse({ RESUMEN_ENVIOS_DIARIOS: malo }).success, malo).toBe(false);
+    // Solo las pruebas e2e, con el correo yendo al servidor que imita a Resend, suben los topes sin límite.
+    expect(EnvSchema.safeParse({ CUENTAS_ENVIOS_DIARIOS: "5000", RESEND_URL_API_PRUEBA: "http://127.0.0.1:3298/emails", OTEA_E2E: "1" }).success).toBe(true);
   });
 });
