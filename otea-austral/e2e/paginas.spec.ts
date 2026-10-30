@@ -113,7 +113,9 @@ test("/fuentes en el teléfono: tarjetas por organismo con enlaces de 44 px y si
   await expect(page.locator("table").first()).toBeHidden();
   const enlaces = page.locator("section ul.grid a[target='_blank']");
   await expect(enlaces).toHaveCount(17);
-  for (const enlace of await enlaces.all()) expect((await enlace.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  // `min-h-11` da 44 px justos; con el Pixel 7 (DPR 2,625) y la máquina cargada, la caja llegó a medir 43,9998 (redondeo de
+  // subpíxeles): se admite una centésima.
+  for (const enlace of await enlaces.all()) expect((await enlace.boundingBox())!.height).toBeGreaterThanOrEqual(43.99);
   expect(await sinScrollHorizontal(page)).toBe(true);
 });
 
