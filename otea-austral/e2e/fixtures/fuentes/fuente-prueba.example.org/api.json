@@ -1,0 +1,22 @@
+{
+  "version": "https://jsonfeed.org/version/1.1",
+  "title": "API de prueba (ejemplo)",
+  "_otea": { "nota": "Fixture sintético de prueba de Otea Austral: no es una API real. Enlaces de ejemplo (example.org)." },
+  "items": [
+    {
+      "id": "api-001",
+      "url": "https://fuente-prueba.example.org/datos/serie-1",
+      "title": "Serie de prueba 1 (ejemplo)",
+      "date_published": "2026-10-24T08:00:00Z",
+      "content_text": "TEXTO-DE-LA-FUENTE-NO-SE-GUARDA"
+    },
+    {
+      "id": 2,
+      "url": "https://fuente-prueba.example.org/datos/serie-2?utm_campaign=prueba",
+      "title": "Serie de prueba 2 (ejemplo)",
+      "date_modified": "no es una fecha"
+    },
+    { "id": "api-003", "url": "javascript:alert(1)", "title": "Enlace peligroso (ejemplo)" },
+    "no es un objeto"
+  ]
+}

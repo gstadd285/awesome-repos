@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fixture sintético de prueba de Otea Austral: un host sin robots.txt (404 = permitido). -->
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Sin robots (ejemplo)</title>
+  <id>urn:uuid:00000000-0000-4000-8000-000000000002</id>
+  <updated>2026-10-23T12:00:00Z</updated>
+  <entry>
+    <title>Publicación de prueba (ejemplo)</title>
+    <link href="https://robots-libre.example.org/publicaciones/1"/>
+    <id>tag:robots-libre.example.org,2026:1</id>
+    <updated>2026-10-23T12:00:00Z</updated>
+  </entry>
+</feed>

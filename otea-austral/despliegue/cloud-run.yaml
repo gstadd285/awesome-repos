@@ -1,0 +1,123 @@
+# Plantilla del servicio de Cloud Run. Reemplaza los valores entre «‹ ›» y aplícala con:
+#
+#   gcloud run services replace despliegue/cloud-run.yaml --region ‹REGION›
+#
+# Guía completa y orden de los pasos: docs/despliegue.md.
+# No hay secretos aquí: los valores sensibles se leen de Secret Manager.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: otea-austral
+  annotations:
+    # Público: el sitio es abierto. El panel /admin se protege dentro de la aplicación.
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        # Escala a cero cuando no hay tráfico y limita el gasto máximo.
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+        # CPU solo mientras se atiende una solicitud (más barato).
+        run.googleapis.com/cpu-throttling: "true"
+    spec:
+      serviceAccountName: ‹CUENTA_DE_EJECUCION›@‹PROYECTO›.iam.gserviceaccount.com
+      containerConcurrency: 40
+      timeoutSeconds: 30
+      containers:
+        - image: ‹REGION›-docker.pkg.dev/‹PROYECTO›/otea/otea-austral:‹ETIQUETA›
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            - name: NEXT_PUBLIC_SITE_URL
+              value: https://‹DOMINIO›
+            - name: EMAIL_REMITENTE
+              value: Otea Austral <alertas@‹DOMINIO›>
+            # «cerrada» hasta verificar el correo y la base; luego «abierta».
+            - name: WAITLIST_MODE
+              value: cerrada
+            # Cloud Run directo: 1. Detrás de un balanceador de carga HTTP(S) externo: 2.
+            - name: IP_PROXIES_CONFIABLES
+              value: "1"
+            # La aplicación redirige a https lo que llegue por http (Cloud Run envía X-Forwarded-Proto). Interruptor
+            # de emergencia si una revisión entrara en un bucle de redirecciones: "0". Ver docs/despliegue.md.
+            - name: HTTPS_FORZADO
+              value: "1"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: otea-database-url, key: latest }
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef: { name: otea-resend-api-key, key: latest }
+            # Secreto maestro de la lista de espera: marca de tiempo del formulario y cifrado de correos.
+            - name: WAITLIST_SECRETO
+              valueFrom:
+                secretKeyRef: { name: otea-waitlist-secreto, key: latest }
+            # ── Cuentas de personas usuarias ─────────────────────────────────────────────────────────────────
+            # Por omisión están cerradas: las páginas existen pero no guardan nada. Se abren solo con la decisión de
+            # la persona responsable (docs/cuentas.md, «Abrir las cuentas»): aplicar antes las migraciones 0006 y 0009,
+            # crear el secreto `otea-cuentas-secreto` (npm run cuentas:secreto) y descomentar TODO este bloque. Si falta
+            # algo, la sonda de /api/salud falla y la revisión no recibe tráfico. La cuota gratuita de Resend (100 correos
+            # al día) se reparte con la lista y el resumen diario: WAITLIST_ENVIOS_DIARIOS + CUENTAS_ENVIOS_DIARIOS +
+            # RESUMEN_ENVIOS_DIARIOS <= 100 (por omisión 50 + 20 + 30; los mismos valores en otea-tareas).
+            # `invitacion` es el lanzamiento privado (docs/alertas-reales.md §6): solo se crean cuentas con los códigos
+            # de /admin/invitaciones y las alertas reales se ven solo con sesión. `abiertas`: cualquiera crea su cuenta.
+            # - name: CUENTAS_MODO
+            #   value: invitacion
+            # - name: CUENTAS_ENVIOS_DIARIOS
+            #   value: "20"
+            # - name: CUENTAS_SECRETO
+            #   valueFrom:
+            #     secretKeyRef: { name: otea-cuentas-secreto, key: latest }
+            - name: ADMIN_CLAVE_HASH
+              valueFrom:
+                secretKeyRef: { name: otea-admin-clave-hash, key: latest }
+            - name: ADMIN_TOTP_SECRETO
+              valueFrom:
+                secretKeyRef: { name: otea-admin-totp-secreto, key: latest }
+            - name: ADMIN_SESION_SECRETO
+              valueFrom:
+                secretKeyRef: { name: otea-admin-sesion-secreto, key: latest }
+            # ── Asistente de preguntas ───────────────────────────────────────────────────────────────────────
+            # Por omisión responde con las preguntas frecuentes del sitio: sin IA, sin clave y sin costo. No
+            # necesita nada de lo siguiente. La IA es un servicio de PAGO: se activa solo con la decisión de la
+            # persona responsable (docs/asistente-ia.md), descomentando TODO este bloque con sus valores. Si falta
+            # alguno, la sonda de /api/salud falla y la revisión no recibe tráfico. Aplica antes la migración 0005
+            # (tabla del gasto diario) y fija el límite de gasto en la consola de Anthropic.
+            # - name: ASISTENTE_MODO
+            #   value: ia
+            # - name: ASISTENTE_MODELO
+            #   value: ‹claude-haiku-5-5 | claude-sonnet-5-5 | claude-opus-5-5›
+            # # Dólares por millón de tokens (página de precios de Anthropic).
+            # - name: ASISTENTE_PRECIO_ENTRADA
+            #   value: "‹…›"
+            # - name: ASISTENTE_PRECIO_SALIDA
+            #   value: "‹…›"
+            # # Gasto máximo de IA por día, en dólares (hora de Chile). Opcionales: ASISTENTE_LLAMADAS_DIARIAS (300)
+            # # y ASISTENTE_IA_POR_PERSONA_DIA (30).
+            # - name: ASISTENTE_TOPE_DIARIO_USD
+            #   value: "‹…›"
+            # - name: ANTHROPIC_API_KEY
+            #   valueFrom:
+            #     secretKeyRef: { name: otea-anthropic-api-key, key: latest }
+            # ── Aportes voluntarios por Mercado Pago (docs/despliegue.md §15) ──────────────────────────────────────
+            # Apagados sin esta variable (/apoyar da 404). Es el «link de pago» de la dueña, no un secreto: https,
+            # link.mercadopago.cl o mpago.la, con su ruta y sin parámetros; uno inválido hace fallar la sonda.
+            # - name: DONACIONES_URL
+            #   value: https://link.mercadopago.cl/‹nombre›
+          # La sonda valida el proceso y la configuración (no toca la base de datos):
+          # una revisión mal configurada no recibe tráfico.
+          startupProbe:
+            httpGet: { path: /api/salud, port: 8080 }
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 10
+          livenessProbe:
+            httpGet: { path: /api/salud, port: 8080 }
+            periodSeconds: 30
+            timeoutSeconds: 2
+            failureThreshold: 3
