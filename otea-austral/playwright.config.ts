@@ -166,7 +166,8 @@ export default defineConfig({
         ASISTENTE_TOPE_DIARIO_USD: "10",
         ASISTENTE_LLAMADAS_DIARIAS: "10000",
         ASISTENTE_URL_API_PRUEBA: `http://127.0.0.1:${PUERTO_API_FALSA}`,
-        // Aportes activos solo aquí (la principal los deja apagados: la portada y su presupuesto no cambian).
+        // Aportes activos solo aquí (la principal los deja apagados): la portada termina con «Apoya el proyecto» y
+        // `presupuesto.spec.ts` la mide también así.
         DONACIONES_URL: DONACIONES_URL_PRUEBA,
         ...tareas,
         ...borradores,

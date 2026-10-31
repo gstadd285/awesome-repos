@@ -1,5 +1,6 @@
 import { gzipSync } from "node:zlib";
 import { expect, test, type Browser } from "@playwright/test";
+import { URL_IA } from "./puertos";
 
 /**
  * Presupuesto de la portada (a partir de `peso.mjs` de la auditoría): lo que descarga Chromium con la caché
@@ -19,8 +20,20 @@ import { expect, test, type Browser } from "@playwright/test";
  *   elementos que el sitio usa (~0,5 KB), los valores por omisión de Tailwind en línea (~0,3 KB), una sola regla de
  *   impresión, el sol de latón como variable (sus cuatro copias quedaban a más de 32 KB, fuera de la ventana de gzip) y
  *   las transiciones de los botones en una regla propia (sin `--tw-duration`/`--tw-ease`). Lo que se sume se compensa.
+ * - Con aportes (3201): la sección «Apoya el proyecto» suma 23 nodos; se compensaron sin cambio visual (numeral, flecha y
+ *   texto del menú del teléfono y el punto de los rótulos, como pseudoelementos). Medido: 1.368 nodos en el 3200 y 1.389
+ *   con la sección; 123 animaciones en ambos (su texto suelta la animación lejos de la pantalla); CSS 29,50 KB.
  */
 const UMBRAL = { transferidoKB: 390, nodos: 1400, animaciones: 135, cssKB: 30 };
+
+/**
+ * La principal (3200, como hoy: sin aportes) y la segunda instancia (3201), donde los aportes están activos y la portada
+ * termina con «Apoya el proyecto»: con `DONACIONES_URL` configurada la portada también debe caber, con los mismos umbrales.
+ */
+const PORTADAS = [
+  { nombre: "", url: undefined },
+  { nombre: ", con «Apoya el proyecto» (3201)", url: URL_IA },
+] as const;
 
 const VENTANAS = [
   { nombre: "escritorio 1440", opciones: { viewport: { width: 1440, height: 900 } } },
@@ -68,21 +81,23 @@ async function medir(browser: Browser, opciones: (typeof VENTANAS)[number]["opci
   // como `peso.mjs`.
   const animaciones = await page.evaluate(() => document.getAnimations().length);
   const nodos = await page.evaluate(() => document.getElementsByTagName("*").length);
+  const aportes = await page.locator("#aportes").count();
   const transferidoKB = [...bytes.values()].reduce((a, b) => a + b, 0) / 1024;
   const hojas = await page.evaluate(() => [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((l) => l.href));
   let cssBytes = 0;
   for (const hoja of new Set(hojas)) cssBytes += gzipSync(await (await page.request.get(hoja)).body(), { level: 6 }).length;
   await contexto.close();
-  return { transferidoKB, nodos, animaciones, cssKB: cssBytes / 1024 };
+  return { transferidoKB, nodos, animaciones, cssKB: cssBytes / 1024, aportes };
 }
 
-for (const { nombre, opciones } of VENTANAS) {
-  test(`la portada cabe en su presupuesto (${nombre})`, async ({ browser, baseURL }, info) => {
+for (const portada of PORTADAS) for (const { nombre, opciones } of VENTANAS) {
+  test(`la portada cabe en su presupuesto (${nombre}${portada.nombre})`, async ({ browser, baseURL }, info) => {
     test.skip(info.project.name !== "escritorio", "abre sus propias ventanas");
-    const m = await medir(browser, opciones, baseURL!);
+    const m = await medir(browser, opciones, portada.url ?? baseURL!);
+    if (portada.url) expect(m.aportes, "la sección de aportes está en la portada").toBe(1);
     info.annotations.push({
       type: "medida",
-      description: `${nombre}: ${m.transferidoKB.toFixed(1)} KB, ${m.nodos} nodos, ${m.animaciones} animaciones, CSS ${m.cssKB.toFixed(2)} KB`,
+      description: `${nombre}${portada.nombre}: ${m.transferidoKB.toFixed(1)} KB, ${m.nodos} nodos, ${m.animaciones} animaciones, CSS ${m.cssKB.toFixed(2)} KB`,
     });
     expect(m.cssKB, "KB de CSS comprimido").toBeLessThan(UMBRAL.cssKB);
     expect(m.transferidoKB, "KB transferidos").toBeLessThan(UMBRAL.transferidoKB);
