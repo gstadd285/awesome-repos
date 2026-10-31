@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { seguirTemasAccion } from "@/app/acciones/cuenta";
 import { AlertExamples } from "@/components/home/AlertExamples";
+import { Aportes } from "@/components/home/Aportes";
 import { Asistente } from "@/components/home/Asistente";
 import { PreOpening } from "@/components/home/PreOpening";
 import { Story } from "@/components/home/Story";
@@ -12,7 +13,7 @@ import { modoAsistente } from "@/lib/asistente/modo";
 import { sesionCuenta } from "@/lib/cuentas/acceso";
 import { servicioCuentas } from "@/lib/cuentas/instancia";
 import { TEMAS, type Tema } from "@/lib/domain/temas";
-import { cuentasAbiertas } from "@/lib/env";
+import { cuentasAbiertas, donacionesActivas } from "@/lib/env";
 import { SITIO } from "@/lib/site";
 
 /** Datos estructurados de la organización (schema.org), con `<` escapado. */
@@ -40,7 +41,8 @@ function DatosEstructurados({ nonce }: { nonce?: string }) {
 
 /**
  * Orden pensado para quien llega por primera vez: qué es y cómo funciona (historia), cómo se ve una
- * alerta, qué temas seguir, qué llega cada mañana, dónde resolver dudas y cómo entrar a la lista de espera.
+ * alerta, qué temas seguir, qué llega cada mañana, dónde resolver dudas y cómo entrar a la lista de espera. Al final, solo
+ * con el apartado de aportes activo (`DONACIONES_URL`), «Apoya el proyecto»; apagado, no queda rastro en el HTML.
  */
 export default async function Home() {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
@@ -60,6 +62,7 @@ export default async function Home() {
         <PreOpening />
         <Asistente modo={modoAsistente()} />
         <Waitlist />
+        {donacionesActivas() ? <Aportes /> : null}
       </main>
       <SiteFooter />
     </>

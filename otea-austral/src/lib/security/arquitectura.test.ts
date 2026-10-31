@@ -446,14 +446,20 @@ describe("aportes por Mercado Pago: solo un enlace hacia afuera (docs/despliegue
     expect(csp).toMatch(/form-action 'self'/);
   });
 
-  it("los puntos de entrada (pie, menú del teléfono y mapa del sitio) aparecen solo con el apartado activo", () => {
+  it("los puntos de entrada (sección final de la portada, pie, menú del teléfono y mapa del sitio) aparecen solo con el apartado activo", () => {
     const conRuta = fuentes.filter((r) => /["']\/apoyar["']/.test(leer(r))).map(relativa);
     expect(conRuta).toEqual([
       "src/app/apoyar/page.tsx",
+      "src/components/home/Aportes.tsx",
       "src/components/layout/SiteFooter.tsx",
       "src/components/layout/SiteHeader.tsx",
       "src/lib/site.ts",
     ]);
+    // La sección de la portada se monta solo con el apartado activo y no enlaza hacia afuera (eso queda en /apoyar).
+    const portada = leer(path.join(SRC, "app/page.tsx"));
+    expect(portada).toMatch(/\{donacionesActivas\(\) \? <Aportes \/> : null\}/);
+    expect(portada.match(/<Aportes\b/g)).toHaveLength(1);
+    expect(leer(path.join(SRC, "components/home/Aportes.tsx"))).not.toMatch(/https?:|target=|<a\b/);
     expect(leer(path.join(SRC, "components/layout/SiteFooter.tsx"))).toMatch(/donacionesActivas\(\) \? \(\n\s*<li>\n\s*<Link href="\/apoyar"/);
     expect(leer(path.join(SRC, "components/layout/SiteHeader.tsx"))).toMatch(/donacionesActivas\(\) \? \(\n\s*<Link href="\/apoyar"/);
     expect(leer(path.join(SRC, "lib/site.ts"))).toMatch(/donacionesActivas\(\) \? \[\.\.\.RUTAS_PUBLICAS, "\/apoyar"\] : \[\.\.\.RUTAS_PUBLICAS\]/);

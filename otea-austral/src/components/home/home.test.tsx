@@ -7,6 +7,7 @@ import { vistaSinPrimaria } from "@/data/ejemplo";
 import { frasesProhibidas } from "@/lib/domain/lenguaje";
 import { AlertExamples } from "./AlertExamples";
 import { AlertaViva } from "./AlertaViva";
+import { Aportes } from "./Aportes";
 import { AsiLlega } from "./AsiLlega";
 import { Blueprint } from "./Blueprint";
 import { Board } from "./Board";
@@ -336,5 +337,35 @@ describe("AsiLlega · bandeja", () => {
     expect(bandeja.querySelector(".notif-frente .notif-hora")).toHaveTextContent("(objetivo)");
     expect(container.querySelector("[style]")).toBeNull();
     expect(frasesProhibidas(bandeja.textContent ?? "")).toEqual([]);
+  });
+});
+
+describe("Aportes · «Apoya el proyecto»", () => {
+  it("un h2 con el estilo de las demás secciones, el aporte voluntario y un botón de latón que lleva a /apoyar", () => {
+    // Tope de la portada (`e2e/presupuesto.spec.ts`): con los aportes activos solo caben 23 nodos más.
+    const { container } = render(<Aportes />);
+    const seccion = container.querySelector("section#aportes")!;
+    const titulo = screen.getByRole("heading", { level: 2 });
+    expect(titulo).toHaveAccessibleName("Apoya el proyecto.");
+    expect(seccion).toHaveAttribute("aria-labelledby", titulo.id);
+    // El mismo titular que «Elige qué seguir» o «Recibe las alertas primero»: sin escala propia.
+    expect(titulo).toHaveClass("titular", "text-titulo", "text-texto", "kx-palabras", "kx-scroll");
+    expect(seccion.querySelector(".micro")).toHaveTextContent("Aportes");
+    expect(seccion).toHaveTextContent("El aporte es voluntario y ayuda a mantener el sitio en línea.");
+    // Un solo enlace, interno: Mercado Pago solo se enlaza desde /apoyar.
+    const enlaces = screen.getAllByRole("link");
+    expect(enlaces).toHaveLength(1);
+    expect(enlaces[0]).toHaveAccessibleName("Ver cómo aportar");
+    expect(enlaces[0]).toHaveAttribute("href", "/apoyar");
+    expect(enlaces[0]).not.toHaveAttribute("target");
+    expect(enlaces[0]).toHaveClass("boton-laton", "py-3", "text-sm");
+    expect(enlaces[0]).toHaveAttribute("data-magnetico");
+    // Sin presión ni cifras: ni metas, ni contadores, ni porcentajes, ni lenguaje de recomendación.
+    const texto = [...seccion.querySelectorAll(".micro, .sr-only, a")].map((e) => e.textContent).join(" ");
+    expect(texto).toContain("Apoya el proyecto.");
+    expect(texto).not.toMatch(/\d|%|\bmetas?\b|\bfaltan?\b|urgente|\bahora\b|\bya\b/i);
+    expect(frasesProhibidas(seccion.textContent ?? "")).toEqual([]);
+    expect(container.querySelector("[style]")).toBeNull();
+    expect(container.getElementsByTagName("*").length).toBeLessThanOrEqual(23);
   });
 });

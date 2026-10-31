@@ -7190,7 +7190,7 @@ html[data-movimiento="completo"] {
 
       /* La copia decorativa de los titulares y entradas del producto, lejos de la pantalla, ya no se dibuja (regla del
          texto en movimiento); aquí además suelta sus animaciones. Vuelven en el mismo cuadro en que vuelve a verse. */
-      :is(#ejemplos, #temas, .noche, #lista-de-espera) .kx-scroll > .kx-visual[data-fuera] * {
+      :is(#ejemplos, #temas, .noche, #lista-de-espera, #aportes) .kx-scroll > .kx-visual[data-fuera] * {
         animation: none;
       }
     }
