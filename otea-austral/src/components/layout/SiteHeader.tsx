@@ -96,14 +96,12 @@ export function SiteHeader({ actual }: SiteHeaderProps) {
           </button>
         </div>
         <ul className="menu-lista">
-          {NAV_MENU.map((e, i) => (
+          {/* El numeral (01…) y la flecha son `::before` y `::after` de `.menu-enlace`, y el texto va sin `span`: tres
+              nodos menos por enlace en cada página (presupuesto de la portada). */}
+          {NAV_MENU.map((e) => (
             <li key={e.href}>
               <Link href={e.href} aria-current={enPagina(e.href)} className="menu-enlace">
-                <span className="menu-numero" aria-hidden="true">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="menu-texto">{e.texto}</span>
-                <span className="menu-marca" aria-hidden="true" />
+                {e.texto}
               </Link>
             </li>
           ))}

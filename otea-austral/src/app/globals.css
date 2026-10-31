@@ -958,6 +958,7 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   flex: 1 0 auto;
   margin-top: 16px;
   margin-bottom: 32px;
+  counter-reset: menu;
 }
 
 .menu-lista > li {
@@ -985,6 +986,8 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   line-height: 1.05;
   letter-spacing: -0.025em;
   text-transform: uppercase;
+  /* El texto es un elemento flex anónimo (sin `span` propio): con `anywhere` su ancho mínimo no desborda la fila. */
+  overflow-wrap: anywhere;
   color: var(--color-texto);
   border-radius: var(--radius-badge);
   box-shadow: var(--anillo, 0 0 #0000);
@@ -1017,8 +1020,20 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   }
 }
 
-/* Numeral grabado en latón oscuro (5,8:1 sobre papel alto); decorativo, fuera del nombre accesible. */
-.menu-numero {
+/* El punto de latón del rótulo de sección (`SectionEyebrow`): un `::before`, no un nodo (uno menos en cada sección). */
+.rotulo-punto::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-acento);
+}
+
+/* Numeral grabado en latón oscuro (5,8:1 sobre papel alto); decorativo, fuera del nombre accesible (texto alternativo
+   vacío): un contador en el `::before` del enlace, no un nodo. */
+.menu-enlace::before {
+  content: counter(menu, decimal-leading-zero) / "";
+  counter-increment: menu;
   min-width: 22px;
   /* Centrado ópticamente con las mayúsculas (el mono de 12 px tiene la altura de x más baja). */
   translate: 0 -0.08em;
@@ -1030,13 +1045,9 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   font-variant-numeric: tabular-nums;
 }
 
-.menu-texto {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
 /* Flecha que avanza al pasar el cursor; en la página actual, un punto de latón en su lugar. */
-.menu-marca {
+.menu-enlace::after {
+  content: "";
   margin-inline-start: auto;
   flex: none;
   width: 16px;
@@ -1046,11 +1057,11 @@ body:has(> .salto-contenido:focus) header > div > a:first-child {
   mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 8h11M9 4l4 4-4 4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
 }
 
-.menu-enlace[aria-current="page"] .menu-numero {
+.menu-enlace[aria-current="page"]::before {
   color: var(--color-texto);
 }
 
-.menu-enlace[aria-current="page"] .menu-marca {
+.menu-enlace[aria-current="page"]::after {
   width: 8px;
   height: 8px;
   margin-inline-end: 4px;
@@ -5905,18 +5916,18 @@ html[data-movimiento="completo"] {
       scale var(--dur-1) var(--ease-salida);
   }
 
-  .menu-marca {
+  .menu-enlace::after {
     transition: translate var(--dur-3) var(--ease-salida);
   }
 
   /* Ratón: la flecha avanza 4 px y la pastilla de la navegación se desliza de un enlace a otro (320 ms) y se apaga
      en 200 ms. Al entrar en la navegación aparece en su sitio, sin viajar (`data-nav-salto`, una sola imagen). */
   @media (hover: hover) and (pointer: fine) {
-    .menu-enlace:hover .menu-marca {
+    .menu-enlace:hover::after {
       translate: 4px 0;
     }
 
-    .menu-enlace[aria-current="page"]:hover .menu-marca {
+    .menu-enlace[aria-current="page"]:hover::after {
       translate: none;
     }
 
