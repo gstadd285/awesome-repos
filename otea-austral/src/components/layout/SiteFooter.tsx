@@ -6,14 +6,16 @@ import { EnlaceCuenta } from "./EnlaceCuenta";
 import { NAV_CONFIANZA, NAV_PRINCIPAL } from "./navigation";
 
 const ENLACE = "flex min-h-11 items-center text-[15px] text-niebla hover:underline underline-offset-4";
+/** «Apoyar el proyecto» en latón (5,6:1 sobre tinta, como los rótulos de las columnas): se distingue sin cambiar el pie. */
+const ENLACE_APOYAR = "flex min-h-11 items-center text-[15px] text-brass hover:underline underline-offset-4";
 
 /**
  * Pie en tinta: un horizonte de latón con su resplandor, cuatro columnas (marca y lema, Producto, Confianza y
  * Preferencias), el aviso de que no es asesoría y la firma «Otea Austral» en Source Serif 4, decorativa, que el latón
  * recorre al llegar (un velo que se retira, ligado a la vista del pie; sin línea de tiempo o con movimiento reducido,
  * entera en latón).
- * Sobre tinta el foco pasa a latón (`en-tinta`). «Apoyar el proyecto» (al final de Confianza) aparece solo con el apartado de
- * aportes activo (`DONACIONES_URL`).
+ * Sobre tinta el foco pasa a latón (`en-tinta`). «Apoyar el proyecto» (al final de Confianza, en latón) aparece solo con el
+ * apartado de aportes activo (`DONACIONES_URL`).
  */
 export function SiteFooter() {
   return (
@@ -54,7 +56,7 @@ export function SiteFooter() {
             ))}
             {donacionesActivas() ? (
               <li>
-                <Link href="/apoyar" className={ENLACE}>
+                <Link href="/apoyar" className={ENLACE_APOYAR}>
                   Apoyar el proyecto
                 </Link>
               </li>
