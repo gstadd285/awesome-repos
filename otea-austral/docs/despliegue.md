@@ -645,7 +645,10 @@ botón de latón es **solo un enlace** al «link de pago» de la dueña, en una 
 ni widgets) ni procesa pagos o datos de tarjeta. **La CSP no cambia.**
 
 **Apagado** (sin `DONACIONES_URL`, como hoy): `/apoyar` responde 404 (también sus metadatos) y no aparece en ninguna parte: ni
-en el pie, ni en el menú del teléfono, ni en el mapa del sitio. **Activo**: la página, «Apoyar el proyecto» al final de la
+en la portada, ni en el pie, ni en el menú del teléfono, ni en el mapa del sitio (el HTML no trae rastro). **Activo**: la página;
+al final de la portada, justo antes del pie, la sección **«Apoya el proyecto»** (titular del mismo tamaño que los demás, «El
+aporte es voluntario y ayuda a mantener el sitio en línea» y el botón de latón «Ver cómo aportar», que lleva a `/apoyar`: el
+único enlace a Mercado Pago sigue siendo el de esa página; sin cifras ni metas); «Apoyar el proyecto» **en latón** al final de la
 columna «Confianza» del pie y junto a la cuenta en el menú del teléfono, y `/apoyar` en `sitemap.xml`.
 
 **Dominios permitidos** (`src/lib/donaciones/enlace.ts`, host exacto, verificados el 2026-10-28):
@@ -676,8 +679,9 @@ oficial, agregarlo a `DOMINIOS_DONACIONES` con su caso en `enlace.test.ts` y des
 
    Un valor inválido (http, otro dominio, un subdominio, parámetros) hace fallar `/api/salud`: **la revisión no recibe tráfico**
    y sigue la anterior. Corrígelo y vuelve a desplegar. En local, `DONACIONES_URL=… npm start`.
-3. **Comprueba**: `curl -sI "$URL/apoyar"` da 200, la página muestra el botón «Aportar en Mercado Pago», y el pie y
-   `$URL/sitemap.xml` incluyen `/apoyar`; el botón abre el link de la dueña en una pestaña nueva.
+3. **Comprueba**: `curl -sI "$URL/apoyar"` da 200, la página muestra el botón «Aportar en Mercado Pago», la portada termina
+   con «Apoya el proyecto», y el pie y `$URL/sitemap.xml` incluyen `/apoyar`; el botón abre el link de la dueña en una pestaña
+   nueva.
 
 Antes de anunciarlo, la revisión legal (`alertas-reales.md` §9): la política de privacidad ya menciona los aportes (desde la
 versión `2026-10-borrador-5`), pero los textos siguen siendo borradores.
@@ -694,7 +698,9 @@ gcloud run services update otea-austral --region $REGION --remove-env-vars DONAC
 `src/lib/donaciones/enlace.test.ts` y `src/lib/env.test.ts`, y `arquitectura.test.ts` vigila que nada de Mercado Pago se cargue,
 que la CSP no cambie y que los puntos de entrada dependan del apartado. La e2e `e2e/apoyar.spec.ts` lo prueba activo en el 3201
 (con el link **de prueba** `DONACIONES_URL_PRUEBA` de `e2e/puertos.ts`; la pestaña de Mercado Pago se responde en la propia
-prueba, sin red) y apagado en el 3200.
+prueba, sin red; también la sección de la portada: un `h2` en orden, foco visible, 44 px y quieta con movimiento reducido) y
+apagado en el 3200 (sin la sección). `e2e/presupuesto.spec.ts` mide además la portada **con** la sección (3201): debe caber en los
+mismos umbrales (CSS < 30 KB gzip, < 1.400 nodos, < 135 animaciones a la vez).
 
 ## 16. Resumen diario por correo (en `otea-tareas`, apagado por omisión)
 

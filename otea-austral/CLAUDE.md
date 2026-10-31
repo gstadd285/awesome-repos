@@ -124,8 +124,9 @@ Reglas:
 - Contraste mínimo AA: lo verifica `src/lib/design/contrast.test.ts` leyendo `globals.css`. El
   latón y la bruma no sirven para texto chico sobre el fondo claro.
 - **Presupuesto de la portada** (`e2e/presupuesto.spec.ts`, umbrales definitivos de T7): transferido < 390 KB, nodos
-  < 1.400, animaciones a la vez < 135 y **CSS < 30 KB gzip** (las dos hojas; hoy 29,97). Todo `globals.css` viaja con la
-  portada: lo que se sume se compensa (ver «Lo aprendido (pulido y rendimiento final)»).
+  < 1.400, animaciones a la vez < 135 y **CSS < 30 KB gzip** (las dos hojas; hoy 29,50). También se mide la portada con
+  aportes (3201, con «Apoya el proyecto»: 1.389 nodos). Todo `globals.css` viaja con la portada: lo que se sume se compensa
+  (ver «Lo aprendido (pulido y rendimiento final)» y «Lo aprendido (aportes y e2e)»).
 - Objetivos táctiles de 44 px (`min-h-11`, o relleno con margen negativo para no mover nada) en botones, `summary`, migas,
   pie e índice.
 - **Sin atributos `style` en el HTML**: la CSP los bloquea. Todo con clases (las posiciones fijas
@@ -439,7 +440,8 @@ en `src/lib/security/nist-csf.ts` (publicado en `/seguridad`), gobierno y riesgo
     GET nunca cambia nada.
   - **Nada se publica sin la dueña**: todo espera en `/admin/eventos`; el tablero de `/admin` abre con los avisos de operación.
 - **Aportes por Mercado Pago** (`/apoyar`, `src/lib/donaciones/enlace.ts`; operación en `docs/despliegue.md` §15): **apagados por
-  omisión** (sin `DONACIONES_URL`, `/apoyar` y sus metadatos dan 404 y no hay enlace en el pie, el menú ni el mapa del sitio). Solo un
+  omisión** (sin `DONACIONES_URL`, `/apoyar` y sus metadatos dan 404 y no hay rastro en la portada, el pie, el menú ni el mapa del
+  sitio). Activos, la portada termina con «Apoya el proyecto» (`components/home/Aportes.tsx`, que solo enlaza a `/apoyar`). Solo un
   enlace hacia afuera (`target="_blank"`, `rel="noopener noreferrer"`, `safeHref`): nada de Mercado Pago se carga, el sitio no procesa
   pagos y la CSP no cambia. `DOMINIOS_DONACIONES` es una lista cerrada de host exacto (`link.mercadopago.cl`, `mpago.la`); sumar uno
   exige verificarlo en una fuente oficial y su caso en `enlace.test.ts`. Los textos de la página solo usan cifras reales, estimadas.
@@ -547,7 +549,7 @@ src/
     cuenta/            formularios y paneles de la cuenta (entrar, crear, perfil, seguridad, datos)
     brand/             Emblem y Logo
     home/              Story (héroe, cinta, plano, tablero), Temas (selector), ejemplos de alertas,
-                       pre-apertura, lista de espera
+                       pre-apertura, lista de espera, aportes (sección final, solo con DONACIONES_URL)
     layout/            cabecera, pie, ContentPage, Migas (ruta de navegación), transición entre páginas
     motion/            TextoEnMovimiento (texto que aparece como en un video), ScriptMovimiento y
                        MovimientoSync (puerta de movimiento), ControlesMovimiento (aviso y conmutador)
@@ -965,6 +967,10 @@ docs/                  plan, despliegue, alertas reales, rutina diaria, lanzamie
 - **Un `metadata` fijo sale también en la 404** cuando la página llama a `notFound()` (el `<title>` delataba el apartado apagado):
   lo que no debe existir usa `generateMetadata` con el mismo `notFound()`. El flujo RSC de esa ruta responde 200 con la 404 dentro.
 - **`getByRole` no ve un popover cerrado** (el menú del teléfono): para comprobar que un enlace existe sin abrirlo, un selector CSS.
+- **La portada con aportes vive al borde del tope de nodos** (1.392 antes de la sección; tope 1.400): «Apoya el proyecto» cuesta
+  23 y se compensó sin cambio visual: en el menú del teléfono el numeral es un contador en `.menu-enlace::before` (texto
+  alternativo vacío), la flecha es `::after` y el texto va sin `span` (−21 nodos en cada página), y el punto del rótulo de
+  sección es `.rotulo-punto::before`. Antes de sumar nodos a la portada, mide también la del 3201.
 - **`response.text()` de una respuesta del navegador falla al azar** si la página ya navegó o se volvió a pintar (Chromium descartó el
   cuerpo: «No data found for resource with given identifier»). Para leer lo que devuelve una Server Action, `capturarCuerposPost`
   (`e2e/ayudas.ts`: `page.route` + `route.fetch()` + `route.fulfill({ response })`). Las de `request.get/post` no tienen el problema.
