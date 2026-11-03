@@ -1,0 +1,116 @@
+/**
+ * Registro de eventos de seguridad (NIST CSF PR.PS-04, DE.CM-09).
+ * Emite una línea JSON por evento con campos permitidos y texto saneado:
+ * nunca correos, IP, tokens ni parámetros de URL. Sin datos personales.
+ */
+
+export type SecurityEvent =
+  | {
+      tipo: "csp_violation";
+      directiva: string;
+      bloqueado: string;
+      documento: string;
+      disposicion: string;
+      fuente?: string;
+      linea?: number;
+      columna?: number;
+    }
+  | { tipo: "limite_excedido"; recurso: string }
+  /** Falla de un servicio externo; `codigo` es un código técnico, nunca el mensaje. */
+  | { tipo: "fallo_servicio"; servicio: "base_de_datos" | "correo"; codigo: string }
+  /** Intentos de entrar al panel interno (sin la clave ni el código usados). */
+  | { tipo: "acceso_admin"; resultado: "correcto" | "rechazado" | "limite" | "cierre" }
+  /** Entrar a la cuenta de una persona usuaria (sin el correo, la contraseña ni el código usados). */
+  | { tipo: "acceso_cuenta"; resultado: "correcto" | "rechazado" | "limite" | "dos_pasos" | "dos_pasos_rechazado" | "cierre" }
+  /** Algo que pasó con una cuenta: solo qué fue, nunca de quién ni su correo. */
+  | {
+      tipo: "cuenta";
+      evento:
+        | "alta_pedida"
+        | "alta"
+        | "alta_repetida"
+        | "restablecer_pedido"
+        | "clave_cambiada"
+        | "clave_restablecida"
+        | "dos_pasos_activados"
+        | "dos_pasos_desactivados"
+        | "codigos_regenerados"
+        | "codigo_recuperacion"
+        | "sesiones_cerradas"
+        | "eliminada"
+        | "datos_exportados";
+    }
+  /**
+   * Invitaciones del acceso anticipado: emitida o revocada en el panel, usada al crear una cuenta, o rechazada (un pedido de
+   * alta con un código que no sirve). Nunca el código, su hash ni el correo.
+   */
+  | { tipo: "invitacion"; evento: "emitida" | "revocada" | "usada" | "rechazada" }
+  /** Una pregunta al asistente: solo la categoría del resultado, nunca el texto ni quién preguntó. */
+  | { tipo: "asistente"; resultado: "ia" | "sin_respuesta" | "negativa" | "degradada"; motivo?: string }
+  /**
+   * Una corrida de una tarea programada (`otea-tareas`): resultado y conteos, nunca URLs, títulos ni textos. Cada
+   * corrida deja uno; sin eventos de ingesta en 3 h, la alerta de Cloud Monitoring avisa (`docs/despliegue.md` §13); el
+   * resumen diario deja otro por día (§16).
+   */
+  | {
+      tipo: "tarea";
+      tarea: "ingesta" | "resumen";
+      resultado: "ok" | "parcial" | "fallida" | "omitida" | "sin_feeds" | "rechazada";
+      feeds?: number;
+      nuevos?: number;
+      fallos?: number;
+      /** Ítems que la corrida agrupó en eventos candidatos. */
+      agrupados?: number;
+      /** Borradores con IA que dejó la corrida en la cola. */
+      borradores?: number;
+      /** Resumen diario: cuentas que lo pidieron y que la corrida revisó, y cuántos resúmenes salieron. */
+      cuentas?: number;
+      enviados?: number;
+    }
+  /** La baja de un clic del resumen diario: solo si sirvió el enlace, nunca el token ni de qué cuenta. */
+  | { tipo: "resumen_baja"; resultado: "baja" | "enlace_invalido" | "limite" }
+  /**
+   * Un intento de redactar un borrador con IA (`otea-tareas`): el resultado y un código, nunca el texto de una fuente, el
+   * borrador, un título ni una URL. `sin_presupuesto`: el tope (o la base) no dejó llamar al modelo.
+   */
+  | {
+      tipo: "borrador";
+      resultado: "redactado" | "lectura_manual" | "rechazo" | "revision" | "error" | "sin_presupuesto";
+      motivo?: string;
+    }
+  /** Un feed que la ingesta deja en pausa: el id de la fuente en el registro y un código, nunca la URL ni el texto. */
+  | { tipo: "ingesta_feed"; fuente: string; evento: "pausa" | "robots_prohibido"; codigo: string };
+
+const MAX_LARGO = 300;
+
+const PATRONES: [RegExp, string][] = [
+  // Parámetros y fragmentos de URL: pueden llevar datos personales o tokens.
+  [/(https?:\/\/[^\s?#"']*)[?#][^\s"']*/gi, "$1"],
+  [/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[correo]"],
+  [/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "[ip]"],
+  [/\b(?:[0-9a-f]{1,4}:){3,7}[0-9a-f]{1,4}\b/gi, "[ip]"],
+  // Secuencias largas tipo token, clave o hash.
+  [/\b[A-Za-z0-9_\-+/=]{32,}\b/g, "[token]"],
+];
+
+/** Elimina datos sensibles y acota el largo de un texto antes de registrarlo. */
+export function sanitizeLogText(texto: string): string {
+  let limpio = texto.replace(/[\u0000-\u001f\u007f]/g, " ");
+  for (const [patron, reemplazo] of PATRONES) {
+    limpio = limpio.replace(patron, reemplazo);
+  }
+  return limpio.length > MAX_LARGO ? `${limpio.slice(0, MAX_LARGO)}…` : limpio;
+}
+
+export function formatSecurityEvent(evento: SecurityEvent, ahora = new Date()): string {
+  const campos: Record<string, string | number> = { nivel: "seguridad", fecha: ahora.toISOString() };
+  for (const [clave, valor] of Object.entries(evento)) {
+    if (typeof valor === "string") campos[clave] = sanitizeLogText(valor);
+    else if (typeof valor === "number" && Number.isFinite(valor)) campos[clave] = valor;
+  }
+  return JSON.stringify(campos);
+}
+
+export function logSecurityEvent(evento: SecurityEvent): void {
+  console.warn(formatSecurityEvent(evento));
+}

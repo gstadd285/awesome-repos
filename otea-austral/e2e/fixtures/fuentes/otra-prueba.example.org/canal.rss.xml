@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture sintético de prueba de Otea Austral (agrupación en eventos, F3): un segundo organismo «(ejemplo)» informa la
+     misma decisión de tasa que fuente-prueba.example.org/canal.rss.xml. No es un feed real ni copia uno; enlaces de
+     ejemplo (example.org). Sin robots.txt (404 = permitido). La marca TEXTO-DE-LA-FUENTE-NO-SE-GUARDA nunca debe llegar
+     a la base. -->
+<rss version="2.0">
+  <channel>
+    <title>Segundo canal de prueba (ejemplo)</title>
+    <link>https://otra-prueba.example.org/</link>
+    <description>Canal sintético para las pruebas de la agrupación. TEXTO-DE-LA-FUENTE-NO-SE-GUARDA</description>
+    <item>
+      <title>Nota de prueba (ejemplo) sobre la decisión de tasa</title>
+      <link>https://otra-prueba.example.org/notas/2026/decision-tasa</link>
+      <guid isPermaLink="false">otra-2026-017</guid>
+      <pubDate>Wed, 21 Oct 2026 10:00:00 -0300</pubDate>
+      <description>TEXTO-DE-LA-FUENTE-NO-SE-GUARDA: párrafo sintético que la ingesta nunca debe leer.</description>
+    </item>
+    <item>
+      <title>Boletín de prueba (ejemplo) del precio del cobre</title>
+      <link>https://otra-prueba.example.org/boletines/cobre-octubre</link>
+      <pubDate>Wed, 21 Oct 2026 11:00:00 -0300</pubDate>
+    </item>
+  </channel>
+</rss>

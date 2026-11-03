@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture sintético de prueba de Otea Austral: su robots.txt responde 500, así que este feed nunca debe pedirse. -->
+<rss version="2.0"><channel><title>Robots caído (ejemplo)</title>
+  <item><title>No debe leerse (ejemplo)</title><link>https://robots-caido.example.org/1</link></item>
+</channel></rss>

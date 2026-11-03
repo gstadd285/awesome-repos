@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="estilo.xsl"?>
+<!-- Fixture sintético de prueba de Otea Austral: no es un feed real ni copia uno. Organismo y enlaces de ejemplo
+     (example.org). La marca TEXTO-DE-LA-FUENTE-NO-SE-GUARDA nunca debe llegar a la base ni a los registros. -->
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Canal de prueba (ejemplo)</title>
+    <link>https://fuente-prueba.example.org/</link>
+    <description>Canal sintético para las pruebas de la ingesta. TEXTO-DE-LA-FUENTE-NO-SE-GUARDA</description>
+    <atom:link href="https://fuente-prueba.example.org/canal.rss.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Comunicado de prueba 1 (ejemplo): decisión de tasa</title>
+      <link>https://fuente-prueba.example.org/comunicados/2026/prueba-1</link>
+      <guid isPermaLink="false">prueba-2026-001</guid>
+      <pubDate>Tue, 20 Oct 2026 14:30:00 -0300</pubDate>
+      <description>TEXTO-DE-LA-FUENTE-NO-SE-GUARDA: párrafo sintético que la ingesta nunca debe leer.</description>
+    </item>
+    <item>
+      <title><![CDATA[Informe de prueba 2 (ejemplo) & <b>anexo</b>]]></title>
+      <link>https://FUENTE-PRUEBA.example.org/informes/prueba-2/?utm_source=rss&amp;utm_medium=feed&amp;id=2#arriba</link>
+      <pubDate>Wed, 21 Oct 2026 09:00:00 GMT</pubDate>
+      <description><![CDATA[<p>TEXTO-DE-LA-FUENTE-NO-SE-GUARDA</p>]]></description>
+    </item>
+    <item>
+      <title>Enlace fuera del dominio (ejemplo)</title>
+      <link>https://otro-dominio.example.net/comunicado</link>
+      <guid>https://otro-dominio.example.net/comunicado</guid>
+    </item>
+    <item>
+      <title>Título con &amp;lt;i&amp;gt;HTML escapado&amp;lt;/i&amp;gt;,&#x200B; invisibles&#x202E; y&#9;tabulación</title>
+      <link>/avisos/prueba-4</link>
+      <pubDate>Mon, 31 Feb 2026 10:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Enlace sin https (ejemplo)</title>
+      <link>http://fuente-prueba.example.org/inseguro</link>
+    </item>
+    <item>
+      <title>Guid como enlace permanente (ejemplo)</title>
+      <guid>https://fuente-prueba.example.org/comunicados/2026/prueba-6</guid>
+      <pubDate>2026-10-22</pubDate>
+    </item>
+    <item>
+      <title></title>
+      <link>https://fuente-prueba.example.org/sin-titulo</link>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /otea-austral
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      next-react:
+        patterns: ["next", "react", "react-dom", "eslint-config-next", "@types/react", "@types/react-dom"]
+      pruebas:
+        patterns: ["vitest", "@vitejs/*", "@testing-library/*", "jsdom", "@playwright/*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Imagen base del contenedor (fijada por digest en otea-austral/Dockerfile).
+  - package-ecosystem: docker
+    directory: /otea-austral
+    schedule:
+      interval: weekly

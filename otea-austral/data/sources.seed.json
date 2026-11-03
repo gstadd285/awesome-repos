@@ -1,0 +1,253 @@
+[
+  {
+    "id": "bcch",
+    "nombre": "Sitio oficial",
+    "organismo": "Banco Central de Chile",
+    "url_base": "https://www.bcentral.cl/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): el material del sitio puede verse, descargarse o copiarse sin alterarlo, citando los derechos del Banco; venderlo, distribuirlo o transmitirlo requiere autorización previa (Ley 17.336). Los datos de la Base de Datos Estadísticos pueden reproducirse y adaptarse mencionando al Banco como titular. Las publicaciones admiten fragmentos citando título y autor.",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "cmf",
+    "nombre": "Sitio oficial",
+    "organismo": "Comisión para el Mercado Financiero (CMF)",
+    "url_base": "https://www.cmfchile.cl/",
+    "tipo": "primaria",
+    "temas": [],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): su descargo de responsabilidades autoriza reproducir total o parcialmente la información del sitio mencionando la fuente; en documentos oficiales prevalece la versión impresa. La API CMF Bancos tiene términos propios (clave por usuario, cupo de uso y sin compromiso de continuidad).",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "ine",
+    "nombre": "Sitio oficial",
+    "organismo": "Instituto Nacional de Estadísticas (INE)",
+    "url_base": "https://www.ine.gob.cl/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): sus términos de datos abiertos aplican la licencia CC BY-SA 4.0: reconocer al INE, enlazar la licencia, indicar cambios y compartir las obras derivadas con la misma licencia, sin presentar análisis propios como del INE. Falta confirmar si cubren también los textos de prensa.",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "cochilco",
+    "nombre": "Sitio oficial",
+    "organismo": "Comisión Chilena del Cobre (Cochilco)",
+    "url_base": "https://www.cochilco.cl/",
+    "tipo": "primaria",
+    "temas": [
+      "cobre"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "hacienda",
+    "nombre": "Sitio oficial",
+    "organismo": "Ministerio de Hacienda de Chile",
+    "url_base": "https://www.hacienda.cl/",
+    "tipo": "primaria",
+    "temas": [],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "fed",
+    "nombre": "Sitio oficial",
+    "organismo": "Reserva Federal de EE.UU. (Federal Reserve)",
+    "url_base": "https://www.federalreserve.gov/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): salvo indicación, lo publicado por la Junta es de dominio público y puede copiarse y distribuirse sin permiso, citándola como fuente. El material de terceros requiere permiso de su titular; sellos y logos no se usan sin autorización escrita; se permite enlazar, no enmarcar el sitio.",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "bls",
+    "nombre": "Sitio oficial",
+    "organismo": "Oficina de Estadísticas Laborales de EE.UU. (BLS)",
+    "url_base": "https://www.bls.gov/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): lo que publica la BLS es de dominio público, salvo material con derechos previos (sobre todo fotografías de bancos de imágenes); pide citarla como fuente. Enlazar no requiere permiso; su emblema es marca registrada.",
+    "prioridad": "A",
+    "activa": true
+  },
+  {
+    "id": "sec-edgar",
+    "nombre": "EDGAR",
+    "organismo": "Comisión de Bolsa y Valores de EE.UU. (SEC)",
+    "url_base": "https://www.sec.gov/edgar",
+    "tipo": "primaria",
+    "temas": [],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): no se encontró la página de derechos del sitio. Para el acceso automatizado a EDGAR, la SEC pide declarar un User-Agent con organización y correo de contacto y no superar 10 solicitudes por segundo; puede limitar o bloquear las IP que excedan.",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "tesoro-eeuu",
+    "nombre": "Sitio oficial",
+    "organismo": "Departamento del Tesoro de EE.UU.",
+    "url_base": "https://home.treasury.gov/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas",
+      "comercio_eeuu_china"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "pendiente de verificar",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "bce",
+    "nombre": "Sitio oficial",
+    "organismo": "Banco Central Europeo (BCE)",
+    "url_base": "https://www.ecb.europa.eu/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): el BCE tiene los derechos del sitio y permite usar libremente su información si se reproduce con exactitud y se lo cita como fuente. Los documentos con autores individuales (working papers) piden permiso previo y el material de terceros queda excluido.",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "fmi",
+    "nombre": "Sitio oficial",
+    "organismo": "Fondo Monetario Internacional (FMI)",
+    "url_base": "https://www.imf.org/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): contenido con todos los derechos reservados. Se puede enlazar sin sugerir respaldo y citar extractos breves (hasta 1.000 palabras o un cuarto del texto) con referencia completa; prohíbe republicarlo en otros sitios, descargarlo de forma sistemática o masiva con medios automáticos sin permiso y usarlo para entrenar modelos de lenguaje. Sus datos admiten reutilización con atribución.",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "banco-mundial",
+    "nombre": "Sitio oficial",
+    "organismo": "Banco Mundial",
+    "url_base": "https://www.worldbank.org/",
+    "tipo": "primaria",
+    "temas": [
+      "cobre",
+      "energia"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): los conjuntos de datos se ofrecen con licencia CC BY 4.0 salvo indicación contraria (atribuir al Banco Mundial y no sugerir su respaldo; los datos de terceros pueden tener otras condiciones). No se encontraron las condiciones del texto general del sitio.",
+    "prioridad": "C",
+    "activa": true
+  },
+  {
+    "id": "bis",
+    "nombre": "Sitio oficial",
+    "organismo": "Banco de Pagos Internacionales (BIS)",
+    "url_base": "https://www.bis.org/",
+    "tipo": "primaria",
+    "temas": [
+      "divisas"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): el BIS reserva sus derechos. Sin permiso se permite descargar, imprimir y redistribuir sin fines comerciales, y reproducir un extracto limitado (hasta 400 palabras o dos tablas, nunca más del 10 %) citando al BIS y enlazando el original. Otros usos requieren permiso escrito; sus estadísticas tienen condiciones propias.",
+    "prioridad": "C",
+    "activa": true
+  },
+  {
+    "id": "omc",
+    "nombre": "Sitio oficial",
+    "organismo": "Organización Mundial del Comercio (OMC)",
+    "url_base": "https://www.wto.org/",
+    "tipo": "primaria",
+    "temas": [
+      "comercio_eeuu_china"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): permite reproducir sus publicaciones sin fines comerciales citando e informando a la OMC; el uso comercial requiere permiso escrito y el logo no se usa sin autorización. Su página de RSS alienta difundir sus noticias con atribución.",
+    "prioridad": "C",
+    "activa": true
+  },
+  {
+    "id": "opep",
+    "nombre": "Sitio oficial",
+    "organismo": "Organización de Países Exportadores de Petróleo (OPEP)",
+    "url_base": "https://www.opec.org/",
+    "tipo": "primaria",
+    "temas": [
+      "energia"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): el material del sitio tiene derechos de la OPEP y no se puede copiar, alterar ni traducir sin su consentimiento escrito, salvo en informes internos, educación e investigación o informes ocasionales a clientes, citando a la OPEP. Se permite enlazar sin pedir permiso; el uso comercial requiere autorización.",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "aie",
+    "nombre": "Sitio oficial",
+    "organismo": "Agencia Internacional de Energía (AIE)",
+    "url_base": "https://www.iea.org/",
+    "tipo": "primaria",
+    "temas": [
+      "energia"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): la mayor parte del texto y los gráficos propios del sitio tiene licencia CC BY 4.0, con atribución y aviso de no respaldo en obras derivadas. Excepciones: el Oil Market Report, los datos de pago y anexos con otra licencia; logos, portadas, fotos y material de terceros quedan fuera.",
+    "prioridad": "B",
+    "activa": true
+  },
+  {
+    "id": "eia",
+    "nombre": "Sitio oficial",
+    "organismo": "Administración de Información Energética de EE.UU. (EIA)",
+    "url_base": "https://www.eia.gov/",
+    "tipo": "primaria",
+    "temas": [
+      "energia"
+    ],
+    "acceso": "manual",
+    "feeds": [],
+    "condiciones_reutilizacion": "Por confirmar en la página (extracto oficial vía búsqueda, 2026-10-25): como obra del gobierno de EE. UU., lo publicado por la EIA es de dominio público; pide citarla («Fuente: U.S. Energy Information Administration», con fecha). Las fotografías y el material de terceros requieren permiso de su titular.",
+    "prioridad": "B",
+    "activa": true
+  }
+]
