@@ -346,3 +346,17 @@ test.describe("panel interno con sesión", () => {
     await expect(page.getByText(`Evento de ejemplo e2e ${sufijo} c`)).toHaveCount(0);
   });
 });
+
+test.describe("panel interno en el teléfono", () => {
+  test.use({ storageState: SESION_ADMIN, viewport: { width: 390, height: 844 } });
+
+  // La barra de navegación pasa a su propia fila; antes de eso se salía 145 px por la derecha.
+  for (const ruta of ["/admin", "/admin/eventos", "/admin/alertas", "/admin/invitaciones"]) {
+    test(`${ruta} no tiene scroll lateral a 390 px`, async ({ page }) => {
+      await page.goto(ruta);
+      await expect(page.getByRole("navigation", { name: "Panel" })).toBeVisible();
+      const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(desborde).toBeLessThanOrEqual(0);
+    });
+  }
+});

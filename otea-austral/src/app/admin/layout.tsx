@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </Link>
           <p className="micro text-apoyo">Panel interno</p>
           {sesion ? (
-            <nav aria-label="Panel" className="ml-auto flex items-center gap-6">
+            <nav aria-label="Panel" className="flex w-full flex-wrap items-center gap-x-6 gap-y-2 sm:ml-auto sm:w-auto sm:justify-end">
               <Link href="/admin" className={ENLACE}>
                 Tablero
               </Link>
