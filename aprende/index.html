@@ -6,7 +6,8 @@
 <title>Aprende Fácil</title>
 <style>
 :root{--bg:#f7f6f2;--card:#fff;--fg:#1d1d1f;--mut:#666;--acc:#3b5bdb;--ok:#2b8a3e;--bad:#c92a2a;--line:#e3e1db}
-@media (prefers-color-scheme:dark){:root{--bg:#141416;--card:#1e1e22;--fg:#eee;--mut:#9a9aa2;--acc:#748ffc;--ok:#51cf66;--bad:#ff6b6b;--line:#2e2e34}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141416;--card:#1e1e22;--fg:#eee;--mut:#9a9aa2;--acc:#748ffc;--ok:#51cf66;--bad:#ff6b6b;--line:#2e2e34}}
+:root[data-theme="dark"]{--bg:#141416;--card:#1e1e22;--fg:#eee;--mut:#9a9aa2;--acc:#748ffc;--ok:#51cf66;--bad:#ff6b6b;--line:#2e2e34}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
 main{max-width:760px;margin:auto;padding:24px 16px 60px}h1{margin:0 0 4px}p.sub{color:var(--mut);margin:0 0 24px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
