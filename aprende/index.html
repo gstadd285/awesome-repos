@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aprende Fácil</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--fg:#1d1d1f;--mut:#666;--acc:#3b5bdb;--ok:#2b8a3e;--bad:#c92a2a;--line:#e3e1db}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--card:#1e1e22;--fg:#eee;--mut:#9a9aa2;--acc:#748ffc;--ok:#51cf66;--bad:#ff6b6b;--line:#2e2e34}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
+main{max-width:760px;margin:auto;padding:24px 16px 60px}h1{margin:0 0 4px}p.sub{color:var(--mut);margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;cursor:pointer;text-align:left;color:inherit;font:inherit}
+.card:hover{border-color:var(--acc)}.ico{font-size:28px}.prog{height:6px;background:var(--line);border-radius:3px;margin-top:10px;overflow:hidden}.prog i{display:block;height:100%;background:var(--acc)}
+button.b{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:10px 16px;font:inherit;cursor:pointer}
+button.g{background:none;border:1px solid var(--line);color:var(--fg)}
+.les{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin:14px 0}
+.tip{border-left:4px solid var(--acc);padding:8px 12px;background:color-mix(in srgb,var(--acc) 10%,transparent);border-radius:6px}
+.opt{display:block;width:100%;margin:8px 0;text-align:left}.opt.ok{border-color:var(--ok);color:var(--ok)}.opt.bad{border-color:var(--bad);color:var(--bad)}
+.row{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+</style>
+</head>
+<body><main id="app"></main>
+<script>
+const T=[
+{id:"meta",ico:"🧠",n:"Metacognición",d:"Pensar sobre cómo piensas",L:[
+["¿Qué es?","Es la capacidad de observar y regular tu propio pensamiento: saber qué sabes, qué no, y cómo aprendes mejor.","Pregúntate: «¿Podría explicarlo a un niño de 10 años?»"],
+["Planear, monitorear, evaluar","Antes: define tu meta. Durante: revisa si entiendes. Después: evalúa qué funcionó y qué cambiar.","Al terminar de estudiar, escribe 1 cosa que harías distinto."],
+["Técnicas que funcionan","Recuperación activa (ponerte a prueba), repetición espaciada y técnica Feynman superan a releer y subrayar.","Cierra el libro y escribe lo que recuerdes."],
+["Ilusión de saber","Reconocer algo no es lo mismo que recordarlo. El efecto Dunning-Kruger: quien sabe poco suele sobreestimarse.","Duda de tu sensación de «ya lo sé»."]],
+Q:[["¿Qué técnica es más efectiva para recordar?",["Releer","Subrayar","Ponerse a prueba"],2],["Las fases de la metacognición son:",["Planear, monitorear, evaluar","Leer, copiar, repetir","Ver, oír, tocar"],0]]},
+{id:"geo",ico:"🌍",n:"Geopolítica",d:"Poder, territorio y recursos",L:[
+["¿Qué es?","Estudia cómo la geografía (ubicación, recursos, fronteras) influye en el poder y las decisiones de los países.","Mira siempre un mapa al leer una noticia internacional."],
+["Conceptos clave","Soberanía, esfera de influencia, poder duro (militar/económico) y poder blando (cultura, diplomacia).","Pregunta: ¿quién gana y quién pierde?"],
+["Cuellos de botella","Estrechos como Ormuz, Malaca o el Canal de Panamá concentran gran parte del comercio y la energía mundial.","Controlar rutas = influencia."],
+["Bloques y alianzas","OTAN, UE, BRICS, ASEAN: los países se agrupan por seguridad, comercio o intereses compartidos.","Las alianzas cambian con los intereses."]],
+Q:[["El poder blando se basa en:",["Ejércitos","Cultura y diplomacia","Sanciones"],1],["¿Cuál es un cuello de botella marítimo?",["Estrecho de Ormuz","Monte Everest","Río Amazonas"],0]]},
+{id:"fin",ico:"💰",n:"Finanzas",d:"Haz que tu dinero trabaje",L:[
+["Presupuesto","Regla 50/30/20: 50% necesidades, 30% deseos, 20% ahorro e inversión.","Anota tus gastos durante un mes."],
+["Interés compuesto","Ganas intereses sobre tus intereses. 1.000 al 7% anual se duplica en ~10 años (regla del 72: 72/7≈10).","Empezar temprano vale más que invertir mucho."],
+["Riesgo y diversificación","Más rendimiento suele implicar más riesgo. Diversificar (fondos indexados, varios activos) reduce el riesgo.","No pongas todos los huevos en una canasta."],
+["Fondo de emergencia","Ahorra de 3 a 6 meses de gastos antes de invertir; evita deudas con interés alto.","Paga primero la deuda más cara."]],
+Q:[["Según la regla del 72, al 8% el dinero se duplica en:",["9 años","20 años","4 años"],0],["Diversificar sirve para:",["Garantizar ganancias","Reducir riesgo","Pagar menos impuestos"],1]]},
+{id:"psi",ico:"🫀",n:"Psicología",d:"Mente y conducta",L:[
+["Sistema 1 y 2","Kahneman: el Sistema 1 es rápido e intuitivo; el 2, lento y analítico. Muchos errores vienen de usar el 1 cuando toca el 2.","Ante decisiones grandes, frena."],
+["Sesgos cognitivos","Confirmación (buscar lo que nos da la razón), anclaje (primer dato pesa demasiado), aversión a la pérdida.","Busca activamente argumentos en contra."],
+["Hábitos","Señal → rutina → recompensa. Cambiar un hábito es más fácil al mantener la señal y reemplazar la rutina.","Hazlo obvio, fácil y gratificante."],
+["Emociones","Nombrar la emoción («siento ansiedad») reduce su intensidad. La regulación emocional se entrena.","Respira 4-4-4 cuando te alteres."]],
+Q:[["El sesgo de confirmación es:",["Buscar info que apoya lo que creemos","Olvidar nombres","Temer a las alturas"],0],["El ciclo del hábito es:",["Meta-plan-acción","Señal-rutina-recompensa","Idea-duda-cambio"],1]]},
+{id:"arte",ico:"🎨",n:"Análisis de arte",d:"Aprende a mirar una obra",L:[
+["Método en 4 pasos","1) Describir lo que ves. 2) Analizar elementos formales. 3) Interpretar el significado. 4) Juzgar/valorar.","No interpretes antes de describir."],
+["Elementos formales","Línea, color, forma, textura, espacio, luz y composición (regla de tercios, simetría, punto focal).","¿A dónde va tu ojo primero? ¿Por qué?"],
+["Contexto","Época, autor, movimiento (Renacimiento, Barroco, Impresionismo, Cubismo…) y quién encargó la obra.","Una obra responde a su tiempo."],
+["Símbolos","Iconografía: calaveras = muerte (vanitas), lirios = pureza, perro = fidelidad.","Busca objetos que se repiten."]],
+Q:[["El primer paso para analizar una obra es:",["Juzgar","Describir","Interpretar"],1],["Una calavera en una 'vanitas' simboliza:",["Riqueza","La muerte y lo efímero","Alegría"],1]]},
+{id:"jet",ico:"✈️",n:"Construcción de jets",d:"Cómo se diseña un avión a reacción",L:[
+["4 fuerzas","Sustentación (alas) vs peso; empuje (motor) vs resistencia. Volar = equilibrar las cuatro.","Más velocidad → más sustentación."],
+["El motor turbofán","Admisión → compresor → cámara de combustión → turbina → tobera. La turbina mueve el compresor y el fan.","«Aspira, comprime, explota, expulsa»."],
+["Estructura y materiales","Fuselaje semimonocasco; aluminio, titanio y compuestos de fibra de carbono para ser ligero y resistente.","Cada kilo cuenta."],
+["Del diseño al vuelo","Requisitos → diseño conceptual → CFD y túnel de viento → prototipo → pruebas → certificación (FAA/EASA).","Certificar puede tardar años."]],
+Q:[["¿Qué fuerza genera el motor?",["Sustentación","Empuje","Peso"],1],["En un turbofán, la turbina mueve:",["El compresor y el fan","Las ruedas","Las alas"],0]]}
+];
+const S=JSON.parse((()=>{try{return localStorage.getItem("af")}catch(e){}})()||"{}");
+const save=()=>{try{localStorage.setItem("af",JSON.stringify(S))}catch(e){}};
+const app=document.getElementById("app");
+const pct=t=>Math.round(100*((S[t.id]?.l||0)+(S[t.id]?.q?1:0))/(t.L.length+1));
+function home(){app.innerHTML=`<h1>Aprende Fácil</h1><p class="sub">Lecciones cortas + mini quiz. Elige un tema.</p><div class="grid">${T.map(t=>`<button class="card" onclick="lesson('${t.id}',0)"><div class="ico">${t.ico}</div><b>${t.n}</b><div style="color:var(--mut);font-size:14px">${t.d}</div><div class="prog"><i style="width:${pct(t)}%"></i></div></button>`).join("")}</div>`}
+function lesson(id,i){const t=T.find(x=>x.id==id),l=t.L[i];S[id]=S[id]||{};S[id].l=Math.max(S[id].l||0,i+1);save();
+app.innerHTML=`<div class="row"><button class="b g" onclick="home()">← Temas</button><span style="color:var(--mut)">${t.ico} ${t.n} · ${i+1}/${t.L.length}</span></div>
+<div class="les"><h2>${l[0]}</h2><p>${l[1]}</p><p class="tip">💡 ${l[2]}</p></div>
+<div class="row">${i?`<button class="b g" onclick="lesson('${id}',${i-1})">Anterior</button>`:"<span></span>"}${i<t.L.length-1?`<button class="b" onclick="lesson('${id}',${i+1})">Siguiente</button>`:`<button class="b" onclick="quiz('${id}',0,0)">Hacer quiz ✓</button>`}</div>`}
+function quiz(id,i,sc){const t=T.find(x=>x.id==id);if(i>=t.Q.length){S[id].q=1;save();app.innerHTML=`<div class="les"><h2>${sc}/${t.Q.length} correctas ${sc==t.Q.length?"🎉":"💪"}</h2><p>${sc==t.Q.length?"¡Dominas lo básico!":"Repasa las lecciones y vuelve a intentarlo."}</p></div><div class="row"><button class="b g" onclick="lesson('${id}',0)">Repasar</button><button class="b" onclick="home()">Otros temas</button></div>`;return}
+const q=t.Q[i];app.innerHTML=`<div class="row"><button class="b g" onclick="home()">← Temas</button><span style="color:var(--mut)">Quiz · ${i+1}/${t.Q.length}</span></div><div class="les"><h2>${q[0]}</h2>${q[1].map((o,k)=>`<button class="b g opt" data-k="${k}">${o}</button>`).join("")}<div id="nx"></div></div>`;
+app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{const k=+b.dataset.k,ok=k==q[2];app.querySelectorAll(".opt").forEach(x=>{x.disabled=1;if(+x.dataset.k==q[2])x.classList.add("ok")});if(!ok)b.classList.add("bad");
+document.getElementById("nx").innerHTML=`<p>${ok?"✅ ¡Correcto!":"❌ Casi."}</p><button class="b" onclick="quiz('${id}',${i+1},${sc+(ok?1:0)})">Continuar</button>`})}
+home();
+</script></body></html>
