@@ -5,74 +5,130 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Aprende Fácil</title>
 <style>
-:root{--bg:#f7f6f2;--card:#fff;--fg:#1d1d1f;--mut:#666;--acc:#3b5bdb;--ok:#2b8a3e;--bad:#c92a2a;--line:#e3e1db}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141416;--card:#1e1e22;--fg:#eee;--mut:#9a9aa2;--acc:#748ffc;--ok:#51cf66;--bad:#ff6b6b;--line:#2e2e34}}
-:root[data-theme="dark"]{--bg:#141416;--card:#1e1e22;--fg:#eee;--mut:#9a9aa2;--acc:#748ffc;--ok:#51cf66;--bad:#ff6b6b;--line:#2e2e34}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
-main{max-width:760px;margin:auto;padding:24px 16px 60px}h1{margin:0 0 4px}p.sub{color:var(--mut);margin:0 0 24px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;cursor:pointer;text-align:left;color:inherit;font:inherit}
-.card:hover{border-color:var(--acc)}.ico{font-size:28px}.prog{height:6px;background:var(--line);border-radius:3px;margin-top:10px;overflow:hidden}.prog i{display:block;height:100%;background:var(--acc)}
-button.b{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:10px 16px;font:inherit;cursor:pointer}
-button.g{background:none;border:1px solid var(--line);color:var(--fg)}
-.les{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin:14px 0}
-.tip{border-left:4px solid var(--acc);padding:8px 12px;background:color-mix(in srgb,var(--acc) 10%,transparent);border-radius:6px}
-.opt{display:block;width:100%;margin:8px 0;text-align:left}.opt.ok{border-color:var(--ok);color:var(--ok)}.opt.bad{border-color:var(--bad);color:var(--bad)}
-.row{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+:root{--bg:#f6f5f1;--card:#fff;--fg:#1c1c1e;--mut:#6b6b70;--acc:#4c6ef5;--ok:#2f9e44;--bad:#e03131;--line:#e2e0da;--soft:#eef1ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#131316;--card:#1d1d22;--fg:#ececf0;--mut:#9b9ba3;--acc:#748ffc;--ok:#51cf66;--bad:#ff6b6b;--line:#2d2d34;--soft:#23284a}}
+:root[data-theme="dark"]{--bg:#131316;--card:#1d1d22;--fg:#ececf0;--mut:#9b9ba3;--acc:#748ffc;--ok:#51cf66;--bad:#ff6b6b;--line:#2d2d34;--soft:#23284a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 system-ui,sans-serif}
+main{max-width:680px;margin:auto;padding:20px 16px 80px}
+h1{margin:0}h2{margin:.2em 0 .5em;font-size:1.3em}.mut{color:var(--mut)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:18px}
+.pill{background:var(--card);border:1px solid var(--line);border-radius:99px;padding:4px 12px;font-size:15px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;cursor:pointer;text-align:left;color:inherit;font:inherit}
+.card:hover{border-color:var(--acc)}.ico{font-size:30px}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;flex:1}.bar i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.step{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin:14px 0}
+.b{background:var(--acc);color:#fff;border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer}
+.b:disabled{opacity:.4;cursor:default}.g{background:none;border:1px solid var(--line);color:var(--fg);font-weight:400}
+.opt{display:block;width:100%;margin:8px 0;text-align:left}.opt.sel{border-color:var(--acc);background:var(--soft)}
+.opt.ok{border-color:var(--ok);color:var(--ok)}.opt.bad{border-color:var(--bad);color:var(--bad)}
+.fb{border-radius:12px;padding:12px 14px;margin-top:12px}.fb.ok{background:color-mix(in srgb,var(--ok) 14%,transparent)}.fb.bad{background:color-mix(in srgb,var(--bad) 14%,transparent)}.fb.info{background:var(--soft)}
+.foot{display:flex;justify-content:flex-end;gap:8px}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.big{font-size:1.6em;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.chip{padding:8px 12px}
+.seq{min-height:46px;border:2px dashed var(--line);border-radius:12px;padding:6px;display:flex;flex-wrap:wrap;gap:6px}
+svg{max-width:100%;height:auto;display:block;margin:auto}
 </style>
 </head>
 <body><main id="app"></main>
 <script>
-const T=[
-{id:"meta",ico:"🧠",n:"Metacognición",d:"Pensar sobre cómo piensas",L:[
-["¿Qué es?","Es la capacidad de observar y regular tu propio pensamiento: saber qué sabes, qué no, y cómo aprendes mejor.","Pregúntate: «¿Podría explicarlo a un niño de 10 años?»"],
-["Planear, monitorear, evaluar","Antes: define tu meta. Durante: revisa si entiendes. Después: evalúa qué funcionó y qué cambiar.","Al terminar de estudiar, escribe 1 cosa que harías distinto."],
-["Técnicas que funcionan","Recuperación activa (ponerte a prueba), repetición espaciada y técnica Feynman superan a releer y subrayar.","Cierra el libro y escribe lo que recuerdes."],
-["Ilusión de saber","Reconocer algo no es lo mismo que recordarlo. El efecto Dunning-Kruger: quien sabe poco suele sobreestimarse.","Duda de tu sensación de «ya lo sé»."]],
-Q:[["¿Qué técnica es más efectiva para recordar?",["Releer","Subrayar","Ponerse a prueba"],2],["Las fases de la metacognición son:",["Planear, monitorear, evaluar","Leer, copiar, repetir","Ver, oír, tocar"],0]]},
-{id:"geo",ico:"🌍",n:"Geopolítica",d:"Poder, territorio y recursos",L:[
-["¿Qué es?","Estudia cómo la geografía (ubicación, recursos, fronteras) influye en el poder y las decisiones de los países.","Mira siempre un mapa al leer una noticia internacional."],
-["Conceptos clave","Soberanía, esfera de influencia, poder duro (militar/económico) y poder blando (cultura, diplomacia).","Pregunta: ¿quién gana y quién pierde?"],
-["Cuellos de botella","Estrechos como Ormuz, Malaca o el Canal de Panamá concentran gran parte del comercio y la energía mundial.","Controlar rutas = influencia."],
-["Bloques y alianzas","OTAN, UE, BRICS, ASEAN: los países se agrupan por seguridad, comercio o intereses compartidos.","Las alianzas cambian con los intereses."]],
-Q:[["El poder blando se basa en:",["Ejércitos","Cultura y diplomacia","Sanciones"],1],["¿Cuál es un cuello de botella marítimo?",["Estrecho de Ormuz","Monte Everest","Río Amazonas"],0]]},
-{id:"fin",ico:"💰",n:"Finanzas",d:"Haz que tu dinero trabaje",L:[
-["Presupuesto","Regla 50/30/20: 50% necesidades, 30% deseos, 20% ahorro e inversión.","Anota tus gastos durante un mes."],
-["Interés compuesto","Ganas intereses sobre tus intereses. 1.000 al 7% anual se duplica en ~10 años (regla del 72: 72/7≈10).","Empezar temprano vale más que invertir mucho."],
-["Riesgo y diversificación","Más rendimiento suele implicar más riesgo. Diversificar (fondos indexados, varios activos) reduce el riesgo.","No pongas todos los huevos en una canasta."],
-["Fondo de emergencia","Ahorra de 3 a 6 meses de gastos antes de invertir; evita deudas con interés alto.","Paga primero la deuda más cara."]],
-Q:[["Según la regla del 72, al 8% el dinero se duplica en:",["9 años","20 años","4 años"],0],["Diversificar sirve para:",["Garantizar ganancias","Reducir riesgo","Pagar menos impuestos"],1]]},
-{id:"psi",ico:"🫀",n:"Psicología",d:"Mente y conducta",L:[
-["Sistema 1 y 2","Kahneman: el Sistema 1 es rápido e intuitivo; el 2, lento y analítico. Muchos errores vienen de usar el 1 cuando toca el 2.","Ante decisiones grandes, frena."],
-["Sesgos cognitivos","Confirmación (buscar lo que nos da la razón), anclaje (primer dato pesa demasiado), aversión a la pérdida.","Busca activamente argumentos en contra."],
-["Hábitos","Señal → rutina → recompensa. Cambiar un hábito es más fácil al mantener la señal y reemplazar la rutina.","Hazlo obvio, fácil y gratificante."],
-["Emociones","Nombrar la emoción («siento ansiedad») reduce su intensidad. La regulación emocional se entrena.","Respira 4-4-4 cuando te alteres."]],
-Q:[["El sesgo de confirmación es:",["Buscar info que apoya lo que creemos","Olvidar nombres","Temer a las alturas"],0],["El ciclo del hábito es:",["Meta-plan-acción","Señal-rutina-recompensa","Idea-duda-cambio"],1]]},
-{id:"arte",ico:"🎨",n:"Análisis de arte",d:"Aprende a mirar una obra",L:[
-["Método en 4 pasos","1) Describir lo que ves. 2) Analizar elementos formales. 3) Interpretar el significado. 4) Juzgar/valorar.","No interpretes antes de describir."],
-["Elementos formales","Línea, color, forma, textura, espacio, luz y composición (regla de tercios, simetría, punto focal).","¿A dónde va tu ojo primero? ¿Por qué?"],
-["Contexto","Época, autor, movimiento (Renacimiento, Barroco, Impresionismo, Cubismo…) y quién encargó la obra.","Una obra responde a su tiempo."],
-["Símbolos","Iconografía: calaveras = muerte (vanitas), lirios = pureza, perro = fidelidad.","Busca objetos que se repiten."]],
-Q:[["El primer paso para analizar una obra es:",["Juzgar","Describir","Interpretar"],1],["Una calavera en una 'vanitas' simboliza:",["Riqueza","La muerte y lo efímero","Alegría"],1]]},
-{id:"jet",ico:"✈️",n:"Construcción de jets",d:"Cómo se diseña un avión a reacción",L:[
-["4 fuerzas","Sustentación (alas) vs peso; empuje (motor) vs resistencia. Volar = equilibrar las cuatro.","Más velocidad → más sustentación."],
-["El motor turbofán","Admisión → compresor → cámara de combustión → turbina → tobera. La turbina mueve el compresor y el fan.","«Aspira, comprime, explota, expulsa»."],
-["Estructura y materiales","Fuselaje semimonocasco; aluminio, titanio y compuestos de fibra de carbono para ser ligero y resistente.","Cada kilo cuenta."],
-["Del diseño al vuelo","Requisitos → diseño conceptual → CFD y túnel de viento → prototipo → pruebas → certificación (FAA/EASA).","Certificar puede tardar años."]],
-Q:[["¿Qué fuerza genera el motor?",["Sustentación","Empuje","Peso"],1],["En un turbofán, la turbina mueve:",["El compresor y el fan","Las ruedas","Las alas"],0]]}
+/* Modelo: aprender haciendo. Cada lección = pasos cortos.
+   Tipos: info, mc (opción múltiple + explicación), order (ordenar), sim (simulación con sliders), pick (adivinar/estimar). */
+const C=[
+{id:"meta",ico:"🧠",n:"Metacognición",d:"Pensar sobre cómo piensas",S:[
+{t:"mc",q:"Vas a un examen mañana. ¿Qué te hará recordar más?",o:["Releer tus apuntes 3 veces","Cerrar los apuntes e intentar escribir todo lo que recuerdas","Subrayar con colores"],a:1,e:"Se llama <b>recuperación activa</b>: esforzarte por recordar fortalece la memoria mucho más que volver a leer. Releer da una falsa sensación de dominio."},
+{t:"info",h:"Ilusión de saber",x:"Reconocer algo («me suena») no es lo mismo que poder recordarlo o explicarlo. La metacognición es <b>detectar esa diferencia</b>."},
+{t:"calib",q:"¿Cuál es la capital de Australia?",o:["Sídney","Canberra","Melbourne"],a:1,e:"Canberra. Mucha gente responde Sídney con mucha seguridad. Calibrar tu confianza es una habilidad metacognitiva: si sueles fallar estando muy seguro, conviene dudar más."},
+{t:"order",q:"Ordena el ciclo metacognitivo de estudio:",o:["Planear la meta","Monitorear si entiendes","Evaluar qué funcionó","Ajustar la estrategia"],e:"Planear → monitorear → evaluar → ajustar. Es un ciclo: lo que evalúas mejora tu próximo plan."},
+{t:"mc",q:"Aplicas la técnica Feynman cuando…",o:["Explicas el tema con palabras simples, como a un niño","Memorizas definiciones exactas","Estudias con música"],a:0,e:"Si no puedes explicarlo con sencillez, ahí está tu laguna. Vuelve a la fuente solo para esa parte."}]},
+{id:"geo",ico:"🌍",n:"Geopolítica",d:"Poder, territorio y recursos",S:[
+{t:"mc",q:"Cerca del 20% del petróleo mundial pasa por un estrecho de 33 km. Si se bloquea, ¿qué pasa primero?",o:["Nada, hay muchas rutas","Sube el precio del petróleo en todo el mundo","Solo afecta al país dueño del estrecho"],a:1,e:"Es el <b>Estrecho de Ormuz</b>. Los <b>cuellos de botella</b> dan enorme poder a quien puede controlarlos o amenazarlos."},
+{t:"match",q:"Une cada cuello de botella con lo que conecta:",p:[["Estrecho de Malaca","Índico ↔ Pacífico"],["Canal de Suez","Mediterráneo ↔ Mar Rojo"],["Canal de Panamá","Atlántico ↔ Pacífico"]],e:"Controlar o proteger estas rutas explica muchas bases militares y alianzas."},
+{t:"info",h:"Poder duro vs poder blando",x:"<b>Duro</b>: ejército, sanciones, dinero. <b>Blando</b>: cultura, películas, universidades, diplomacia — hacer que otros <i>quieran</i> lo que tú quieres."},
+{t:"mc",q:"Un país atrae estudiantes de todo el mundo a sus universidades. Eso es…",o:["Poder duro","Poder blando","Ninguno"],a:1,e:"Poder blando: crea simpatía e influencia a largo plazo sin coerción."},
+{t:"mc",q:"Al leer una noticia internacional, la mejor primera pregunta es:",o:["¿Quién tiene razón moralmente?","¿Qué intereses (recursos, seguridad, rutas) están en juego?","¿Qué opina mi red social?"],a:1,e:"La geopolítica analiza <b>intereses y geografía</b>. Juzgar viene después de entender."}]},
+{id:"fin",ico:"💰",n:"Finanzas",d:"Haz que tu dinero trabaje",S:[
+{t:"pick",q:"Inviertes 1.000 al 10% anual durante 30 años sin tocarlos. ¿Cuánto tendrás aprox.?",o:["4.000","8.000","17.000"],a:2,e:"≈17.450. No es 1.000 + 30×100 = 4.000, porque ganas interés <b>sobre el interés</b>: eso es el interés compuesto."},
+{t:"sim",k:"comp",h:"Juega con el interés compuesto",x:"Mueve los controles. Observa cómo el <b>tiempo</b> pesa más que la tasa."},
+{t:"mc",q:"Regla del 72: al 6% anual, ¿en cuántos años se duplica tu dinero?",o:["6","12","72"],a:1,e:"72 ÷ 6 = 12 años. Atajo mental útil para cualquier tasa."},
+{t:"order",q:"Ordena las prioridades financieras sanas:",o:["Presupuesto (saber en qué gastas)","Fondo de emergencia (3-6 meses)","Pagar deudas caras","Invertir a largo plazo"],e:"Invertir con deudas al 30% no tiene sentido: ninguna inversión rinde tanto de forma segura."},
+{t:"mc",q:"Diversificar tu inversión sirve para…",o:["Ganar seguro","Reducir el riesgo de perderlo todo","Evitar impuestos"],a:1,e:"Si una empresa cae, las demás amortiguan. Por eso los fondos indexados son populares."}]},
+{id:"psi",ico:"🫀",n:"Psicología",d:"Mente y conducta",S:[
+{t:"mc",q:"Un bate y una pelota cuestan 1,10 en total. El bate cuesta 1,00 más que la pelota. ¿Cuánto cuesta la pelota?",o:["0,10","0,05","0,01"],a:1,e:"0,05 (bate 1,05). La respuesta 0,10 viene del <b>Sistema 1</b>: rápido e intuitivo. El <b>Sistema 2</b> es lento y verifica. Kahneman."},
+{t:"anchor",h:"Experimento de anclaje"},
+{t:"info",h:"Sesgos frecuentes",x:"<b>Confirmación</b>: buscamos lo que nos da la razón. <b>Anclaje</b>: el primer número nos arrastra. <b>Aversión a la pérdida</b>: perder 100 duele más de lo que alegra ganar 100."},
+{t:"order",q:"Ordena el ciclo del hábito:",o:["Señal","Rutina","Recompensa"],e:"Para cambiar un hábito: mantén la señal y la recompensa, reemplaza la rutina."},
+{t:"mc",q:"Estás muy enojado. ¿Qué reduce más rápido la intensidad?",o:["Ignorarlo","Ponerle nombre: «siento enojo»","Actuar de inmediato"],a:1,e:"Etiquetar la emoción activa la corteza prefrontal y calma la amígdala."}]},
+{id:"arte",ico:"🎨",n:"Análisis de arte",d:"Aprende a mirar una obra",S:[
+{t:"order",q:"Ordena el método para analizar una obra:",o:["Describir lo que ves","Analizar elementos formales","Interpretar el significado","Valorar / juzgar"],e:"Primero mirar, después pensar. Interpretar antes de describir lleva a ver lo que esperamos."},
+{t:"comp",q:"¿Dónde pondría un artista el punto focal para una composición dinámica?",e:"En una de las <b>intersecciones de los tercios</b>. El centro exacto tiende a sentirse estático; los tercios generan tensión y movimiento."},
+{t:"mc",q:"Colores cálidos (rojo, naranja) frente a fríos (azul) en un paisaje: los cálidos tienden a…",o:["Alejarse","Acercarse al espectador","No cambiar nada"],a:1,e:"Los cálidos avanzan y los fríos retroceden: por eso las montañas lejanas se pintan azuladas (perspectiva atmosférica)."},
+{t:"match",q:"Une el símbolo con su significado habitual:",p:[["Calavera","Muerte, lo efímero"],["Lirio","Pureza"],["Perro","Fidelidad"]],e:"Esto es la <b>iconografía</b>: el vocabulario simbólico de una época."},
+{t:"mc",q:"Ves una obra de pinceladas sueltas, luz cambiante y escena al aire libre (s. XIX). Probablemente es…",o:["Barroco","Impresionismo","Cubismo"],a:1,e:"Impresionismo (Monet, Renoir): captar la luz del momento."}]},
+{id:"jet",ico:"✈️",n:"Construcción de jets",d:"Cómo se diseña un avión a reacción",S:[
+{t:"sim",k:"forces",h:"Las 4 fuerzas",x:"Ajusta empuje y sustentación. Un avión vuela equilibrando <b>empuje vs resistencia</b> y <b>sustentación vs peso</b>."},
+{t:"mc",q:"Si el avión va más lento, la sustentación…",o:["Aumenta","Disminuye","No cambia"],a:1,e:"La sustentación crece con el cuadrado de la velocidad. A baja velocidad hay que aumentar el ángulo o sacar flaps."},
+{t:"order",q:"Ordena el recorrido del aire en un turbofán:",o:["Admisión (fan)","Compresor","Cámara de combustión","Turbina","Tobera"],e:"«Aspira, comprime, quema, expulsa». La turbina extrae energía para mover el compresor y el fan."},
+{t:"mc",q:"¿Por qué se usa fibra de carbono en aviones modernos (787, A350)?",o:["Es más barata","Muy resistente y ligera","Es más fácil de reparar"],a:1,e:"Menos peso = menos combustible. Cada kilo ahorrado cuenta durante 30 años de vida del avión."},
+{t:"order",q:"Ordena el desarrollo de un jet:",o:["Requisitos","Diseño conceptual","Simulación y túnel de viento","Prototipo y pruebas de vuelo","Certificación"],e:"Del papel a la certificación pueden pasar 5-10 años."}]}
 ];
-const S=JSON.parse((()=>{try{return localStorage.getItem("af")}catch(e){}})()||"{}");
-const save=()=>{try{localStorage.setItem("af",JSON.stringify(S))}catch(e){}};
+
+const K="af2";let S;try{S=JSON.parse(localStorage.getItem(K))||{}}catch(e){S={}}
+S.xp=S.xp||0;S.done=S.done||{};S.streak=S.streak||0;
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 const app=document.getElementById("app");
-const pct=t=>Math.round(100*((S[t.id]?.l||0)+(S[t.id]?.q?1:0))/(t.L.length+1));
-function home(){app.innerHTML=`<h1>Aprende Fácil</h1><p class="sub">Lecciones cortas + mini quiz. Elige un tema.</p><div class="grid">${T.map(t=>`<button class="card" onclick="lesson('${t.id}',0)"><div class="ico">${t.ico}</div><b>${t.n}</b><div style="color:var(--mut);font-size:14px">${t.d}</div><div class="prog"><i style="width:${pct(t)}%"></i></div></button>`).join("")}</div>`}
-function lesson(id,i){const t=T.find(x=>x.id==id),l=t.L[i];S[id]=S[id]||{};S[id].l=Math.max(S[id].l||0,i+1);save();
-app.innerHTML=`<div class="row"><button class="b g" onclick="home()">← Temas</button><span style="color:var(--mut)">${t.ico} ${t.n} · ${i+1}/${t.L.length}</span></div>
-<div class="les"><h2>${l[0]}</h2><p>${l[1]}</p><p class="tip">💡 ${l[2]}</p></div>
-<div class="row">${i?`<button class="b g" onclick="lesson('${id}',${i-1})">Anterior</button>`:"<span></span>"}${i<t.L.length-1?`<button class="b" onclick="lesson('${id}',${i+1})">Siguiente</button>`:`<button class="b" onclick="quiz('${id}',0,0)">Hacer quiz ✓</button>`}</div>`}
-function quiz(id,i,sc){const t=T.find(x=>x.id==id);if(i>=t.Q.length){S[id].q=1;save();app.innerHTML=`<div class="les"><h2>${sc}/${t.Q.length} correctas ${sc==t.Q.length?"🎉":"💪"}</h2><p>${sc==t.Q.length?"¡Dominas lo básico!":"Repasa las lecciones y vuelve a intentarlo."}</p></div><div class="row"><button class="b g" onclick="lesson('${id}',0)">Repasar</button><button class="b" onclick="home()">Otros temas</button></div>`;return}
-const q=t.Q[i];app.innerHTML=`<div class="row"><button class="b g" onclick="home()">← Temas</button><span style="color:var(--mut)">Quiz · ${i+1}/${t.Q.length}</span></div><div class="les"><h2>${q[0]}</h2>${q[1].map((o,k)=>`<button class="b g opt" data-k="${k}">${o}</button>`).join("")}<div id="nx"></div></div>`;
-app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{const k=+b.dataset.k,ok=k==q[2];app.querySelectorAll(".opt").forEach(x=>{x.disabled=1;if(+x.dataset.k==q[2])x.classList.add("ok")});if(!ok)b.classList.add("bad");
-document.getElementById("nx").innerHTML=`<p>${ok?"✅ ¡Correcto!":"❌ Casi."}</p><button class="b" onclick="quiz('${id}',${i+1},${sc+(ok?1:0)})">Continuar</button>`})}
+const today=()=>new Date().toISOString().slice(0,10);
+function bumpStreak(){const t=today();if(S.last===t)return;const y=new Date(Date.now()-864e5).toISOString().slice(0,10);S.streak=S.last===y?S.streak+1:1;S.last=t}
+const shuffle=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(v=>v[1]);
+const hdr=()=>`<span class="pill">🔥 ${S.streak}</span> <span class="pill">⭐ ${S.xp} XP</span>`;
+
+function home(){app.innerHTML=`<div class="top"><div><h1>Aprende Fácil</h1><div class="mut">Aprende resolviendo, no leyendo.</div></div><div>${hdr()}</div></div>
+<div class="grid">${C.map(c=>{const p=Math.round(100*(S.done[c.id]||0)/c.S.length);return`<button class="card" onclick="start('${c.id}')"><div class="ico">${c.ico}</div><b>${c.n}</b><div class="mut" style="font-size:14px">${c.d}</div><div class="bar" style="margin-top:10px"><i style="width:${p}%"></i></div><div class="mut" style="font-size:13px;margin-top:4px">${p==100?"Completado ✓":p?p+"%":c.S.length+" pasos"}</div></button>`}).join("")}</div>`}
+
+let cur,idx,right;
+function start(id){cur=C.find(c=>c.id==id);idx=0;right=0;step()}
+function frame(inner){app.innerHTML=`<div class="top"><button class="b g" onclick="home()" aria-label="Salir">✕</button><div class="bar"><i style="width:${100*idx/cur.S.length}%"></i></div>${hdr()}</div><div class="step">${inner}</div><div class="foot" id="ft"></div>`}
+function next(lbl="Continuar"){document.getElementById("ft").innerHTML=`<button class="b" id="nb">${lbl}</button>`;document.getElementById("nb").onclick=()=>{idx++;S.done[cur.id]=Math.max(S.done[cur.id]||0,idx);save();idx<cur.S.length?step():finish()}}
+function check(fn){document.getElementById("ft").innerHTML=`<button class="b" id="cb" disabled>Comprobar</button>`;const b=document.getElementById("cb");b.onclick=fn;return b}
+function feedback(ok,e){const d=document.createElement("div");d.className="fb "+(ok===null?"info":ok?"ok":"bad");d.innerHTML=(ok===null?"":ok?"<b>¡Correcto! +10 XP</b><br>":"<b>No exactamente.</b><br>")+e;document.querySelector(".step").appendChild(d);if(ok){S.xp+=10;right++}save();next()}
+
+function mcStep(s,extra=""){frame(`<h2>${s.q}</h2>${extra}<div id="os">${s.o.map((o,k)=>`<button class="b g opt" data-k="${k}">${o}</button>`).join("")}</div>`);
+let sel=-1;const b=check(()=>{const os=[...document.querySelectorAll(".opt")];os.forEach(x=>{x.disabled=true;if(+x.dataset.k==s.a)x.classList.add("ok")});if(sel!=s.a)os[sel].classList.add("bad");const nt=afterMc?afterMc(sel==s.a):"";afterMc=null;feedback(sel==s.a,nt+s.e)});
+document.querySelectorAll(".opt").forEach(x=>x.onclick=()=>{document.querySelectorAll(".opt").forEach(y=>y.classList.remove("sel"));x.classList.add("sel");sel=+x.dataset.k;b.disabled=false})}
+let afterMc=null;
+
+function step(){const s=cur.S[idx];({
+info(){frame(`<h2>💡 ${s.h}</h2><p>${s.x}</p>`);next()},
+mc(){mcStep(s)},pick(){mcStep(s,`<p class="mut">Haz tu mejor estimación — equivocarse aquí es parte de aprender.</p>`)},
+calib(){mcStep(s,`<p class="mut">Antes de responder: ¿qué tan seguro estás? <b id="cv">70%</b></p><input type="range" min="33" max="100" value="70" id="cf" oninput="cv.textContent=this.value+'%'">`);
+ afterMc=ok=>{const c=+document.getElementById("cf").value;return ok?(c<60?"<i>Acertaste con poca confianza: sabías más de lo que creías.</i><br>":""):(c>=80?"<i>Estabas muy seguro y fallaste: ¡exceso de confianza detectado!</i><br>":"")}},
+order(){const items=shuffle(s.o.map((o,i)=>[o,i]));let got=[];
+ frame(`<h2>${s.q}</h2><p class="mut">Toca en el orden correcto.</p><div class="seq" id="sq"></div><div class="chips" id="ch"></div>`);
+ const draw=()=>{sq.innerHTML=got.map(g=>`<span class="b g chip">${g[0]}</span>`).join("");ch.innerHTML=items.filter(i=>!got.includes(i)).map(i=>`<button class="b g chip" data-i="${i[1]}">${i[0]}</button>`).join("");
+  ch.querySelectorAll("button").forEach(x=>x.onclick=()=>{got.push(items.find(i=>i[1]==x.dataset.i));draw()});b.disabled=got.length<items.length};
+ const b=check(()=>{const ok=got.every((g,k)=>g[1]==k);if(!ok)sq.insertAdjacentHTML("afterend",`<p><b>Orden correcto:</b> ${s.o.join(" → ")}</p>`);ch.remove();feedback(ok,s.e)});
+ document.getElementById("ft").insertAdjacentHTML("afterbegin",`<button class="b g" id="rs">Reiniciar</button>`);rs.onclick=()=>{got=[];draw()};draw()},
+match(){const L=s.p.map(p=>p[0]),R=shuffle(s.p.map(p=>p[1]));let ans={},pickL=null;
+ frame(`<h2>${s.q}</h2><p class="mut">Toca un elemento de la izquierda y luego su pareja.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="mt"></div>`);
+ const draw=()=>{mt.innerHTML=L.map((l,i)=>`<button class="b g opt ${pickL===i?"sel":""}" data-l="${i}">${l}${ans[i]!=null?" → <b>"+R[ans[i]]+"</b>":""}</button><button class="b g opt ${Object.values(ans).includes(i)?"sel":""}" data-r="${i}">${R[i]}</button>`).join("");
+  mt.querySelectorAll("[data-l]").forEach(x=>x.onclick=()=>{pickL=+x.dataset.l;draw()});
+  mt.querySelectorAll("[data-r]").forEach(x=>x.onclick=()=>{if(pickL==null)return;for(const k in ans)if(ans[k]==+x.dataset.r)delete ans[k];ans[pickL]=+x.dataset.r;pickL=null;draw()});b.disabled=Object.keys(ans).length<L.length};
+ const b=check(()=>{const ok=L.every((l,i)=>R[ans[i]]==s.p[i][1]);mt.innerHTML=s.p.map(p=>`<div>${p[0]}</div><div class="mut">${p[1]}</div>`).join("");feedback(ok,s.e)});draw()},
+anchor(){const hi=Math.random()<.5,a=hi?6500:1500;
+ frame(`<h2>🧪 ${s.h}</h2><p>¿El río Nilo mide más o menos de <b>${a.toLocaleString("es")} km</b>?</p><p>Ahora escribe tu estimación de su longitud:</p><input type="range" min="500" max="10000" step="100" value="${a}" id="es" oninput="ev.textContent=(+this.value).toLocaleString('es')+' km'"><p class="big" id="ev">${a.toLocaleString("es")} km</p>`);
+ const b=check(()=>{const v=+es.value;feedback(null,`Mide ≈ <b>6.650 km</b>. Tú dijiste ${v.toLocaleString("es")}. A ti te mostré el ancla de ${a.toLocaleString("es")} km. En experimentos, quienes ven un ancla alta estiman mucho más que quienes ven una baja, aunque el número sea arbitrario. Eso es el <b>anclaje</b>.`);S.xp+=10;save()});b.disabled=false},
+comp(){let pt=null;const pts=[[100,67],[200,67],[100,133],[200,133],[150,100]];
+ frame(`<h2>${s.q}</h2><p class="mut">Toca un punto.</p><svg viewBox="0 0 300 200" id="cv"><rect width="300" height="200" rx="10" fill="var(--soft)"/><path d="M100 0V200M200 0V200M0 67H300M0 133H300" stroke="var(--line)" stroke-dasharray="4"/>${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="14" fill="var(--card)" stroke="var(--acc)" stroke-width="2" data-i="${i}" style="cursor:pointer"/>`).join("")}</svg>`);
+ const b=check(()=>{feedback(pt<4,s.e)});cv.querySelectorAll("circle").forEach(c=>c.onclick=()=>{cv.querySelectorAll("circle").forEach(z=>z.setAttribute("fill","var(--card)"));c.setAttribute("fill","var(--acc)");pt=+c.dataset.i;b.disabled=false})},
+sim(){if(s.k=="comp"){frame(`<h2>🎛️ ${s.h}</h2><p>${s.x}</p><label>Tasa anual: <b id="rv"></b></label><input type="range" id="r" min="1" max="15" value="7"><label>Años: <b id="yv"></b></label><input type="range" id="y" min="1" max="50" value="30"><svg viewBox="0 0 300 120" id="ch"></svg><p>1.000 se convierten en <span class="big" id="out"></span></p>`);
+  const u=()=>{const R=+r.value,Y=+y.value;rv.textContent=R+"%";yv.textContent=Y;out.textContent=Math.round(1000*Math.pow(1+R/100,Y)).toLocaleString("es");const mx=1000*Math.pow(1.15,50);let bars="";for(let i=0;i<=Y;i++){const v=1000*Math.pow(1+R/100,i),h=Math.max(1,110*Math.log(v/1000+1)/Math.log(mx/1000+1));bars+=`<rect x="${i*300/51}" y="${115-h}" width="${300/51-1}" height="${h}" fill="var(--acc)"/>`}ch.innerHTML=bars};r.oninput=y.oninput=u;u()}
+ else{frame(`<h2>✈️ ${s.h}</h2><p>${s.x}</p><label>Empuje (vs resistencia = 50)</label><input type="range" id="t" min="0" max="100" value="30"><label>Sustentación (vs peso = 50)</label><input type="range" id="l" min="0" max="100" value="30"><svg viewBox="0 0 300 140"><g id="pl"><text x="150" y="80" font-size="40" text-anchor="middle">✈️</text></g></svg><p class="big" id="st" style="text-align:center"></p>`);
+  const u=()=>{const T=+t.value-50,L=+l.value-50;pl.setAttribute("transform",`translate(${T*1.2},${-L*.8})`);st.textContent=(L<-5?"Desciende":L>5?"Asciende":"Altitud estable")+" · "+(T<-5?"desacelera":T>5?"acelera":"velocidad constante")};t.oninput=l.oninput=u;u()}
+ next("Entendido")}
+})[s.t]()}
+
+function finish(){bumpStreak();S.xp+=20;save();const n=cur.S.filter(s=>!["info","sim","anchor"].includes(s.t)).length;
+ app.innerHTML=`<div class="step" style="text-align:center"><div style="font-size:60px">${right>=n-1?"🏆":"💪"}</div><h2>¡Lección completada!</h2><p>${right} de ${n} correctas · +20 XP bonus</p><p>${hdr()}</p><p class="mut">Vuelve mañana para mantener tu racha. Repetir en días distintos fija la memoria.</p></div><div class="foot"><button class="b g" onclick="start('${cur.id}')">Repetir</button><button class="b" onclick="home()">Más temas</button></div>`}
 home();
 </script></body></html>
